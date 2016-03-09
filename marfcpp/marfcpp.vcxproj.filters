@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="gfx\GL\glew.c">
+      <Filter>gfx\GL</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\window_win32.cpp">
+      <Filter>gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfx.cpp">
+      <Filter>gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\buttons.cpp">
+      <Filter>gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\geom_buffer.cpp">
+      <Filter>gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="hyp\parser.cpp">
+      <Filter>hyp</Filter>
+    </ClCompile>
+    <ClCompile Include="hyp\string_set.cpp">
+      <Filter>hyp</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="gfx">
+      <UniqueIdentifier>{195432f1-ace8-432c-873b-5157dee6fb9f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="gfx\GL">
+      <UniqueIdentifier>{7a6f5e98-e8a0-4095-bc00-67b098f993f4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sim">
+      <UniqueIdentifier>{d21a10fa-a5cf-4e14-97eb-c452110eb0c2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="net">
+      <UniqueIdentifier>{8bcdb81d-83fd-49d4-ad6f-2d1ca15cd018}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="hyp">
+      <UniqueIdentifier>{7250778d-9ba6-4906-b7b2-51cdb2fcaa9b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="gfx\GL\glew.h">
+      <Filter>gfx\GL</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\GL\wglew.h">
+      <Filter>gfx\GL</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\window.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\window_common.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfx.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\buttons.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\buttons_common.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\buttons_dinput.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\buttons_win32.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="sim\object_list.hpp">
+      <Filter>sim</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\geom_buffer.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="net\channel.hpp">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="hyp\string_set.hpp">
+      <Filter>hyp</Filter>
+    </ClInclude>
+    <ClInclude Include="hyp\ast.hpp">
+      <Filter>hyp</Filter>
+    </ClInclude>
+    <ClInclude Include="hyp\parser.hpp">
+      <Filter>hyp</Filter>
+    </ClInclude>
+    <ClInclude Include="hyp\small_vec.hpp">
+      <Filter>hyp</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
