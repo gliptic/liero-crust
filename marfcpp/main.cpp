@@ -133,73 +133,212 @@ void test_gfx() {
 	}
 }
 
-//
+struct module_printer {
+	hyp::parser* p;
+	int indent;
+	tl::vector_slice<u8> full;
 
+	int estimated_size;
 
-void print_value(hyp::parser* p, hyp::node v) {
-	printf("%u %u\n", v.type(), v.str());
-}
-
-#define Buffer_checkread(ty, self, p) ((self)->end() - (p) >= sizeof(ty))
-#define Buffer_read(ty, self, p) (((p) += sizeof(ty)), *(ty*)((p) - sizeof(ty)))
-
-void print_lambda_body(hyp::parser* p, tl::vector<u8>* bindingArr, tl::vector<u8>* exprArr) {
-	u8* ptr = bindingArr->begin();
-
-	u32 local_index = 0;
-	while (Buffer_checkread(hyp::binding, bindingArr, ptr)) {
-		hyp::binding b = Buffer_read(hyp::binding, bindingArr, ptr);
-		printf("let l%u\n", local_index);
+	module_printer(hyp::parser& parser)
+		: p(&parser), indent(0), full(parser.output.slice()), estimated_size(0) {
 	}
 
-	ptr = exprArr->begin();
-	while (Buffer_checkread(hyp::node, exprArr, ptr)) {
-
-		hyp::node b = Buffer_read(hyp::node, exprArr, ptr);
-
-		if (b.type() == hyp::NT_MATCHUPV) {
-			hyp::node v = Buffer_read(hyp::node, exprArr, ptr);
-			printf("l%u_%u = ", b.upv_level(), b.upv_index());
-			print_value(p, v);
-		} else {
-			print_value(p, b);
+	void print_indent() {
+		for (int i = 0; i < indent; ++i) {
+			printf("  ");
 		}
 	}
-}
 
-void print_tree(hyp::parser* p, hyp::module* mod) {
-	print_lambda_body(p, &mod->binding_arr, &mod->expr_arr);
-}
+	void print_value(hyp::node v) {
+		
+		switch (v.type()) {
+		case hyp::node_type::NT_NAME: {
+			printf("'");
+			auto str = v.str();
+			str.print(p->code.begin());
+			printf("'");
+			estimated_size += 8;
+			break;
+		}
 
-void hyp_build(u8 const* code) {
+		case hyp::node_type::NT_KI32: {
+			printf("%d", v.value2());
+			estimated_size += v.value2() < (1 << 28) ? 4 : 8;
+			break;
+		}
+
+		case hyp::node_type::NT_UPVAL: {
+			printf("l%u_%u", v.upv_level(), v.upv_index());
+			break;
+		}
+
+		case hyp::node_type::NT_CALL: {
+			auto data = full.unsafe_cut_front_in_bytes(v.ref());
+
+			hyp::call_op const* call = data.unsafe_read<hyp::call_op>();
+
+			print_value(call->fun);
+			printf("(");
+
+			u32 argc = v.value2();
+			
+			for (u32 i = 0; i < argc; ++i) {
+				if (i != 0) printf(", ");
+				print_value(call->args[i]);
+			}
+			printf(")");
+			estimated_size += 8 + 4;
+			break;
+		}
+
+		case hyp::node_type::NT_LAMBDA: {
+			printf("{\n");
+			++indent;
+
+			auto data = full.unsafe_cut_front_in_bytes(v.ref());
+
+			//hyp::lambda_op const* lambda = data.unsafe_read<hyp::lambda_op>();
+
+			u32 argc = v.value2() & 0xffff;
+			u32 bindings = v.value2() >> 16;
+
+			auto bindingArr = data.unsafe_limit_size_in_bytes(bindings * sizeof(hyp::binding));
+			data = data.unsafe_cut_front_in_bytes(bindings * sizeof(hyp::binding));
+			auto exprArr = data.unsafe_limit_size_in_bytes(argc * sizeof(hyp::node));
+
+			print_lambda_body(bindingArr, exprArr);
+			--indent;
+			print_indent();
+			printf("}");
+			estimated_size += 8;
+			break;
+		}
+
+		default:
+			printf("%u %llu", v.type(), v.str().raw());
+		}
+	}
+
+
+	void print_lambda_body(tl::vector_slice<u8> binding_arr, tl::vector_slice<u8> expr_arr) {
+
+		u32 local_index = 0;
+		hyp::binding* b;
+		while (b = binding_arr.unsafe_read<hyp::binding>()) {
+			print_indent();
+			printf("let l%u\n", local_index);
+			++local_index;
+
+			estimated_size += sizeof(hyp::binding);
+		}
+
+		hyp::node* n;
+		while (n = expr_arr.unsafe_read<hyp::node>()) {
+			print_indent();
+			if (n->type() == hyp::NT_MATCHUPV) {
+				hyp::node v = *expr_arr.unsafe_read<hyp::node>();
+				printf("l%u_%u = ", n->upv_level(), n->upv_index());
+				print_value(v);
+			} else {
+				print_value(*n);
+			}
+
+			printf("\n");
+		}
+	}
+
+	void print_tree(hyp::module* mod) {
+		print_lambda_body(mod->binding_arr.slice(), mod->expr_arr.slice());
+	}
+};
+
+
+void hyp_build(tl::vector_slice<u8> code) {
 	hyp::parser p(code);
 	
 	hyp::module mod = p.parse_module();
 
-	if (p.code != p.end) {
-		//printf("Error: Did not parse all input. %d bytes left.\n", p.end - p.code);
-		printf("Error: Did not parse all input. %d bytes left.\n", (u32)(p.end - p.code));
+	if (p.is_err()) {
+		printf("Error in parsing at: %s\n", p.cur);
+	} else if (p.cur != p.code.end()) {
+		printf("Error: Did not parse all input. Left: %s\n", p.cur);
 	} else {
-		print_tree(&p, &mod);
+		module_printer printer(p);
+		printer.print_tree(&mod);
+		printf("Estimate packed size: %u\n", printer.estimated_size);
 	}
 
-	printf("Size: %u + %u bytes\n", p.output.size(), p.strset.buf.size());
+	printf("Size: %u bytes\n", (u32)(p.output.size() + mod.binding_arr.size_in_bytes() + mod.expr_arr.size_in_bytes()));
+
+	int compressed_size = 0;
+
+	for (int i = 0; i < p.output.size_in_bytes(); ++i) {
+		u8 byte = p.output.begin()[i];
+
+		if (byte) {
+			compressed_size += 1;
+		}
+		printf("%02x", byte);
+
+		if (((i + 1) % 16) == 0) {
+			printf("\n");
+		}
+	}
+
+	printf("\n\n");
+
+	for (int i = 0; i < p.output.size_in_bytes(); ++i) {
+		u8 byte = p.output.begin()[i];
+
+		if (byte >= 32)
+			printf(" %c", byte);
+		else if (!byte)
+			printf("00");
+		else if (byte == 1)
+			printf("11");
+		else
+			printf("..");
+
+		if (((i + 1) % 16) == 0) {
+			printf("\n");
+		}
+	}
+
+	compressed_size += 8 * ((p.output.size_in_bytes() + 63) / 64);
+	printf("\n\nCondensed size: %u bytes\n", compressed_size);
 }
 
 void test_hyp() {
 	char const* templ =
-		"let fooo = { || let x = 0, x == 1 },"
-		"let booo = { |x: Foo| x y }";
+		"let fooo = { | | let x = 0\n x == fooo\n looooooong (0) }\n"
+		"let booo = { |x: Foo| x.y { 0 } }\n"
+		"if (foo) { bar } else { baz }";
 
 	//u32 bef, aft;
 
 	printf("Building\n");
-	//bef = getticks();
-	hyp_build((u8 const*)templ);
+	
+	tl::vector<u8> code((u8 const*)templ, strlen(templ) + 1);
+	hyp_build(code.slice());
+}
+
+void test_hyp_fr() {
+	char const* templ =
+		"let fooo = { let x = y }\n"
+		"let y = 1\n";
+
+	//u32 bef, aft;
+
+	printf("Building\n");
+
+	tl::vector<u8> code((u8 const*)templ, strlen(templ) + 1);
+	hyp_build(code.slice());
 }
 
 int main() {
 	test_hyp();
+	//test_hyp_fr();
 
 	return 0;
 }

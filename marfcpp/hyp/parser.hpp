@@ -9,19 +9,22 @@
 namespace hyp {
 
 struct parser {
-	u8 const* code;
-	u8 const* end;
+	tl::vector_slice<u8> code;
+	u8* cur;
 	u32 tt, token_prec;
-	u32 token_data, level;
+	u64 token_data;
+	bool allow_comma_in_context;
+	u32 level;
 	u32 lextable[256];
 
 	tl::vector<local> locals_buf;
-	tl::vector<u8> output;
+	tl::mixed_buffer output;
 	string_set strset;
 
-	parser(u8 const* c);
+	parser(tl::vector_slice<u8> c);
 
 	module parse_module();
+	bool is_err();
 };
 
 struct binding {

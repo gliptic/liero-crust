@@ -5,102 +5,100 @@
 #include <tl/std.h>
 #include <tl/vector.hpp>
 
+#include "string_set.hpp"
+
 namespace hyp {
 
-static int const small_int_bits = 32 - 4;
-static int const small_int_lim = 1 << (small_int_bits - 1);
-
-enum {
+enum node_type {
 	NT_CALL = 0,
-	NT_KI28 = 1,
-	NT_KI32 = 2,
-	NT_KF64 = 3,
-	NT_NAME = 4,
-	NT_LAMBDA = 5,
-	NT_UPVAL = 6,
+	NT_KI32 = 1,
+	NT_KF64 = 2,
+	NT_NAME = 3,
+	NT_LAMBDA = 4,
+	NT_UPVAL = 5,
 
-	NT_MATCHUPV = 7,
-	NT_MATCH = 8,
-
+	NT_MATCHUPV = 6,
+	NT_MATCH = 7,
+	
 	NT_MAX
 };
 
 struct node {
-	u32 v;
+	u32 a, b;
 
-	static node make(u32 type, u32 val) {
+	static node make(u32 type, u32 val, u32 val2) {
 		node n;
-		assert(val < (1 << 28));
-		n.v = type | (val << 4);
+		assert(val < (1ull << 60));
+		n.b = type | (val << 4);
+		n.a = val2;
 		return n;
 	}
 
-	static node make_str(u32 ref) {
+	static node make_str(strref ref) {
 		node n;
-		assert(ref < (1 << 30));
-		n.v = (ref << 4) | NT_NAME;
+		n.b = (ref.b << 4) | NT_NAME;
+		n.a = ref.a;
 		return n;
 	}
 
 	static node make_matchupv(node upv) {
 		node n;
-		assert((upv.v & 0xf) == NT_UPVAL);
-		n.v = (upv.v & ~0xf) | NT_MATCHUPV;
+		assert(upv.type() == NT_UPVAL);
+		n.b = (upv.b & ~0xf) | NT_MATCHUPV;
+		n.a = upv.a;
 		return n;
 	}
 
 	static node make_upval(u32 level, u32 index) {
 		node n;
 		assert(level < (1<<8) && index < (1<<20));
-		n.v = (index << 12) | (level << 4) | NT_UPVAL;
+		n.b = (level << 4) | NT_UPVAL;
+		n.a = index;
 		return n;
 	}
 
-	static node make_ref(u32 type, u32 ref) {
+	static node make_ref(u32 type, u32 ref, u32 value2 = 0) {
 		node n;
 		assert((ref & 3) == 0 && ref < (1 << 30));
-		n.v = (ref << 2) | type;
+		n.b = (ref << 2) | type;
+		n.a = value2;
 		return n;
 	}
 
-	u32 type() { return this->v & 0xf; }
-	u32 str() { return this->v >> 4; }
-	u32 to_ref() { return (this->v >> 4) << 2; }
+	node_type type() { return (node_type)(this->b & 0xf); }
+	strref str() { return strref::from_raw(((u64)(this->b >> 4) << 32) | this->a); }
+	u32 ref() { return (this->b >> 4) << 2; }
+	u32 value2() { return this->a; }
 
-	u32 upv_level() { return (this->v >> 4) & 0xff; }
-	u32 upv_index() { return (this->v >> 12) & 0xfffff; }
+	u32 upv_level() { return this->b >> 4; }
+	u32 upv_index() { return this->a; }
 };
 
 struct node_match {
 	node match, value;
 };
 
-struct base_op {
-	u32 type, argc;
-};
-
-struct op : base_op {
-
-};
-
-struct call_op : base_op {
+struct call_op {
+	//u32 argc;
+	u32 type;
 	node fun;
 	node args[];
 };
 
-struct lambda_op : base_op {
-	u32 bindings;
-	u8 data[];
+struct lambda_op {
+	//u16 argc;
+	//u16 bindings;
+	u32 data[];
 };
 
 struct local {
-	u32 name;
+	strref name;
 	node ref;
 };
 
 struct module {
 
-	tl::vector<u8> binding_arr, expr_arr;
+	tl::mixed_buffer binding_arr, expr_arr;
 
 	module() { }
 	module(module&& other) = default;
@@ -111,22 +109,22 @@ struct module {
 TL_STATIC_ASSERT((sizeof(lambda_op) & 3) == 0);
 TL_STATIC_ASSERT((sizeof(call_op) & 3) == 0);
 
-static u32 const str_empty = 0;
+static strref const str_empty(0);
 
-inline u32 str_short3(char a, char b, char c) {
-	return (u32)((3 << 24) | (a << 16) | (b << 8) | c);
+inline strref str_short3(char a, char b, char c) {
+	return strref::from_short((a << 16) | (b << 8) | c, 3);
 }
 
-inline u32 str_short2(char a, char b) {
-	return (u32)((2 << 24) | (a << 8) | b);
+inline strref str_short2(char a, char b) {
+	return strref::from_short((a << 8) | b, 2);
 }
 
-inline u32 str_short1(char a) {
-	return (u32)((1 << 24) | a);
+inline strref str_short1(char a) {
+	return strref::from_short(a, 1);
 }
 
-static node const node_name_empty = { NT_NAME | (str_empty << 4) };
-static node const node_none = { 0 };
+//static node const node_name_empty = { NT_NAME | (str_empty << 4) };
+static node const node_none = { 0, 0 };
 
 }
 

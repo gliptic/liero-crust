@@ -61,15 +61,15 @@ static int insert(
 		if (str && p_hash == hash) {
 			u32 cand_offset = ITAB(p);
 
-			u8 const* cand_ptr = self->buf.begin() + cand_offset;
+			u8 const* cand_ptr = self->source.begin() + cand_offset;
 
-			u32 cand_len = tl_read_le32(cand_ptr - 4);
+			u32 max_cand_len = (u32)(self->source.end() - cand_ptr);
 			if (str_minlen <= 1 && len == 1) {
-				if (cand_len == 1 && *cand_ptr == *str) {
+				if (max_cand_len >= 1 && *cand_ptr == *str) {
 					*ret = cand_offset;
 					return 1;
 				}
-			} else if (cand_len == len && !memcmp(cand_ptr, str, len)) {
+			} else if (max_cand_len >= len && !memcmp(cand_ptr, str, len)) {
 				// Exists
 				*ret = cand_offset;
 				return 1;
@@ -104,19 +104,17 @@ static void resize(string_set* self) {
 	u32 newloglen = 32 - newhshift;
 	u32 newlen = 1 << newloglen;
 
-	string_set::slot *newtab = new string_set::slot[newlen];
+	string_set::slot *newtab = (string_set::slot *)calloc(newlen, sizeof(string_set::slot));
 	string_set::slot *oldtab = self->tab;
-	for (u32 p = 0; p < newlen; ++p) {
-		newtab[p].h = 0;
-	}
-
+	
 	u32 oldhmask = ((u32)-1) >> self->hshift;
 
 	for (u32 p = 0; p <= oldhmask; ++p) {
 		if (oldtab[p].h) {
 			u32 oldi = oldtab[p].i;
-			u32 oldlen = tl_read_le32(self->buf.begin() + oldi - 4);
-			insert(self, oldtab[p].h, oldi, NULL, oldlen, newhshift, newtab, NULL);
+
+			// len is not used when str == NULL
+			insert(self, oldtab[p].h, oldi, NULL, 0, newhshift, newtab, NULL);
 		}
 	}
 
@@ -128,7 +126,7 @@ static void resize(string_set* self) {
 bool string_set::get(u32 hash, u8 const* str, u32 len, u32* ret) {
 
 	assert(len >= str_minlen);
-	u32 prel_offset = (u32)(str - this->buf.begin());
+	u32 prel_offset = (u32)(str - this->source.begin());
 
 	int existing = insert(this, hash, prel_offset, str, len, this->hshift, this->tab, ret);
 

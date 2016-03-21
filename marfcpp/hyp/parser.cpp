@@ -21,6 +21,8 @@ enum {
 	LEX_WHITESPACE = 8,
 	LEX_OP = 16,
 	LEX_SINGLECHAR = 32,
+	LEX_NEWLINE = 64
+	// = 128
 };
 
 enum {
@@ -43,78 +45,57 @@ enum {
 	TT_ERR = 17
 };
 
-#define CH (*code)
-#define NEXT (++code)
-#define CHECKEND (void)0
+#define CH (*cur)
+#define NEXT (++cur)
 
-static void next(parser* self);
-static void rexpr_p(parser* self);
+static void next(parser* self, bool allow_comma = true);
 static node rexpr(parser* self);
 
-static void next(parser* self) {
+static void next(parser* self, bool allow_comma) {
 	u8 ch;
-	u8 const* code = self->code;
-redo:
+	u8* cur = self->cur;
+
+	assert(self->tt != TT_ERR);
+
 	ch = CH;
 	u32 lexcat = self->lextable[ch];
-
 	NEXT;
 
+other:
 	if (lexcat & (LEX_OP | LEX_BEGIDENT)) {
-		// TODO: Reserve string buffer here
-		u32 keyw = ch;
 
-		u8* ident_beg = self->strset.buf.end() + 4;
-		u32 len = 1;
-
-		assert(TL_IS_ALIGNED(ident_beg, 4));
-
+		u8* ident_beg = cur - 1;
 		u32 cont_mask = (lexcat & LEX_OP) ? LEX_OP : LEX_INNERIDENT;
 
-		u32 h = keyw;
-		*ident_beg = ch;
+		u64 keyw = ch | 0x100;
+		u32 h = (u32)keyw;
 
 		while (self->lextable[ch = CH] & cont_mask) {
 			keyw = (keyw << 8) + ch;
 			//h = (h * 33) ^ keyw;
-			h = ((h << 17) | (h >> (32-17))) + keyw;
-			ident_beg[len++] = ch;
+			h = ((h << 17) | (h >> (32-17))) + (u32)keyw;
 			NEXT;
 		}
 
-		CHECKEND;
-
-		// 28 bits to use for string reference
-		// 0xxx a*8 b*8 c*8
-		// 1 i*27
-
-		// For 64 bit we would have 60 bits for reference:
-		// 0xxx a*8 b*8 c*8 d*8 e*8 f*8 g*8
-		// 1xxx x*28 i*28
-		//
-		// This allows a length field of 31 bits and an offset of 28 + 2 = 30 bits
-
-		if (len < 4) {
-			self->token_data = keyw | (len << 24);
+		u32 len = (u32)(cur - ident_beg);
+		if (len <= 7) {
+			self->token_data = strref::from_raw(keyw).raw();
 		} else {
 			h *= 2 * h + 1;
 			if (!h) h = 1;
 
+			self->strset.source = tl::vector_slice<u8>(self->code.begin(), ident_beg);
+
 			u32 ref;
-
-			if (!self->strset.get(h, ident_beg, len, &ref)) {
-				*(u32*)(ident_beg - 4) = len;
-				self->strset.buf.v.size += 4 + TL_ALIGN_SIZE(len, 4);
-			}
-
-			// Strings are aligned to 4 bytes, so we can use up to 29 bits
-			assert(ref < (1 << 29));
-			self->token_data = (ref >> 2) | (1 << 27);
+			self->strset.get(h, ident_beg, len, &ref);
+			self->token_data = strref::from_offset(ref, len).raw();
 		}
 
-		if (self->token_data == str_short1('=')) {
+		if (self->token_data == str_short1('|').raw()) {
+			self->tt = TT_BAR;
+		} else if (self->token_data == str_short1('=').raw()) {
 			self->tt = TT_EQ;
-		} else if (self->token_data == str_short3('l','e','t')) {
+		} else if (self->token_data == str_short3('l','e','t').raw()) {
 			self->tt = TT_LET;
 		} else {
 			self->tt = (lexcat & LEX_OP) ? TT_OP : TT_IDENT;
@@ -123,18 +104,27 @@ redo:
 	} else if (lexcat & LEX_SINGLECHAR) {
 		self->tt = lexcat >> 16;
 	} else if (lexcat & LEX_WHITESPACE) {
-		goto redo;
+		do {
+			if ((lexcat & LEX_NEWLINE) && allow_comma && self->allow_comma_in_context) {
+				self->tt = TT_COMMA;
+				goto done;
+			}
+			ch = CH;
+			lexcat = self->lextable[ch];
+			NEXT;
+		} while (lexcat & LEX_WHITESPACE);
+
+		goto other;
+		
 	} else { // if (lexcat & LEX_DIGIT) {
 #if 1
-		char const* start = (char const*)code - 1;
+		char const* start = (char const*)cur - 1;
 
 		u32 num = ch - '0';
 		while (self->lextable[ch = CH] & LEX_DIGIT) {
 			num = (num * 10) + (ch - '0');
 			NEXT;
 		}
-
-		CHECKEND;
 
 #if 0
 		if (self->ch == '.' || self->ch == 'e' || self->ch == 'E') {
@@ -162,18 +152,29 @@ redo:
 		self->token_data = num;
 	}
 
-	self->code = code;
+done:
+	//printf("T: %d\n", self->tt);
+
+	self->cur = cur;
 }
 
 #undef NEXT
 #undef CH
 
-#define PEEKCHECK(t) if (self->tt != (t)) { self->tt = TT_ERR; return err_ret; } else (void)0
-#define CHECK(t) { PEEKCHECK(t); next(self); }
-#define TEST(t) (self->tt == (t) && (next(self), 1))
+#define ERR() { self->tt = TT_ERR; return err_ret; }
+#define PEEKCHECK(t) if (self->tt != (t)) { ERR(); } else (void)0
 
-parser::parser(u8 const* c)
-	: level(0) {
+#define CHECK(t) { PEEKCHECK(t); next(self); }
+#define CHECK_NOTERR() if (self->tt == TT_ERR) { return err_ret; } else next(self)
+#define TEST(t) (self->tt == (t) && (next(self), true))
+
+#define CHECK_NC(t) { PEEKCHECK(t); next(self, false); }
+#define CHECK_NOTERR_NC() if (self->tt == TT_ERR) { return err_ret; } else next(self, false)
+#define TEST_NC(t) (self->tt == (t) && (next(self, false), true))
+
+parser::parser(tl::vector_slice<u8> c)
+	: level(0), code(c), tt(TT_COMMA)
+	, allow_comma_in_context(false) {
 	
 	for (u8 i = 0; ++i != 0;) this->lextable[i] = LEX_SINGLECHAR | (TT_ERR << 16);
 
@@ -188,8 +189,8 @@ parser::parser(u8 const* c)
 
 	this->lextable['.'] = LEX_BEGIDENT;
 	this->lextable[' '] = LEX_WHITESPACE;
-	this->lextable['\r'] = LEX_WHITESPACE;
-	this->lextable['\n'] = LEX_WHITESPACE;
+	this->lextable['\r'] = LEX_WHITESPACE | LEX_NEWLINE;
+	this->lextable['\n'] = LEX_WHITESPACE | LEX_NEWLINE;
 
 	this->lextable['{'] = LEX_SINGLECHAR + (TT_LBRACE << 16);
 	this->lextable['}'] = LEX_SINGLECHAR + (TT_RBRACE << 16);
@@ -200,41 +201,33 @@ parser::parser(u8 const* c)
 	this->lextable[':'] = LEX_SINGLECHAR + (TT_COLON << 16);
 	this->lextable[';'] = LEX_SINGLECHAR + (TT_SEMICOLON << 16);
 	this->lextable[','] = LEX_SINGLECHAR + (TT_COMMA << 16);
-	this->lextable['|'] = LEX_SINGLECHAR + (TT_BAR << 16);
 
 	this->lextable['='] = LEX_OP + (0 << 16);
-	this->lextable['&'] = LEX_OP + (0 << 16);
-	this->lextable['<'] = LEX_OP + (1 << 16);
-	this->lextable['>'] = LEX_OP + (1 << 16);
-	this->lextable['+'] = LEX_OP + (2 << 16);
-	this->lextable['-'] = LEX_OP + (2 << 16);
-	this->lextable['*'] = LEX_OP + (3 << 16);
-	this->lextable['/'] = LEX_OP + (3 << 16);
-	this->lextable['\\'] = LEX_OP + (3 << 16);
+	this->lextable['|'] = LEX_OP + (0 << 16);
+	this->lextable['&'] = LEX_OP + (1 << 16);
+	this->lextable['<'] = LEX_OP + (2 << 16);
+	this->lextable['>'] = LEX_OP + (2 << 16);
+	this->lextable['+'] = LEX_OP + (3 << 16);
+	this->lextable['-'] = LEX_OP + (3 << 16);
+	this->lextable['*'] = LEX_OP + (4 << 16);
+	this->lextable['/'] = LEX_OP + (4 << 16);
+	this->lextable['\\'] = LEX_OP + (4 << 16);
 
-	u32 len = (u32)strlen((char const*)c);
+	this->cur = code.begin();
+	next(this, false);
+}
 
-	this->strset.buf.reserve(len);
-
-	//Buffer_reserve(&self->strset.buf, len);
-	//Buffer_reset(&self->strset.buf, 0);
-
-	this->code = c;
-	this->end = c + len + 1;
-	next(this);
+bool parser::is_err() {
+	return this->tt == TT_ERR;
 }
 
 #define REF ((u32)self->output.size() + 0)
 #define DEREF(r) (self->output.begin() + (r))
 
+// TODO: Internalize bigger constants
+
 static node kint32(parser* self, i32 v) {
-	if (v >= -small_int_lim && v < small_int_lim)
-		return node::make(NT_KI32, self->token_data);
-	else {
-		node n;
-		n.v = 0; // TODO: Internalize constant
-		return n;
-	}
+	return node::make(NT_KI32, 0, v);
 }
 
 static node Parser_lexerr(parser* self) {
@@ -243,9 +236,9 @@ static node Parser_lexerr(parser* self) {
 	return v;
 }
 
-static node find_local(parser* self, u32 name) {
-	local* end = (local*)self->locals_buf.end();
-	local* beg = (local*)self->locals_buf.begin();
+static node find_local(parser* self, strref name) {
+	local const* end = (local const*)self->locals_buf.end();
+	local const* beg = (local const*)self->locals_buf.begin();
 
 	for (; end != beg;) {
 		--end;
@@ -260,7 +253,7 @@ static node find_local(parser* self, u32 name) {
 static node rtype(parser* self) {
 	switch (self->tt) {
 		case TT_IDENT: {
-			node local = find_local(self, self->token_data);
+			node local = find_local(self, strref::from_raw(self->token_data));
 			next(self);
 
 			return local;
@@ -272,17 +265,41 @@ static node rtype(parser* self) {
 	}
 }
 
-static int rlambda_body(parser* self, tl::vector<u8>& binding_arr, tl::vector<u8>& expr_arr) {
+static void rrecord_body(parser* self, tl::vector<node>& expr_arr) {
+
+	bool old_allow_comma = self->allow_comma_in_context;
+	self->allow_comma_in_context = true;
+
+	for (;;) {
+
+		if (self->tt == TT_RBRACE || self->tt == TT_RPAREN || self->tt == TT_RBRACKET || self->tt == TT_EOF) {
+			break;
+		}
+
+		node v = rexpr(self);
+		expr_arr.push_back(v);
+
+		if (!TEST_NC(TT_COMMA))
+			break;
+	}
+
+	self->allow_comma_in_context = old_allow_comma;
+}
+
+static int rlambda_body(parser* self, tl::mixed_buffer& binding_arr, tl::mixed_buffer& expr_arr) {
 	int err_ret = 1;
 	u32 index = 0;
-	u32 locals_ref = self->locals_buf.size();
+	u32 locals_ref = (u32)self->locals_buf.size();
+
+	bool old_allow_comma = self->allow_comma_in_context;
+	self->allow_comma_in_context = true;
 
 	++self->level;
 
-	if (TEST(TT_BAR)) {
+	if (TEST_NC(TT_BAR)) {
 		if (self->tt != TT_BAR) {
 			do {
-				u32 name = self->token_data;
+				strref name = strref::from_raw(self->token_data);
 				CHECK(TT_IDENT);
 
 				node upv = node::make_upval(self->level, index);
@@ -290,20 +307,20 @@ static int rlambda_body(parser* self, tl::vector<u8>& binding_arr, tl::vector<u8
 				self->locals_buf.push_back(loc);
 				++index;
 
-				if (TEST(TT_COLON)) {
+				if (TEST_NC(TT_COLON)) {
 					rtype(self);
 				}
 
-			} while (TEST(TT_COMMA));
+			} while (TEST_NC(TT_COMMA));
 		}
 
-		next(self);
+		CHECK_NC(TT_BAR);
 	}
 
 	for (;;) {
 
-		if (TEST(TT_LET)) {
-			u32 name = self->token_data;
+		if (TEST_NC(TT_LET)) {
+			strref name = strref::from_raw(self->token_data);
 			CHECK(TT_IDENT);
 
 			node upv = node::make_upval(self->level, index);
@@ -313,30 +330,38 @@ static int rlambda_body(parser* self, tl::vector<u8>& binding_arr, tl::vector<u8
 			binding_arr.unsafe_push(bind);
 			++index;
 
-			if (TEST(TT_EQ)) {
+			if (TEST_NC(TT_COLON)) {
+				// TODO: If we have a full type, allow forward references in value if it is a lambda
+			}
+
+			if (TEST_NC(TT_EQ)) {
 				node_match match;
 				match.match = node::make_matchupv(upv);
 				match.value = rexpr(self);
 				expr_arr.unsafe_push(match);
 			}
 
-
 		} else {
 			node v = rexpr(self);
 			expr_arr.unsafe_push<node>(v);
 		}
 
-		if (!TEST(TT_COMMA))
+		if (!TEST_NC(TT_COMMA))
 			break;
 	}
 
+	self->allow_comma_in_context = old_allow_comma;
+
 	--self->level;
-	self->locals_buf.v.size = locals_ref;
+
+	// TODO: Match [locals_ref..] with 
+	self->locals_buf.unsafe_set_size(locals_ref);
 	return 0;
 }
 
-TL_INLINE size_t Buffer_copyTo(tl::vector<u8>& self, void* dest) {
-	size_t len = self.size();
+template<typename T>
+inline usize Buffer_copyTo(tl::vector<T>& self, void* dest) {
+	usize len = self.size_in_bytes();
 	memcpy(dest, self.begin(), len);
 	return len;
 }
@@ -349,94 +374,109 @@ static node rprimary_del(parser* self) {
 			return kint32(self, (i32)self->token_data);
 
 		case TT_IDENT:
-			return node::make_str(self->token_data);
+			return find_local(self, strref::from_raw(self->token_data));
 
 		case TT_LPAREN: {
-			next(self);
+			next(self, false);
+			bool old_allow_comma = self->allow_comma_in_context;
+			self->allow_comma_in_context = false;
 			node v = rexpr(self);
+			self->allow_comma_in_context = old_allow_comma;
 			PEEKCHECK(TT_RPAREN);
 			return v;
 		}
 
 		case TT_LBRACE: {
-			tl::vector<u8> binding_arr;
-			tl::vector<u8> expr_arr;
+			tl::mixed_buffer binding_arr, expr_arr;
 			
-			next(self);
+			next(self, false);
 			rlambda_body(self, binding_arr, expr_arr);
 			PEEKCHECK(TT_RBRACE);
 
-			u32 lambdaOff = self->output.size();
-			lambda_op* lambda = (lambda_op*)self->output.unsafe_alloc(sizeof(lambda_op) + binding_arr.size() + expr_arr.size());
-			lambda->argc = expr_arr.size() / sizeof(node); // TODO: What type will the expressions have?
-																	// TODO: Set binding count
+			u32 lambdaOff = (u32)self->output.size();
+			lambda_op* lambda = (lambda_op *)self->output.unsafe_alloc(binding_arr.size_in_bytes() + expr_arr.size_in_bytes());
+			u32 argc = (u32)expr_arr.size_in_bytes() / sizeof(node); // TODO: What type will the expressions have?
+			u32 bindings = (u32)binding_arr.size_in_bytes() / sizeof(binding);
 
-			u8* writep = (u8*)lambda->data;
+			u8* writep = (u8 *)lambda->data;
 			writep += Buffer_copyTo(binding_arr, writep);
 			Buffer_copyTo(expr_arr, writep);
 
-			node v = node::make_ref(NT_LAMBDA, lambdaOff);
+			node v = node::make_ref(NT_LAMBDA, lambdaOff, argc + (bindings << 16));
 			return v;
 		}
 	}
 
-	node err = {0};
-	return err;
+	ERR();
+}
+
+static node flush_call(parser* self, node f, tl::vector<node>& param_arr) {
+	if (!param_arr.empty()) {
+		u32 poff = REF;
+		call_op* call = (call_op *)self->output.unsafe_alloc(sizeof(call_op) + param_arr.size_in_bytes());
+		call->fun = f;
+		u32 argc = (u32)param_arr.size();
+		Buffer_copyTo(param_arr, call->args);
+		param_arr.clear();
+
+		return node::make_ref(NT_CALL, poff, argc);
+	} else {
+		return f;
+	}
 }
 
 static node rsimple_expr_tail(parser* self, node r) {
-	tl::vector<u8> nodeArr;
+	node err_ret = {0};
+	tl::vector<node> param_arr;
 
 	for (;;) {
 		switch (self->tt) {
 		case TT_IDENT: {
-			u32 name = self->token_data;
+			strref name = strref::from_raw(self->token_data);
 			next(self);
 
-			if (self->tt == TT_LPAREN) {
+			r = flush_call(self, r, param_arr);
 
-			} else if (self->tt == TT_LBRACE) {
+			param_arr.push_back(r);
+			r = find_local(self, name);
 
-			} else {
-				u32 poff = REF;
-				call_op* call = (call_op*)self->output.unsafe_alloc(sizeof(call_op) + sizeof(node) * 1);
-
-				call->fun = node::make_str(name);
-				call->argc = 1;
-				call->args[0] = r;
-
-				r = node::make(NT_CALL, poff);
+			if (TEST_NC(TT_LPAREN)) {
+				// We need special case for this so it's interpreted as x y(...), not (x y) (...)
+				rrecord_body(self, param_arr);
+				CHECK(TT_RPAREN);
 			}
 
 			break;
 		}
 
 		case TT_LPAREN:
+			next(self, false);
+			r = flush_call(self, r, param_arr);
+			rrecord_body(self, param_arr);
+			CHECK(TT_RPAREN);
+			break;
+
 		case TT_LBRACKET:
 		case TT_LBRACE: {
+			node p = rprimary_del(self);
+			CHECK_NOTERR();
+			param_arr.push_back(p);
 
-			if (self->tt == TT_LBRACKET || self->tt == TT_LBRACE) {
-				rprimary_del(self);
-				next(self);
-			} else {
-				// TODO: Record
-			}
-
-			// TODO: Add parameter to r
+			r = flush_call(self, r, param_arr);
 			break;
 		}
 
 		default:
-			return r;
+			return flush_call(self, r, param_arr);
 		}
 	}
 }
 
 // a()
 static node rsimple_expr(parser* self) {
+	node err_ret = {0};
 	node r = rprimary_del(self);
-
-	next(self);
+	CHECK_NOTERR();
 
 #if 1 // TEMP disabled
 	switch (self->tt) {
@@ -459,27 +499,26 @@ static node rexpr_rest(parser* self, node lhs, int minPrec) {
 		int prec = self->token_prec;
 		if (prec < minPrec) break;
 
-		u32 op = self->token_data;
+		strref op = strref::from_raw(self->token_data);
 
-		next(self);
+		next(self, false); // Allow comma: never
 
-		node rhs = rsimple_expr(self);
+		node rhs = rsimple_expr(self); // Allow comma: if parent does
 
 		while (self->tt == TT_OP) {
 			int prec2 = self->token_prec;
 			if (prec2 < prec) break;
-			rhs = rexpr_rest(self, rhs, prec2);
+			rhs = rexpr_rest(self, rhs, prec2); // Allow comma: if parent does
 		}
 
 		u32 poff = REF;
 		call_op* call = (call_op *)self->output.unsafe_alloc(sizeof(call_op) + sizeof(node)*2);
 
 		call->fun = node::make_str(op);
-		call->argc = 2;
+		call->type = 0;
 		call->args[0] = lhs;
 		call->args[1] = rhs;
-
-		lhs = node::make(NT_CALL, poff);
+		lhs = node::make_ref(NT_CALL, poff, 2);
 	}
 
 	return lhs;

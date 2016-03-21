@@ -191,6 +191,7 @@
     <ClInclude Include="gfx\window.hpp" />
     <ClInclude Include="gfx\window_common.hpp" />
     <ClInclude Include="hyp\ast.hpp" />
+    <ClInclude Include="hyp\hash_map_var.hpp" />
     <ClInclude Include="hyp\parser.hpp" />
     <ClInclude Include="hyp\small_vec.hpp" />
     <ClInclude Include="hyp\string_set.hpp" />

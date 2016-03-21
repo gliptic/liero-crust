@@ -90,5 +90,8 @@
     <ClInclude Include="hyp\small_vec.hpp">
       <Filter>hyp</Filter>
     </ClInclude>
+    <ClInclude Include="hyp\hash_map_var.hpp">
+      <Filter>hyp</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
