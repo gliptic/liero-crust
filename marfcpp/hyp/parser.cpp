@@ -250,10 +250,15 @@ static node find_local(parser* self, strref name) {
 	return node::make_str(name);
 }
 
+static node rname(parser* self) {
+	strref name = strref::from_raw(self->token_data);
+	return find_local(self, name);
+}
+
 static node rtype(parser* self) {
 	switch (self->tt) {
 		case TT_IDENT: {
-			node local = find_local(self, strref::from_raw(self->token_data));
+			node local = rname(self);
 			next(self);
 
 			return local;
@@ -288,7 +293,6 @@ static void rrecord_body(parser* self, tl::vector<node>& expr_arr) {
 
 static int rlambda_body(parser* self, tl::mixed_buffer& binding_arr, tl::mixed_buffer& expr_arr) {
 	int err_ret = 1;
-	u32 index = 0;
 	u32 locals_ref = (u32)self->locals_buf.size();
 
 	bool old_allow_comma = self->allow_comma_in_context;
@@ -302,10 +306,10 @@ static int rlambda_body(parser* self, tl::mixed_buffer& binding_arr, tl::mixed_b
 				strref name = strref::from_raw(self->token_data);
 				CHECK(TT_IDENT);
 
-				node upv = node::make_upval(self->level, index);
+				node upv = node::make_upval(self->level, self->locals_buf.size());
 				local loc = { name, upv };
+
 				self->locals_buf.push_back(loc);
-				++index;
 
 				if (TEST_NC(TT_COLON)) {
 					rtype(self);
@@ -323,12 +327,11 @@ static int rlambda_body(parser* self, tl::mixed_buffer& binding_arr, tl::mixed_b
 			strref name = strref::from_raw(self->token_data);
 			CHECK(TT_IDENT);
 
-			node upv = node::make_upval(self->level, index);
+			node upv = node::make_upval(self->level, self->locals_buf.size());
 			local loc = { name, upv };
 			binding bind = { 0 };
 			self->locals_buf.push_back(loc);
 			binding_arr.unsafe_push(bind);
-			++index;
 
 			if (TEST_NC(TT_COLON)) {
 				// TODO: If we have a full type, allow forward references in value if it is a lambda
@@ -414,6 +417,7 @@ static node flush_call(parser* self, node f, tl::vector<node>& param_arr) {
 	if (!param_arr.empty()) {
 		u32 poff = REF;
 		call_op* call = (call_op *)self->output.unsafe_alloc(sizeof(call_op) + param_arr.size_in_bytes());
+		call->type = 0;
 		call->fun = f;
 		u32 argc = (u32)param_arr.size();
 		Buffer_copyTo(param_arr, call->args);
@@ -425,6 +429,7 @@ static node flush_call(parser* self, node f, tl::vector<node>& param_arr) {
 	}
 }
 
+
 static node rsimple_expr_tail(parser* self, node r) {
 	node err_ret = {0};
 	tl::vector<node> param_arr;
@@ -432,13 +437,10 @@ static node rsimple_expr_tail(parser* self, node r) {
 	for (;;) {
 		switch (self->tt) {
 		case TT_IDENT: {
-			strref name = strref::from_raw(self->token_data);
+			param_arr.push_back(flush_call(self, r, param_arr));
+			
+			r = rname(self);
 			next(self);
-
-			r = flush_call(self, r, param_arr);
-
-			param_arr.push_back(r);
-			r = find_local(self, name);
 
 			if (TEST_NC(TT_LPAREN)) {
 				// We need special case for this so it's interpreted as x y(...), not (x y) (...)

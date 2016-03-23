@@ -10,26 +10,32 @@
 namespace hyp {
 
 struct u64_align4 {
-	u32 a, b;
+	//u32 a, b;
+	u32 storage[2];
 
 	u64_align4() {
 	}
 
 	u64_align4(u64 v) 
-		: a((u32)v), b((u32)(v >> 32)) {
+		/*: a((u32)v), b((u32)(v >> 32))*/ {
+
+		memcpy(storage, &v, sizeof(u64));
 	}
 
 	u64 get() const {
-		return ((u64)this->b << 32) | (u64)this->a;
+		u64 v;
+		memcpy(&v, storage, sizeof(u64));
+
+		//return ((u64)this->b << 32) | (u64)this->a;
+		return v;
 	}
 
 	bool operator==(u64_align4 const& other) const {
-		return this->a == other.a && this->b == other.b;
+		return this->storage[0] == other.storage[0] && this->storage[1] == other.storage[1];
 	}
 };
 
 struct strref : u64_align4 {
-	u64_align4 v; // We can use
 
 	strref(u64 v) 
 		: u64_align4(v) {

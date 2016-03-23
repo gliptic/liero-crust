@@ -23,55 +23,46 @@ enum node_type {
 	NT_MAX
 };
 
-struct node {
-	u32 a, b;
+struct node : u64_align4 {
+
+	node() {
+	}
+
+	node(u64 v)
+		: u64_align4(v) {
+	}
 
 	static node make(u32 type, u32 val, u32 val2) {
-		node n;
 		assert(val < (1ull << 60));
-		n.b = type | (val << 4);
-		n.a = val2;
-		return n;
+		return node((u64)(type | (val << 4)) | ((u64)val2 << 32));
 	}
 
 	static node make_str(strref ref) {
-		node n;
-		n.b = (ref.b << 4) | NT_NAME;
-		n.a = ref.a;
-		return n;
+		return node((ref.raw() << 4) | NT_NAME);
 	}
 
 	static node make_matchupv(node upv) {
-		node n;
 		assert(upv.type() == NT_UPVAL);
-		n.b = (upv.b & ~0xf) | NT_MATCHUPV;
-		n.a = upv.a;
-		return n;
+		return node((upv.get() & ~0xf) | NT_MATCHUPV);
 	}
 
 	static node make_upval(u32 level, u32 index) {
-		node n;
 		assert(level < (1<<8) && index < (1<<20));
-		n.b = (level << 4) | NT_UPVAL;
-		n.a = index;
-		return n;
+		return node((u64)((level << 4) | NT_UPVAL) | ((u64)index << 32));
 	}
 
 	static node make_ref(u32 type, u32 ref, u32 value2 = 0) {
-		node n;
 		assert((ref & 3) == 0 && ref < (1 << 30));
-		n.b = (ref << 2) | type;
-		n.a = value2;
-		return n;
+		return node((u64)((ref << 2) | type) | ((u64)value2 << 32));
 	}
 
-	node_type type() { return (node_type)(this->b & 0xf); }
-	strref str() { return strref::from_raw(((u64)(this->b >> 4) << 32) | this->a); }
-	u32 ref() { return (this->b >> 4) << 2; }
-	u32 value2() { return this->a; }
+	node_type type() { return (node_type)(this->get() & 0xf); }
+	strref str() { return strref::from_raw(this->get() >> 4); }
+	u32 ref() { return (((u32)this->get() >> 4) << 2); }
+	u32 value2() { return (u32)(this->get() >> 32); }
 
-	u32 upv_level() { return this->b >> 4; }
-	u32 upv_index() { return this->a; }
+	u32 upv_level() { return (u32)this->get() >> 4; }
+	u32 upv_index() { return (u32)(this->get() >> 32); }
 };
 
 struct node_match {
@@ -106,8 +97,12 @@ struct module {
 
 };
 
-TL_STATIC_ASSERT((sizeof(lambda_op) & 3) == 0);
-TL_STATIC_ASSERT((sizeof(call_op) & 3) == 0);
+TL_STATIC_ASSERT(sizeof(lambda_op) == 4);
+TL_STATIC_ASSERT(sizeof(call_op) == 12);
+
+TL_STATIC_ASSERT(sizeof(node) == 8);
+TL_STATIC_ASSERT(sizeof(strref) == 8);
+TL_STATIC_ASSERT(sizeof(local) == 16);
 
 static strref const str_empty(0);
 
@@ -124,7 +119,7 @@ inline strref str_short1(char a) {
 }
 
 //static node const node_name_empty = { NT_NAME | (str_empty << 4) };
-static node const node_none = { 0, 0 };
+static node const node_none(0);
 
 }
 
