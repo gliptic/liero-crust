@@ -1,4 +1,7 @@
 # build files
 _bin/
 _build/
+_trash
 .*
+*.sdf
+*.7z
