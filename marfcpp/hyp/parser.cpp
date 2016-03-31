@@ -51,6 +51,8 @@ enum {
 static void next(parser* self, bool allow_comma = true);
 static node rexpr(parser* self);
 
+int const lexshift = 8;
+
 static void next(parser* self, bool allow_comma) {
 	u8 ch;
 	u8* cur = self->cur;
@@ -58,7 +60,7 @@ static void next(parser* self, bool allow_comma) {
 	assert(self->tt != TT_ERR);
 
 	ch = CH;
-	u32 lexcat = self->lextable[ch];
+	u16 lexcat = self->lextable[ch];
 	NEXT;
 
 other:
@@ -99,10 +101,10 @@ other:
 			self->tt = TT_LET;
 		} else {
 			self->tt = (lexcat & LEX_OP) ? TT_OP : TT_IDENT;
-			self->token_prec = lexcat >> 16;
+			self->token_prec = lexcat >> lexshift;
 		}
 	} else if (lexcat & LEX_SINGLECHAR) {
-		self->tt = lexcat >> 16;
+		self->tt = lexcat >> lexshift;
 	} else if (lexcat & LEX_WHITESPACE) {
 		do {
 			if ((lexcat & LEX_NEWLINE) && allow_comma && self->allow_comma_in_context) {
@@ -176,9 +178,9 @@ parser::parser(tl::vector_slice<u8> c)
 	: level(0), code(c), tt(TT_COMMA)
 	, allow_comma_in_context(false) {
 	
-	for (u8 i = 0; ++i != 0;) this->lextable[i] = LEX_SINGLECHAR | (TT_ERR << 16);
+	for (u8 i = 0; ++i != 0;) this->lextable[i] = LEX_SINGLECHAR | (TT_ERR << lexshift);
 
-	this->lextable[0] = LEX_SINGLECHAR | (TT_EOF << 16);
+	this->lextable[0] = LEX_SINGLECHAR | (TT_EOF << lexshift);
 
 	for (u8 i = 'a'; i <= 'z'; ++i) this->lextable[i] = LEX_BEGIDENT | LEX_INNERIDENT;
 	for (u8 i = 'A'; i <= 'Z'; ++i) this->lextable[i] = LEX_BEGIDENT | LEX_INNERIDENT;
@@ -192,26 +194,26 @@ parser::parser(tl::vector_slice<u8> c)
 	this->lextable['\r'] = LEX_WHITESPACE | LEX_NEWLINE;
 	this->lextable['\n'] = LEX_WHITESPACE | LEX_NEWLINE;
 
-	this->lextable['{'] = LEX_SINGLECHAR + (TT_LBRACE << 16);
-	this->lextable['}'] = LEX_SINGLECHAR + (TT_RBRACE << 16);
-	this->lextable['('] = LEX_SINGLECHAR + (TT_LPAREN << 16);
-	this->lextable[')'] = LEX_SINGLECHAR + (TT_RPAREN << 16);
-	this->lextable['['] = LEX_SINGLECHAR + (TT_LBRACKET << 16);
-	this->lextable[']'] = LEX_SINGLECHAR + (TT_RBRACKET << 16);
-	this->lextable[':'] = LEX_SINGLECHAR + (TT_COLON << 16);
-	this->lextable[';'] = LEX_SINGLECHAR + (TT_SEMICOLON << 16);
-	this->lextable[','] = LEX_SINGLECHAR + (TT_COMMA << 16);
+	this->lextable['{'] = LEX_SINGLECHAR + (TT_LBRACE << lexshift);
+	this->lextable['}'] = LEX_SINGLECHAR + (TT_RBRACE << lexshift);
+	this->lextable['('] = LEX_SINGLECHAR + (TT_LPAREN << lexshift);
+	this->lextable[')'] = LEX_SINGLECHAR + (TT_RPAREN << lexshift);
+	this->lextable['['] = LEX_SINGLECHAR + (TT_LBRACKET << lexshift);
+	this->lextable[']'] = LEX_SINGLECHAR + (TT_RBRACKET << lexshift);
+	this->lextable[':'] = LEX_SINGLECHAR + (TT_COLON << lexshift);
+	this->lextable[';'] = LEX_SINGLECHAR + (TT_SEMICOLON << lexshift);
+	this->lextable[','] = LEX_SINGLECHAR + (TT_COMMA << lexshift);
 
-	this->lextable['='] = LEX_OP + (0 << 16);
-	this->lextable['|'] = LEX_OP + (0 << 16);
-	this->lextable['&'] = LEX_OP + (1 << 16);
-	this->lextable['<'] = LEX_OP + (2 << 16);
-	this->lextable['>'] = LEX_OP + (2 << 16);
-	this->lextable['+'] = LEX_OP + (3 << 16);
-	this->lextable['-'] = LEX_OP + (3 << 16);
-	this->lextable['*'] = LEX_OP + (4 << 16);
-	this->lextable['/'] = LEX_OP + (4 << 16);
-	this->lextable['\\'] = LEX_OP + (4 << 16);
+	this->lextable['='] = LEX_OP + (0 << lexshift);
+	this->lextable['|'] = LEX_OP + (0 << lexshift);
+	this->lextable['&'] = LEX_OP + (1 << lexshift);
+	this->lextable['<'] = LEX_OP + (2 << lexshift);
+	this->lextable['>'] = LEX_OP + (2 << lexshift);
+	this->lextable['+'] = LEX_OP + (3 << lexshift);
+	this->lextable['-'] = LEX_OP + (3 << lexshift);
+	this->lextable['*'] = LEX_OP + (4 << lexshift);
+	this->lextable['/'] = LEX_OP + (4 << lexshift);
+	this->lextable['\\'] = LEX_OP + (4 << lexshift);
 
 	this->cur = code.begin();
 	next(this, false);
@@ -344,7 +346,7 @@ static int rlambda_body(parser* self, tl::mixed_buffer& binding_arr, tl::mixed_b
 				expr_arr.unsafe_push(match);
 			}
 
-		} else {
+		} else if (self->tt != TT_EOF) {
 			node v = rexpr(self);
 			expr_arr.unsafe_push<node>(v);
 		}
@@ -429,6 +431,23 @@ static node flush_call(parser* self, node f, tl::vector<node>& param_arr) {
 	}
 }
 
+static node flush_call(parser* self, node f, tl::vector<node>& param_arr, node extra) {
+	if (!param_arr.empty()) {
+		u32 poff = REF;
+		call_op* call = (call_op *)self->output.unsafe_alloc(sizeof(call_op) + param_arr.size_in_bytes() + sizeof(node));
+		call->type = 0;
+		call->fun = f;
+		u32 argc = (u32)param_arr.size() + 1;
+		Buffer_copyTo(param_arr, call->args);
+		call->args[argc - 1] = extra;
+		param_arr.clear();
+
+		return node::make_ref(NT_CALL, poff, argc);
+	}
+	else {
+		return f;
+	}
+}
 
 static node rsimple_expr_tail(parser* self, node r) {
 	node err_ret = {0};
@@ -438,6 +457,7 @@ static node rsimple_expr_tail(parser* self, node r) {
 		switch (self->tt) {
 		case TT_IDENT: {
 			param_arr.push_back(flush_call(self, r, param_arr));
+			// param_arr.size() == 1 here
 			
 			r = rname(self);
 			next(self);
@@ -462,9 +482,8 @@ static node rsimple_expr_tail(parser* self, node r) {
 		case TT_LBRACE: {
 			node p = rprimary_del(self);
 			CHECK_NOTERR();
-			param_arr.push_back(p);
 
-			r = flush_call(self, r, param_arr);
+			r = flush_call(self, r, param_arr, p);
 			break;
 		}
 

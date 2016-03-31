@@ -15,7 +15,7 @@ struct parser {
 	u64 token_data;
 	bool allow_comma_in_context;
 	u32 level;
-	u32 lextable[256];
+	u16 lextable[256];
 
 	tl::vector<local> locals_buf;
 	tl::mixed_buffer output;

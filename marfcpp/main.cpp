@@ -265,10 +265,13 @@ void hyp_build(tl::vector_slice<u8> code) {
 		printf("Error: Did not parse all input. Left: %s\n", p.cur);
 	} else {
 		module_printer printer(p);
+#if PRINTTREE
 		printer.print_tree(&mod);
+#endif
 		printf("Estimate packed size: %u\n", printer.estimated_size);
 	}
 
+	printf("Source size: %u\n", (u32)code.size());
 	printf("Size: %u bytes\n", (u32)(p.output.size() + mod.binding_arr.size_in_bytes() + mod.expr_arr.size_in_bytes()));
 
 	int compressed_size = 0;
@@ -279,15 +282,19 @@ void hyp_build(tl::vector_slice<u8> code) {
 		if (byte) {
 			compressed_size += 1;
 		}
+
+#if PRINTTREE
 		printf("%02x", byte);
 
 		if (((i + 1) % 16) == 0) {
 			printf("\n");
 		}
+#endif
 	}
 
 	printf("\n\n");
 
+#if PRINTTREE
 	for (int i = 0; i < p.output.size_in_bytes(); ++i) {
 		u8 byte = p.output.begin()[i];
 
@@ -304,6 +311,7 @@ void hyp_build(tl::vector_slice<u8> code) {
 			printf("\n");
 		}
 	}
+#endif
 
 	compressed_size += 8 * ((p.output.size_in_bytes() + 63) / 64);
 	printf("\n\nCondensed size: %u bytes\n", compressed_size);
@@ -311,16 +319,31 @@ void hyp_build(tl::vector_slice<u8> code) {
 
 void test_hyp() {
 	char const* templ =
+		"{"
 		"let fooo = { | | let x = 0\n x == fooo\n looooooong (0) }\n"
 		"let booo = { |x: Foo| x.y { 0 } }\n"
-		"if (foo) { bar } else { baz }";
+		"if (foo) { bar } else { baz }"
+		"}\n";
 
-	//u32 bef, aft;
+	u64 bef, aft;
 
 	printf("Building\n");
 	
-	tl::vector<u8> code((u8 const*)templ, strlen(templ) + 1);
-	hyp_build(code.slice());
+	tl::vector<u8> code((u8 const*)templ, strlen(templ));
+
+	int count = 10000;
+	tl::vector<u8> bigcode;
+	bigcode.reserve(code.size() * count + 1);
+	for (int i = 0; i < count; ++i) {
+		bigcode.unsafe_set_size((i + 1) * code.size());
+		memcpy(&bigcode.begin()[i * code.size()], code.begin(), code.size());
+	}
+	bigcode.push_back(0);
+	//hyp_build(code.slice());
+	bef = tl_get_ticks();
+	hyp_build(bigcode.slice());
+	aft = tl_get_ticks();
+	printf("Parse time: %f seconds\n", (double)(aft - bef) / 10000000.0);
 }
 
 void test_hyp_fr() {
