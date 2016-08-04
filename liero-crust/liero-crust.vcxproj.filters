@@ -1,0 +1,185 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="gfx\GL\glew.c">
+      <Filter>gfx\GL</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\window_win32.cpp">
+      <Filter>gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfx.cpp">
+      <Filter>gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\buttons.cpp">
+      <Filter>gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\geom_buffer.cpp">
+      <Filter>gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="hyp\parser.cpp">
+      <Filter>hyp</Filter>
+    </ClCompile>
+    <ClCompile Include="hyp\string_set.cpp">
+      <Filter>hyp</Filter>
+    </ClCompile>
+    <ClCompile Include="hyp\local_set.cpp">
+      <Filter>hyp</Filter>
+    </ClCompile>
+    <ClCompile Include="lierosim\nobject.cpp">
+      <Filter>lierosim</Filter>
+    </ClCompile>
+    <ClCompile Include="tga.cpp" />
+    <ClCompile Include="gfx\texture.cpp">
+      <Filter>gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="test_gfx.cpp" />
+    <ClCompile Include="lierosim\level.cpp">
+      <Filter>lierosim</Filter>
+    </ClCompile>
+    <ClCompile Include="liero\viewport.cpp">
+      <Filter>liero</Filter>
+    </ClCompile>
+    <ClCompile Include="lierosim\bobject.cpp">
+      <Filter>lierosim</Filter>
+    </ClCompile>
+    <ClCompile Include="liero\gui.cpp">
+      <Filter>liero</Filter>
+    </ClCompile>
+    <ClCompile Include="lierosim\mod.cpp">
+      <Filter>lierosim</Filter>
+    </ClCompile>
+    <ClCompile Include="lierosim\state.cpp">
+      <Filter>lierosim</Filter>
+    </ClCompile>
+    <ClCompile Include="lierosim\worm.cpp">
+      <Filter>lierosim</Filter>
+    </ClCompile>
+    <ClCompile Include="liero\blit.cpp">
+      <Filter>liero</Filter>
+    </ClCompile>
+    <ClCompile Include="other_tests.cpp" />
+    <ClCompile Include="bmp.cpp" />
+    <ClCompile Include="test_comp.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="gfx">
+      <UniqueIdentifier>{195432f1-ace8-432c-873b-5157dee6fb9f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="gfx\GL">
+      <UniqueIdentifier>{7a6f5e98-e8a0-4095-bc00-67b098f993f4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="net">
+      <UniqueIdentifier>{8bcdb81d-83fd-49d4-ad6f-2d1ca15cd018}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="hyp">
+      <UniqueIdentifier>{7250778d-9ba6-4906-b7b2-51cdb2fcaa9b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="lierosim">
+      <UniqueIdentifier>{ba25b136-748a-4e31-826b-99ee631a7e8b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="liero">
+      <UniqueIdentifier>{e4bdd81d-1e30-456d-8000-8963db1b5532}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="gfx\GL\glew.h">
+      <Filter>gfx\GL</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\GL\wglew.h">
+      <Filter>gfx\GL</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\window.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\window_common.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfx.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\buttons.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\buttons_common.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\buttons_dinput.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\buttons_win32.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\geom_buffer.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="net\channel.hpp">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="hyp\string_set.hpp">
+      <Filter>hyp</Filter>
+    </ClInclude>
+    <ClInclude Include="hyp\ast.hpp">
+      <Filter>hyp</Filter>
+    </ClInclude>
+    <ClInclude Include="hyp\parser.hpp">
+      <Filter>hyp</Filter>
+    </ClInclude>
+    <ClInclude Include="hyp\hash_map_var.hpp">
+      <Filter>hyp</Filter>
+    </ClInclude>
+    <ClInclude Include="hyp\local_set.hpp">
+      <Filter>hyp</Filter>
+    </ClInclude>
+    <ClInclude Include="lierosim\nobject.hpp">
+      <Filter>lierosim</Filter>
+    </ClInclude>
+    <ClInclude Include="lierosim\level.hpp">
+      <Filter>lierosim</Filter>
+    </ClInclude>
+    <ClInclude Include="lierosim\state.hpp">
+      <Filter>lierosim</Filter>
+    </ClInclude>
+    <ClInclude Include="lierosim\object_list.hpp">
+      <Filter>lierosim</Filter>
+    </ClInclude>
+    <ClInclude Include="lierosim\mod.hpp">
+      <Filter>lierosim</Filter>
+    </ClInclude>
+    <ClInclude Include="tga.hpp" />
+    <ClInclude Include="gfx\texture.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="lierosim\bobject.hpp">
+      <Filter>lierosim</Filter>
+    </ClInclude>
+    <ClInclude Include="liero\viewport.hpp">
+      <Filter>liero</Filter>
+    </ClInclude>
+    <ClInclude Include="liero\gui.hpp">
+      <Filter>liero</Filter>
+    </ClInclude>
+    <ClInclude Include="lierosim\worm.hpp">
+      <Filter>lierosim</Filter>
+    </ClInclude>
+    <ClInclude Include="lierosim\mod_constants.hpp">
+      <Filter>lierosim</Filter>
+    </ClInclude>
+    <ClInclude Include="lierosim\cellphase.hpp">
+      <Filter>lierosim</Filter>
+    </ClInclude>
+    <ClInclude Include="lierosim\sobject.hpp">
+      <Filter>lierosim</Filter>
+    </ClInclude>
+    <ClInclude Include="liero\blit.hpp">
+      <Filter>liero</Filter>
+    </ClInclude>
+    <ClInclude Include="lierosim\config.hpp">
+      <Filter>lierosim</Filter>
+    </ClInclude>
+    <ClInclude Include="lierosim\fixed.hpp">
+      <Filter>lierosim</Filter>
+    </ClInclude>
+    <ClInclude Include="bmp.hpp" />
+  </ItemGroup>
+</Project>
