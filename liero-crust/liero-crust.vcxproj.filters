@@ -29,7 +29,6 @@
     <ClCompile Include="lierosim\nobject.cpp">
       <Filter>lierosim</Filter>
     </ClCompile>
-    <ClCompile Include="tga.cpp" />
     <ClCompile Include="gfx\texture.cpp">
       <Filter>gfx</Filter>
     </ClCompile>
@@ -61,6 +60,28 @@
     <ClCompile Include="other_tests.cpp" />
     <ClCompile Include="bmp.cpp" />
     <ClCompile Include="test_comp.cpp" />
+    <ClCompile Include="gfx\shader.cpp">
+      <Filter>gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\_build\template.c">
+      <Filter>gfx\_build</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\_build\src\glew_head.c">
+      <Filter>gfx\_build\src</Filter>
+    </ClCompile>
+    <ClCompile Include="sfx\sfx_win32.cpp">
+      <Filter>sfx</Filter>
+    </ClCompile>
+    <ClCompile Include="test_sincos.cpp" />
+    <ClCompile Include="test_ser.cpp" />
+    <ClCompile Include="test_gui.cpp" />
+    <ClCompile Include="sfx\mixer.cpp">
+      <Filter>sfx</Filter>
+    </ClCompile>
+    <ClCompile Include="test_io.cpp" />
+    <ClCompile Include="lierosim\sobject.cpp">
+      <Filter>lierosim</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="gfx">
@@ -80,6 +101,15 @@
     </Filter>
     <Filter Include="liero">
       <UniqueIdentifier>{e4bdd81d-1e30-456d-8000-8963db1b5532}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="gfx\_build">
+      <UniqueIdentifier>{db30abcf-704c-47e1-8c83-524a8bc413bc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="gfx\_build\src">
+      <UniqueIdentifier>{eddc8119-e2d3-48d5-ab54-6532549ef0bb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sfx">
+      <UniqueIdentifier>{95fccafd-d62d-44c0-9d8c-9a48ccaafb52}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -146,12 +176,8 @@
     <ClInclude Include="lierosim\mod.hpp">
       <Filter>lierosim</Filter>
     </ClInclude>
-    <ClInclude Include="tga.hpp" />
     <ClInclude Include="gfx\texture.hpp">
       <Filter>gfx</Filter>
-    </ClInclude>
-    <ClInclude Include="lierosim\bobject.hpp">
-      <Filter>lierosim</Filter>
     </ClInclude>
     <ClInclude Include="liero\viewport.hpp">
       <Filter>liero</Filter>
@@ -160,9 +186,6 @@
       <Filter>liero</Filter>
     </ClInclude>
     <ClInclude Include="lierosim\worm.hpp">
-      <Filter>lierosim</Filter>
-    </ClInclude>
-    <ClInclude Include="lierosim\mod_constants.hpp">
       <Filter>lierosim</Filter>
     </ClInclude>
     <ClInclude Include="lierosim\cellphase.hpp">
@@ -174,12 +197,50 @@
     <ClInclude Include="liero\blit.hpp">
       <Filter>liero</Filter>
     </ClInclude>
-    <ClInclude Include="lierosim\config.hpp">
-      <Filter>lierosim</Filter>
-    </ClInclude>
-    <ClInclude Include="lierosim\fixed.hpp">
-      <Filter>lierosim</Filter>
-    </ClInclude>
     <ClInclude Include="bmp.hpp" />
+    <ClInclude Include="gfx\shader.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\_build\template.h">
+      <Filter>gfx\_build</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\_build\templatewgl.h">
+      <Filter>gfx\_build</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\_build\src\glew_head.h">
+      <Filter>gfx\_build\src</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\_build\src\glew_tail.h">
+      <Filter>gfx\_build\src</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\_build\src\wglew_head.h">
+      <Filter>gfx\_build\src</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\_build\src\wglew_tail.h">
+      <Filter>gfx\_build\src</Filter>
+    </ClInclude>
+    <ClInclude Include="sfx\sfx.hpp">
+      <Filter>sfx</Filter>
+    </ClInclude>
+    <ClInclude Include="lierosim\bobject.hpp">
+      <Filter>lierosim</Filter>
+    </ClInclude>
+    <ClInclude Include="sfx\mixer.hpp">
+      <Filter>sfx</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="build.lua" />
+    <None Include="gfx\_build\gen.lua">
+      <Filter>gfx\_build</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="gfx\glext.txt">
+      <Filter>gfx</Filter>
+    </Text>
+    <Text Include="gfx\_build\ideas.txt">
+      <Filter>gfx\_build</Filter>
+    </Text>
   </ItemGroup>
 </Project>

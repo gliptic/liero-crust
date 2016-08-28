@@ -2,14 +2,14 @@
 #include <tl/memory.h>
 #include <tl/bits.h>
 
-TL_PACKED_STRUCT(BmpHeader {
+TL_PACKED_STRUCT(BmpHeader)
 	u16 magic;
 	u32 file_size;
 	u16 reserved0;
 	u16 reserved1;
 	u32 offset;
 	u32 hsz;
-});
+TL_PACKED_STRUCT_END();
 
 using tl::read_le;
 
@@ -23,15 +23,15 @@ static int shiftsigned(u32 v, i32 shift, u32 bits) {
 
    u32 z = bits;
    while (z < 8) {
-      result += v >> z;
-      z += bits;
+	  result += v >> z;
+	  z += bits;
    }
 
    return result;
 }
 
 int read_bmp(
-	tl::source& src,
+	tl::Source& src,
 	tl::Image& img,
 	tl::Palette& pal) {
 
@@ -39,13 +39,11 @@ int read_bmp(
 
 	{
 		auto hdr = src.window(sizeof(BmpHeader));
-		CHECK(hdr);
+		CHECK(!hdr.empty());
 		BmpHeader const* header = (BmpHeader const*)hdr.begin();
 
 		hsz = read_le(header->hsz);
 		offset = read_le(header->offset);
-
-		hdr.done();
 	}
 
 	if (hsz != 12 && hsz != 40 && hsz != 56 && hsz != 108 && hsz != 124) 
@@ -59,7 +57,7 @@ int read_bmp(
 	{
 		auto dib_hdr = src.window(hsz - 4);
 
-		CHECK(dib_hdr);
+		CHECK(!dib_hdr.empty());
 
 		if (hsz == 12) {
 			dim_x = dib_hdr.unsafe_get_le<u16>();
@@ -92,10 +90,10 @@ int read_bmp(
 			} else if (bitspp == 16 || bitspp == 32) {
 				if (compression == 0) {
 					if (bitspp == 32) {
-						mr = 0xff << 16;
-						mg = 0xff << 8;
-						mb = 0xff << 0;
-						ma = 0xff << 24;
+						mr = 0xffu << 16u;
+						mg = 0xffu << 8u;
+						mb = 0xffu << 0u;
+						ma = 0xffu << 24u;
 					} else {
 						mr = 31 << 10;
 						mg = 31 << 5;
@@ -117,8 +115,7 @@ int read_bmp(
 			dib_hdr.unsafe_cut_front(4 + 4 * 12);
 		}
 
-	read_image:
-		dib_hdr.done();
+	read_image: ;
 	}
 
 	bool flip = true;
@@ -135,9 +132,9 @@ int read_bmp(
 		src.skip(offset - 14 - hsz);
 
 		i32 rshift = (i32)tl_fls(mr) - 7; u32 rcount = tl_popcount(mr);
-        i32 gshift = (i32)tl_fls(mg) - 7; u32 gcount = tl_popcount(mg);
-        i32 bshift = (i32)tl_fls(mb) - 7; u32 bcount = tl_popcount(mb);
-        i32 ashift = (i32)tl_fls(ma) - 7; u32 acount = tl_popcount(ma);
+		i32 gshift = (i32)tl_fls(mg) - 7; u32 gcount = tl_popcount(mg);
+		i32 bshift = (i32)tl_fls(mb) - 7; u32 bcount = tl_popcount(mb);
+		i32 ashift = (i32)tl_fls(ma) - 7; u32 acount = tl_popcount(ma);
 
 		u32 line_size = dim_x * (bitspp >> 3);
 		u32 pad = (0 - line_size) & 3;
@@ -149,8 +146,8 @@ int read_bmp(
 		for (u32 j = 0; j < dim_y; ++j) {
 
 			auto line = src.window(line_size);
-         
-            for (u32 i = 0; i < dim_x; ++i) {
+		 
+			for (u32 i = 0; i < dim_x; ++i) {
 				u32 p;
 				if (bitspp == 16) p = (u32)line.unsafe_get_le<u16>();
 				else if (bitspp == 32) p = line.unsafe_get_le<u32>();
@@ -167,9 +164,7 @@ int read_bmp(
 				u32 a = ma ? shiftsigned(p & ma, ashift, acount) : 255;
 				all_a |= a;
 				if (bytespp == 4) *dest++ = (u8)a;
-            }
-
-			line.done();
+			}
 		}
 	} else {
 		u32 psize = 0;
@@ -208,7 +203,6 @@ int read_bmp(
 				u8 v = line.unsafe_pop_front();
 				*dest++ = v;
 			}
-			line.done();
 		}
 	}
 

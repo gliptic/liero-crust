@@ -35,6 +35,7 @@
     <ClCompile Include="lutf8lib.c" />
     <ClCompile Include="lvm.c" />
     <ClCompile Include="lzio.c" />
+    <ClCompile Include="lfs.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="lapi.h" />
@@ -63,5 +64,9 @@
     <ClInclude Include="lundump.h" />
     <ClInclude Include="lvm.h" />
     <ClInclude Include="lzio.h" />
+    <ClInclude Include="lfs.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="memo.lua" />
   </ItemGroup>
 </Project>

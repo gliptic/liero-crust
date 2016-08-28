@@ -4,11 +4,10 @@
 #include "gfx.hpp"
 #include <tl/cstdint.h>
 
-enum : u16
-{
+enum : u8 {
 	kbUnknown,
-    kbEscape,
-    kbRangeBegin = kbEscape,
+	kbEscape,
+	kbRangeBegin = kbEscape,
 	kbF1,
 	kbF2,
 	kbF3,
@@ -106,46 +105,46 @@ enum : u16
 	
 	kbRangeEnd = kbM,
 
-    msRangeBegin,
-    msLeft = msRangeBegin,
-    msRight,
-    msMiddle,
-    msWheelUp,
-    msWheelDown,
-    msRangeEnd,
-    
-    gpRangeBegin,
-    gpLeft = gpRangeBegin,
-    gpRight,
-    gpUp,
-    gpDown,
-    gpButton0,
-    gpButton1,
-    gpButton2,
-    gpButton3,
-    gpButton4,
-    gpButton5,
-    gpButton6,
-    gpButton7,
-    gpButton8,
-    gpButton9,
-    gpButton10,
-    gpButton11,
-    gpButton12,
-    gpButton13,
-    gpButton14,
-    gpButton15,
-    gpRangeEnd = gpButton15,
-        
-    kbNum = kbRangeEnd - kbRangeBegin + 1,
-    msNum = msRangeEnd - msRangeBegin + 1,
-    gpNum = gpRangeEnd - gpRangeBegin + 1,
-    
-    numButtons = gpRangeEnd,
-	noButton = 0xffff
+	msRangeBegin,
+	msLeft = msRangeBegin,
+	msRight,
+	msMiddle,
+	msWheelUp,
+	msWheelDown,
+	msRangeEnd,
+	
+	gpRangeBegin,
+	gpLeft = gpRangeBegin,
+	gpRight,
+	gpUp,
+	gpDown,
+	gpButton0,
+	gpButton1,
+	gpButton2,
+	gpButton3,
+	gpButton4,
+	gpButton5,
+	gpButton6,
+	gpButton7,
+	gpButton8,
+	gpButton9,
+	gpButton10,
+	gpButton11,
+	gpButton12,
+	gpButton13,
+	gpButton14,
+	gpButton15,
+	gpRangeEnd = gpButton15,
+		
+	kbNum = kbRangeEnd - kbRangeBegin + 1,
+	msNum = msRangeEnd - msRangeBegin + 1,
+	gpNum = gpRangeEnd - gpRangeBegin + 1,
+	
+	numButtons = gpRangeEnd,
+	noButton = 0xff
 };
 
 extern i16 const gfx_keys_to_native[kbRangeEnd + 1];
-extern i16 gfx_native_to_keys[];
+extern u8 gfx_native_to_keys[];
 
 #endif // UUID_D4CAFE56AAE64EAD3ADC4FBA32B55A70

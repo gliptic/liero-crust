@@ -34,16 +34,28 @@ struct Fixed {
 	BINSETOP_FF(+=)
 	BINSETOP_FF(-=)
 
+#if 0
 	Fixed operator*(Fixed b) const {
-		i64 prod = i64(this->s) * b.s;
-		return Fixed(i32(prod >> 16), raw_tag());
+		//i64 prod = i64(this->s) * b.s;
+		//return Fixed(i32(prod >> 16), raw_tag());
+		return Fixed(i32(this->s * (b.s * (1.0 / (1 << 16)))), raw_tag());
+	}
+	
+	Fixed& operator*=(Fixed b) {
+		*this = *this * b;
+		return *this;
+	}
+#endif
+
+	Fixed operator*(f64 b) const {
+		return Fixed(i32(this->s * b), raw_tag());
 	}
 
 	Fixed operator*(i32 b) const {
 		return Fixed(this->s * b, raw_tag());
 	}
 
-	Fixed& operator*=(Fixed b) {
+	Fixed& operator*=(f64 b) {
 		*this = *this * b;
 		return *this;
 	}
@@ -53,10 +65,28 @@ struct Fixed {
 		return *this;
 	}
 
+	Fixed operator/(i32 b) const {
+		return Fixed(this->s / b, raw_tag());
+	}
+
+	Fixed operator/(f64 b) const {
+		return Fixed(i32(this->s / b), raw_tag());
+	}
+
+	Fixed& operator/=(i32 b) {
+		*this = *this / b;
+		return *this;
+	}
+
+	Fixed& operator/=(f64 b) {
+		*this = *this / b;
+		return *this;
+	}
+
 	Fixed operator+(i32 b) const {
 		return *this + from_i32(b);
 	}
-
+	
 	Fixed operator-() const { return Fixed(-this->s, raw_tag()); }
 
 	i32 raw() const { return this->s; }
@@ -65,12 +95,20 @@ struct Fixed {
 		return this->s >> 16;
 	}
 
+	explicit operator f64() const {
+		return this->s / 65536.0;
+	}
+
 	static Fixed from_i32(i32 i) {
 		return Fixed(i << 16);
 	}
 
 	static Fixed from_raw(i32 i) {
 		return Fixed(i, raw_tag());
+	}
+
+	static Fixed from_frac(i32 nom, i32 denom) {
+		return Fixed(i32((i64(nom) << 16) / denom), raw_tag());
 	}
 
 private:

@@ -1,7 +1,7 @@
 #ifndef LIERO_WORM_HPP
 #define LIERO_WORM_HPP 1
 
-#include "config.hpp"
+#include <liero-sim/config.hpp>
 #include <tl/vector.hpp>
 #include <tl/approxmath/am.hpp>
 
@@ -10,6 +10,9 @@ namespace liero {
 struct State;
 struct StateInput;
 struct Mod;
+struct ModRef;
+struct TransientState;
+struct Worm;
 
 struct ControlState	{
 	ControlState()
@@ -47,6 +50,23 @@ struct ControlState	{
 	u32 istate;
 };
 
+struct WormTransientState {
+	enum FlagsGfx : u8 {
+		Animate = (1 << 0)
+	};
+
+	WormTransientState()
+		: gfx_flags(0) {
+	}
+
+	ControlState controls;
+	u8 gfx_flags;
+
+	bool animate() const {
+		return (gfx_flags & Animate) != 0;
+	}
+};
+
 struct WormWeapon {
 	u32 ty_idx;
 	u32 ammo, delay_left, loading_left;
@@ -56,11 +76,28 @@ struct WormWeapon {
 	}
 };
 
-static int const worm_anim_tab[] = {
+static u8 const worm_anim_tab[] = {
 	0,
 	7,
 	0,
 	14
+};
+
+struct Ninjarope {
+	enum St : u8 {
+		Hidden,
+		Floating,
+		Attached
+	};
+
+	Ninjarope() : st(Hidden) {
+	}
+
+	void update(Worm& owner, State& state);
+
+	Vector2 pos, vel;
+	f64 length;
+	St st;
 };
 
 struct Worm {
@@ -72,54 +109,42 @@ struct Worm {
 		MaxControlEx
 	};
 
-	enum FlagsGfx : u8 {
-		Animate = (1 << 0)
-	};
-
-	static u32 const SelectableWeapons = 5;
+	static u32 const SelectableWeapons = 40;
 
 	Worm() :
-		aiming_angle(0), aiming_angle_vel(0), current_weapon(0), direction(1),
-		muzzle_fire(0), flags_gfx(0) {
+		aiming_angle(0), aiming_angle_vel(0), current_weapon(0), leave_shell_time(0), direction(1),
+		muzzle_fire(0) {
 	}
 
 	Vector2 pos, vel;
+	Ninjarope ninjarope;
 	Scalar aiming_angle, aiming_angle_vel;
-	u32 index;
 
 	WormWeapon weapons[SelectableWeapons]; // TODO: Adjustable?
 	u32 current_weapon;
+	u32 leave_shell_time;
 
 	ControlState control_flags;
 
 	u32 muzzle_fire; // GFX
-	u8 flags_gfx; // GFX
 
 	// TODO: Direction is one bit. We can store it as a flag
 	i8 direction; // 1 = right, -1 = left
 
 	Scalar abs_aiming_angle() const {
-#if LIERO_FIXED
 		return direction > 0 ? aiming_angle : Fixed(64) - aiming_angle;
-#else
-		return direction > 0 ? aiming_angle : tl::pi - aiming_angle;
-#endif
 	}
 
-	u32 current_frame(u32 current_time) const {
+	u32 current_frame(u32 current_time, WormTransientState const& transient_state) const {
 
-#if LIERO_FIXED
 		i32 x = -(i32)this->aiming_angle + 32 - 12;
-#else
-		i32 x = (i32)floor(-this->aiming_angle * (128.0 / tl::pi2)) + 32 - 12;
-#endif
 
 		x >>= 3;
 		if (x < 0) x = 0;
 		else if (x > 6) x = 6;
 
-		u32 angle_frame = /*16 +*/ (u32)x;
-		u32 anim_frame = animate() ? (current_time & 31) >> 3 : 0;
+		u32 angle_frame = (u32)x;
+		u32 anim_frame = transient_state.animate() ? (current_time & 31) >> 3 : 0;
 		return angle_frame + worm_anim_tab[anim_frame];
 	}
 
@@ -127,12 +152,8 @@ struct Worm {
 		return true;
 	}
 
-	bool animate() const {
-		return (flags_gfx & Animate) != 0;
-	}
-
-	void update(State& state, StateInput const& state_input);
-	void reset_weapons(Mod& mod);
+	void update(State& state, TransientState& state_input, u32 index);
+	void reset_weapons(ModRef& mod);
 	void spawn(State& state);
 };
 

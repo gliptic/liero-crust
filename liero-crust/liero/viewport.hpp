@@ -3,11 +3,12 @@
 
 #include <tl/vector.hpp>
 #include <tl/rect.hpp>
-#include <tl/image.hpp>
+#include <tl/gfx/image.hpp>
 
 namespace liero {
 
 struct State;
+struct TransientState;
 
 struct DrawTarget {
 	DrawTarget(tl::ImageSlice image, tl::Palette& pal) : image(image), pal(pal) {
@@ -30,7 +31,7 @@ struct Viewport {
 		, height(screen_pos.height()) {
 	}
 
-	void draw(State& state, DrawTarget& target);
+	void draw(State& state, DrawTarget& target, TransientState const& transient_state);
 };
 
 }

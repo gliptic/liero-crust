@@ -101,17 +101,17 @@ i16 const gfx_keys_to_native[kbRangeEnd + 1] = {
 	native_kbM,
 };
 
-i16 gfx_native_to_keys[native_kbRangeEnd + 1];
+u8 gfx_native_to_keys[native_kbRangeEnd + 1];
 
 static void init_keymaps() {
-	i16 i;
+	u32 i;
 	for (i = 0; i <= native_kbRangeEnd; ++i) {
 		gfx_native_to_keys[i] = kbUnknown;
 	}
 	
 	for (i = kbRangeBegin; i <= kbRangeEnd; ++i) {
 		if (gfx_keys_to_native[i] >= 0)
-			gfx_native_to_keys[gfx_keys_to_native[i]] = i;
+			gfx_native_to_keys[gfx_keys_to_native[i]] = (u8)i;
 	}
 }
 

@@ -1,11 +1,11 @@
 #ifndef BMP_HPP
 #define BMP_HPP 1
 
-#include <tl/stream.hpp>
-#include <tl/image.hpp>
+#include <tl/io/stream.hpp>
+#include <tl/gfx/image.hpp>
 
 int read_bmp(
-	tl::source& src,
+	tl::Source& src,
 	tl::Image& img,
 	tl::Palette& pal);
 

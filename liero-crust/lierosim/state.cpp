@@ -4,7 +4,30 @@
 
 namespace liero {
 
-void State::update(gfx::CommonWindow& window) {
+void State::update(TransientState& transient_state) {
+
+	this->worm_bloom_x = 0;
+	this->worm_bloom_y = 0;
+
+	{
+		auto r = this->worms.all();
+
+		for (Worm* w; (w = r.next()) != 0; ) {
+			u32 xr = w->pos.x.raw(),
+				yr = w->pos.y.raw();
+
+			u32 xsh0 = (xr - (4 << 16)) >> (16 + 4),
+				xsh1 = (xr + (4 << 16)) >> (16 + 4);
+
+			u32 ysh0 = (yr - (4 << 16)) >> (16 + 4),
+				ysh1 = (yr + (4 << 16)) >> (16 + 4);
+
+			this->worm_bloom_x |= (1 << (xsh0 & 31));
+			this->worm_bloom_x |= (1 << (xsh1 & 31));
+			this->worm_bloom_y |= (1 << (ysh0 & 31));
+			this->worm_bloom_y |= (1 << (ysh1 & 31));
+		}
+	}
 
 	{
 		auto r = this->sobjects.all();
@@ -34,22 +57,19 @@ void State::update(gfx::CommonWindow& window) {
 		}
 	}
 
-	StateInput input;
+	{
+		auto r = this->worms.all();
 
-	auto& c = input.worm_controls[0];
-	c.set(Worm::Left, window.button_state[kbLeft] != 0);
-	c.set(Worm::Right, window.button_state[kbRight] != 0);
-	c.set(Worm::Up, window.button_state[kbUp] != 0);
-	c.set(Worm::Down, window.button_state[kbDown] != 0);
-	c.set(Worm::Fire, window.button_state[kbS] != 0);
-	c.set(Worm::Jump, window.button_state[kbR] != 0);
-	c.set(Worm::Change, window.button_state[kbA] != 0);
+		for (Worm* w; (w = r.next()) != 0; ) {
+			w->update(*this, transient_state, this->worms.index_of(w));
+		}
+	}
 
 	{
 		auto r = this->worms.all();
 
 		for (Worm* w; (w = r.next()) != 0; ) {
-			w->update(*this, input);
+			w->ninjarope.update(*w, *this);
 		}
 	}
 

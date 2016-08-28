@@ -3,7 +3,7 @@
 #include "gfx/geom_buffer.hpp"
 #include "gfx/GL/glew.h"
 #include "gfx/GL/wglew.h"
-#include <tl/stream.hpp>
+#include <tl/io/stream.hpp>
 
 #include "bmp.hpp"
 
@@ -21,6 +21,7 @@ u8 clamp_byte(i32 v) {
 	return v < 0 ? 0 : (v >= 256 ? 255 : (u8)v);
 }
 
+#if 0
 void diff(tl::ImageSlice src, tl::ImageSlice other, tl::ImageSlice diff) {
 	
 	auto srcr = src.lines_range();
@@ -52,6 +53,7 @@ void diff(tl::ImageSlice src, tl::ImageSlice other, tl::ImageSlice diff) {
 		++y;
 	}
 }
+#endif
 
 template<typename Process>
 void fractal(tl::ImageSlice src, tl::ImageSlice target, Process process) {
@@ -69,15 +71,17 @@ void fractal(tl::ImageSlice src, tl::ImageSlice target, Process process) {
 		auto domain_s = src.crop(range_rect);
 
 		u32 domain_sum = 0;
-		auto r = domain_s.range();
-		for (u8* p; (p = r.next()) != 0; ) {
-			domain_sum += *p;
+		{
+			auto r = domain_s.range();
+			for (u8* p; (p = r.next()) != 0; ) {
+				domain_sum += *p;
+			}
 		}
 
 		u8 domain_avg = u8(domain_sum / ((cell_size + extra) * (cell_size + extra)));
 
 		u32 lowest_mse = 0xffffffff;
-		i32 lowest_adjust_to_domain;
+		i32 lowest_adjust_to_domain = 0;
 		tl::VectorU2 lowest_range;
 
 		i32 dist = 64;
@@ -85,8 +89,8 @@ void fractal(tl::ImageSlice src, tl::ImageSlice target, Process process) {
 		//u32 low_ry = min(max(i32(cpy) - dist, 0), i32(cdim_y) - 1 - dist * 2);
 		//u32 low_rx = min(max(i32(cpx) - dist, 0), i32(cdim_x) - 1 - dist * 2);
 		u32 low_ry = 0, low_rx = 0;
-		u32 high_ry = min(low_ry + dist * 2, i32(cdim_y) - 1);
-		u32 high_rx = min(low_rx + dist * 2, i32(cdim_x) - 1);
+		u32 high_ry = tl::min(i32(low_ry) + dist * 2, i32(cdim_y) - 1);
+		u32 high_rx = tl::min(i32(low_rx) + dist * 2, i32(cdim_x) - 1);
 
 		/*
 		
@@ -226,7 +230,7 @@ void fractal(tl::ImageSlice src, tl::ImageSlice target, Process process) {
 
 					if (weight > total) weight = total;
 
-					dp = (dp * (total - weight) + rp * weight) / total;
+					dp = u8((dp * (total - weight) + rp * weight) / total);
 				} else {
 					dp = rp;
 				}
@@ -258,9 +262,10 @@ void test_comp() {
 
 	{
 		tl::Palette pal;
-		//auto src = tl::source::from_file("C:\\Users\\glip\\Documents\\cpp\\marfpu\\_build\\TC\\test.bmp");
-		auto src = tl::source::from_file("C:\\Users\\glip\\Documents\\cpp\\marfpu\\_build\\TC\\lena512.bmp");
+		//auto src = tl::Source::from_file("C:\\Users\\glip\\Documents\\cpp\\marfpu\\_build\\TC\\test.bmp");
+		auto src = tl::Source::from_file("C:\\Users\\glip\\Documents\\cpp\\marfpu\\_build\\TC\\lena512.bmp");
 		int r = read_bmp(src, bmp_img, pal);
+		TL_UNUSED(r);
 	}
 
 	tl::Image dest_img(bmp_img.width(), bmp_img.height(), bmp_img.bytespp());
@@ -330,7 +335,9 @@ void test_comp() {
 				//
 			}
 
+#if GFX_PREDICT_VSYNC
 			win.draw_delay += draw_delay;
+#endif
 			win.events.clear();
 
 		} while (!win.end_drawing());

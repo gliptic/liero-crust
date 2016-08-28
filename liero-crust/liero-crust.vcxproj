@@ -50,6 +50,9 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup>
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -92,15 +95,8 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <PreprocessorDefinitions>TL_STATIC=1;GLEW_STATIC;TL_X87=0;TL_FORCE_SSE2_FPU=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TL_STATIC=1;GLEW_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..</AdditionalIncludeDirectories>
-      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
-      <ExceptionHandling>false</ExceptionHandling>
-      <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <DisableSpecificWarnings>4577</DisableSpecificWarnings>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <SDLCheck>
       </SDLCheck>
@@ -111,22 +107,22 @@
       <AdditionalDependencies>dxguid.lib;winmm.lib;opengl32.lib;ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
     </Link>
+    <PreBuildEvent>
+      <Command>cd "$(ProjectDir)"
+"$(SolutionDir)$(Platform)\$(Configuration)\prebuild.exe" build.lua $(ProjectDir)</Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Prebuild</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <PreprocessorDefinitions>TL_STATIC=1;GLEW_STATIC;TL_X87=0;TL_FORCE_SSE2_FPU=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TL_STATIC=1;GLEW_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..</AdditionalIncludeDirectories>
-      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
-      <ExceptionHandling>false</ExceptionHandling>
-      <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <DisableSpecificWarnings>4577</DisableSpecificWarnings>
-      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <SDLCheck>
       </SDLCheck>
+      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -134,14 +130,19 @@
       <AdditionalDependencies>dxguid.lib;winmm.lib;opengl32.lib;ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
     </Link>
+    <PreBuildEvent>
+      <Command>cd "$(ProjectDir)"
+"$(SolutionDir)$(Platform)\$(Configuration)\prebuild.exe" build.lua $(ProjectDir)</Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Prebuild</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <PreprocessorDefinitions>TL_STATIC=1;GLEW_STATIC;TL_X87=0;TL_FORCE_SSE2_FPU=0;NDEBUG=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TL_STATIC=1;GLEW_STATIC;NDEBUG=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..</AdditionalIncludeDirectories>
-      <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <DisableSpecificWarnings>4577</DisableSpecificWarnings>
-      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+      <AssemblerOutput>All</AssemblerOutput>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <SDLCheck>
       </SDLCheck>
@@ -151,15 +152,20 @@
       <AdditionalDependencies>dxguid.lib;winmm.lib;opengl32.lib;ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
     </Link>
+    <PreBuildEvent>
+      <Command>cd "$(ProjectDir)"
+"$(SolutionDir)$(Platform)\$(Configuration)\prebuild.exe" build.lua $(ProjectDir)</Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Prebuild</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>TL_STATIC=1;GLEW_STATIC;TL_X87=0;TL_FORCE_SSE2_FPU=0;NDEBUG=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TL_STATIC=1;GLEW_STATIC;NDEBUG=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..</AdditionalIncludeDirectories>
-      <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <DisableSpecificWarnings>4577</DisableSpecificWarnings>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
-      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+      <AssemblerOutput>All</AssemblerOutput>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <SDLCheck>
       </SDLCheck>
@@ -169,6 +175,13 @@
       <AdditionalDependencies>dxguid.lib;winmm.lib;opengl32.lib;ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
     </Link>
+    <PreBuildEvent>
+      <Command>cd "$(ProjectDir)"
+"$(SolutionDir)$(Platform)\$(Configuration)\prebuild.exe" build.lua $(ProjectDir)</Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Prebuild</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="bmp.cpp" />
@@ -176,8 +189,21 @@
     <ClCompile Include="gfx\geom_buffer.cpp" />
     <ClCompile Include="gfx\gfx.cpp" />
     <ClCompile Include="gfx\GL\glew.c" />
+    <ClCompile Include="gfx\shader.cpp" />
     <ClCompile Include="gfx\texture.cpp" />
     <ClCompile Include="gfx\window_win32.cpp" />
+    <ClCompile Include="gfx\_build\src\glew_head.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="gfx\_build\template.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="hyp\local_set.cpp" />
     <ClCompile Include="hyp\parser.cpp" />
     <ClCompile Include="hyp\string_set.cpp" />
@@ -185,6 +211,7 @@
     <ClCompile Include="lierosim\level.cpp" />
     <ClCompile Include="lierosim\mod.cpp" />
     <ClCompile Include="lierosim\nobject.cpp" />
+    <ClCompile Include="lierosim\sobject.cpp" />
     <ClCompile Include="lierosim\state.cpp" />
     <ClCompile Include="lierosim\worm.cpp" />
     <ClCompile Include="liero\gui.cpp" />
@@ -197,11 +224,22 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="sfx\mixer.cpp" />
+    <ClCompile Include="sfx\sfx_win32.cpp" />
     <ClCompile Include="test_comp.cpp" />
     <ClCompile Include="test_gfx.cpp" />
-    <ClCompile Include="tga.cpp" />
+    <ClCompile Include="test_gui.cpp" />
+    <ClCompile Include="test_io.cpp" />
+    <ClCompile Include="test_ser.cpp" />
+    <ClCompile Include="test_sincos.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\liero-sim\liero-sim.vcxproj">
+      <Project>{9e29efa2-7fe3-44e3-a610-f6bf9eb3c1b1}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\prebuild\prebuild.vcxproj">
+      <Project>{56228dfc-8cad-4303-8817-8596d75f467d}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\tl\_build\tl.vcxproj">
       <Project>{7fc0a21b-7780-470b-960e-38294e4ba0ab}</Project>
     </ProjectReference>
@@ -216,9 +254,46 @@
     <ClInclude Include="gfx\gfx.hpp" />
     <ClInclude Include="gfx\GL\glew.h" />
     <ClInclude Include="gfx\GL\wglew.h" />
+    <ClInclude Include="gfx\shader.hpp" />
     <ClInclude Include="gfx\texture.hpp" />
     <ClInclude Include="gfx\window.hpp" />
     <ClInclude Include="gfx\window_common.hpp" />
+    <ClInclude Include="gfx\_build\src\glew_head.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="gfx\_build\src\glew_tail.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="gfx\_build\src\wglew_head.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="gfx\_build\src\wglew_tail.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="gfx\_build\template.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="gfx\_build\templatewgl.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="hyp\ast.hpp" />
     <ClInclude Include="hyp\hash_map_var.hpp" />
     <ClInclude Include="hyp\local_set.hpp" />
@@ -226,11 +301,8 @@
     <ClInclude Include="hyp\string_set.hpp" />
     <ClInclude Include="lierosim\bobject.hpp" />
     <ClInclude Include="lierosim\cellphase.hpp" />
-    <ClInclude Include="lierosim\config.hpp" />
-    <ClInclude Include="lierosim\fixed.hpp" />
     <ClInclude Include="lierosim\level.hpp" />
     <ClInclude Include="lierosim\mod.hpp" />
-    <ClInclude Include="lierosim\mod_constants.hpp" />
     <ClInclude Include="lierosim\nobject.hpp" />
     <ClInclude Include="lierosim\object_list.hpp" />
     <ClInclude Include="lierosim\sobject.hpp" />
@@ -240,7 +312,16 @@
     <ClInclude Include="liero\viewport.hpp" />
     <ClInclude Include="liero\blit.hpp" />
     <ClInclude Include="net\channel.hpp" />
-    <ClInclude Include="tga.hpp" />
+    <ClInclude Include="sfx\mixer.hpp" />
+    <ClInclude Include="sfx\sfx.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="build.lua" />
+    <None Include="gfx\_build\gen.lua" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="gfx\glext.txt" />
+    <Text Include="gfx\_build\ideas.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

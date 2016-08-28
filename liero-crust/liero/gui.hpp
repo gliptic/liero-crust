@@ -1,50 +1,86 @@
 #include <tl/std.h>
 #include <tl/string.hpp>
+#include <tl/vec.hpp>
 
-struct Control {
+namespace gui {
 
-	TL_DEFAULT_CTORS(Control);
+struct Size {
+	Size() : w(0), h(0) {}
+
+	Size(u32 w, u32 h) : w(w), h(h) {
+	}
+
+	u32 w, h;
 };
 
-struct Button : Control {
-	TL_DEFAULT_CTORS(Button);
+struct WindowDesc {
+	isize size;
+};
 
-	Button& text(tl::StringSlice text) {
-		return *this;
+struct ButtonDesc : WindowDesc {
+	Size win_size;
+};
+
+template<typename Context>
+struct Control {
+	Control(Context& ctx_init) : ctx(ctx_init) {
 	}
 
-	Button& click() {
-		return *this;
-	}
+	Context& ctx;
+	usize desc_offset;
+};
+
+template<typename Context>
+struct Button : Control<Context> {
+	using Control<Context>::Control;
 
 	~Button() {
 	}
 };
 
-struct Frame : Control {
+template<typename Context>
+struct Frame : Control<Context> {
+	Frame(Context& ctx_init)
+		: Control<Context>(ctx_init) {
+	}
+
 	template<typename Contents>
 	void with(Contents contents) {
 		contents();
 	}
+
+	u32 w, h;
 };
 
 struct Context {
-	Button button() {
-		return Button();
+	tl::BufferMixed buf;
+
+	Button<Context> button() {
+		return Button<Context>(*this);
 	}
 
-	Frame frame() {
-		return Frame();
+	Frame<Context> frame() {
+		return Frame<Context>(*this);
+	}
+
+	Button<Context> button2(Size size = Size()) {
+		u8* desc = buf.unsafe_alloc(sizeof(ButtonDesc));
+		isize offs = desc - buf.begin();
+
+
+
+		return Button<Context>(*this);
+	}
+
+
+};
+
+struct LieroGui {
+
+	template<typename Context>
+	void run(Context& ctx) {
+		ctx.button2(Size(10, 10));
 	}
 };
 
-struct LieroGui : Context {
-
-	void run() {
-		frame().with([=] {
-			this->button()
-				.text("Hello"_S)
-				.click();
-		});
-	}
-};
+}

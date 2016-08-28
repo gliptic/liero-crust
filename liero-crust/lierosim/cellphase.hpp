@@ -140,7 +140,8 @@ struct Cellphase {
 			this->cells[np.next].prev = np.prev;
 		}
 
-		// There are two options, either we do the self-link of [idx], or we do the (last_idx != idx) check
+		// There are two options, either we do the self-link of [idx], or we do the (last_idx != idx) check.
+		// The (last_idx != idx) branch should be well-predicted.
 #if 1
 		this->cells[idx].next = idx;
 		this->cells[idx].prev = idx;

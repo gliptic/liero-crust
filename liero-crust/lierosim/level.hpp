@@ -1,12 +1,40 @@
 #ifndef LIERO_LEVEL_HPP
 #define LIERO_LEVEL_HPP 1
 
+#include <liero-sim/config.hpp>
 #include <tl/cstdint.h>
 #include <tl/vector.hpp>
-#include <tl/image.hpp>
-#include <tl/stream.hpp>
+#include <tl/gfx/image.hpp>
+#include <tl/io/stream.hpp>
 
 namespace liero {
+
+struct State;
+
+/* The liero materials in use are:
+ 0
+ dirt | back
+ dirt2 | back
+ dirt
+ dirt2
+ rock
+ worm
+ back | seeshadow
+ back
+
+ We can get rid of dirt2 because it's only used for selecting better colors.
+ We don't have to support shadows and we can ignore worm material in levels.
+ This gives us:
+
+ 0
+ dirt | back
+ dirt
+ rock
+ back
+
+ This only uses 3 bits, so we have 5 bits to do something with!
+
+*/ 
 
 struct Material {
 
@@ -18,15 +46,15 @@ struct Material {
 		SeeShadow = 1<<4,
 		WormM = 1<<5
 	};
-
+	
 	u8 flags;
 
 	Material(u8 flags)
 		: flags(flags) {
 	}
 
-	bool dirt() const { return (flags & Dirt) != 0; }
-	bool dirt2() const { return (flags & Dirt2) != 0; }
+	//bool dirt() const { return (flags & Dirt) != 0; }
+	//bool dirt2() const { return (flags & Dirt2) != 0; }
 	bool rock() const { return (flags & Rock) != 0; }
 	bool background() const { return (flags & Background) != 0; }
 	bool see_shadow() const { return (flags & SeeShadow) != 0; }
@@ -45,7 +73,7 @@ struct Level {
 	tl::Image materials;
 	tl::Image graphics;
 
-	Level(tl::source& src, tl::Palette& pal);
+	Level(tl::Source& src, tl::Palette& pal);
 
 	~Level() = default;
 	TL_DEFAULT_CTORS(Level);
@@ -69,7 +97,9 @@ struct Level {
 	}
 };
 
-void draw_level_effect(tl::BasicBlitContext<2, 1, true> ctx, u8 const* tframe);
+void draw_level_effect(State& state, tl::VectorI2 pos, i16 level_effect);
+void draw_level_effect(tl::BasicBlitContext<2, 1, true> ctx, u8 const* tframe, bool draw_on_background);
+void draw_sprite_on_level(tl::BasicBlitContext<2, 1> ctx);
 
 }
 

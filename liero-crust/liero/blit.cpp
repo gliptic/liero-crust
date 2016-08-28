@@ -1,7 +1,53 @@
 #include "blit.hpp"
 #include "../lierosim/level.hpp"
+#include <tl/rand.hpp>
 
 namespace liero {
+
+#define DO_LINE(body_) { \
+	i32 cx = from.x; \
+	i32 cy = from.y; \
+	i32 dx = to.x - from.x; \
+	i32 dy = to.y - from.y; \
+	i32 sx = sign(dx); \
+	i32 sy = sign(dy); \
+	dx = std::abs(dx); \
+	dy = std::abs(dy); \
+	if (dx > dy) { \
+		i32 c = -(dx >> 1); \
+		while (cx != to.x) { \
+			c += dy; \
+			cx += sx; \
+			if (c > 0) { \
+				cy += sy; \
+				c -= dx; } \
+			body_ } \
+	} else { \
+		i32 c = -(dy >> 1); \
+		while (cy != to.y) { \
+			c += dx; \
+			cy += sy; \
+			if (c > 0) { \
+				cx += sx; \
+				c -= dy; } \
+			body_ } } }
+
+void draw_ninjarope(tl::ImageSlice img, tl::VectorI2 from, tl::VectorI2 to, tl::VecSlice<tl::Color> colors) {
+
+	u32 max_color = u32(colors.size());
+	u32 color = 0;
+
+	DO_LINE({
+		if (++color >= max_color) {
+			color = 0;
+		}
+
+		if ((u32)cx < img.width()
+		 && (u32)cy < img.height()) {
+			img.unsafe_pixel32(u32(cx), u32(cy)) = colors[color].v;
+		}
+	});
+}
 
 void worm_blit(tl::BlitContext ctx) {
 	u32 hleft = ctx.dim.y;
@@ -17,6 +63,8 @@ void worm_blit(tl::BlitContext ctx) {
 		for (u32 i = 0; i < w; ++i) {
 			auto c = tl::Color::read(fp + i*4);
 			if (c.a()) {
+				if (Material(mat_from_index[c.a()]).worm())
+					c = tl::Color(0xff0000ff);
 				tl::Color::write(tp + i*4, c);
 			}
 		}

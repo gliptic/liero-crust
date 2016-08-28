@@ -5,7 +5,21 @@
 
 namespace liero {
 
-void Viewport::draw(State& state, DrawTarget& target) {
+void draw_small_sprite(ModRef& mod, tl::ImageSlice const& clipped, u32 frame, tl::VectorI2 ipos) {
+
+	auto sprite = mod.small_sprites.crop_square_sprite_v(frame);
+
+	tl::BlitContext::one_source(clipped, sprite, ipos.x - 3, ipos.y - 3).blit(0, tl::ImageSlice::BlitTransparent);
+}
+
+void draw_large_sprite(ModRef& mod, tl::ImageSlice const& clipped, u32 frame, tl::VectorI2 ipos) {
+	
+	auto sprite = mod.large_sprites.crop_square_sprite_v(frame);
+
+	tl::BlitContext::one_source(clipped, sprite, ipos.x, ipos.y).blit(0, tl::ImageSlice::BlitTransparent);
+}
+
+void Viewport::draw(State& state, DrawTarget& target, TransientState const& transient_state) {
 
 	auto clipped = target.image.crop(this->screen_pos);
 
@@ -18,10 +32,8 @@ void Viewport::draw(State& state, DrawTarget& target) {
 		for (SObject* s; (s = r.next()) != 0; ) {
 			SObjectType const& ty = state.mod.get_sobject_type(s->ty_idx);
 
-			u32 frame = ty.start_frame + ty.num_frames - (s->time_to_die - state.current_time) / ty.anim_delay;
-
-			u32 y = frame * 16;
-			auto sprite = state.mod.large_sprites.crop(tl::RectU(0, y, 16, y + 16));
+			u32 frame = ty.start_frame() + ty.num_frames() - (s->time_to_die - state.current_time) / ty.anim_delay();
+			auto sprite = state.mod.large_sprites.crop_square_sprite_v(frame);
 
 			sobj_blit(tl::BlitContext::one_source(clipped, sprite, s->pos.x, s->pos.y));
 		}
@@ -36,27 +48,24 @@ void Viewport::draw(State& state, DrawTarget& target) {
 
 			NObjectType const& ty = state.mod.get_nobject_type(n->ty_idx);
 
-			if (ty.start_frame > 0 && (ty.type == NObjectType::DType1 || ty.type == NObjectType::DType2)) {
+			if (ty.start_frame() >= 0 && (ty.kind() == NObjectKind::DType1 || ty.kind() == NObjectKind::DType2)) {
 				i32 iangle = (n->cur_frame - 32) & 127;
 
 				if (iangle > 64) ++iangle;
 
-				int cur_frame = (iangle - 12) >> 3;
+				i32 cur_frame = (iangle - 12) >> 3;
 
 				if (cur_frame < 0) cur_frame = 0;
 				else if (cur_frame > 12) cur_frame = 12;
 
-				u32 y = ((u32)ty.start_frame + cur_frame) * 7;
-				auto sprite = state.mod.small_sprites.crop(tl::RectU(0, y, 7, y + 7));
-				tl::BlitContext::one_source(clipped, sprite, ipos.x - 3, ipos.y - 3).blit(0, tl::ImageSlice::BlitTransparent);
+				u32 frame = (u32)ty.start_frame() + cur_frame;
+				draw_small_sprite(state.mod, clipped, frame, ipos);
 
-			} else if (ty.start_frame > 0) {
+			} else if (ty.start_frame() > 0) {
 			
-				u32 frame = (u32)ty.start_frame + n->cur_frame;
-				u32 y = frame * 7;
-				auto sprite = state.mod.small_sprites.crop(tl::RectU(0, y, 7, y + 7));
-			
-				tl::BlitContext::one_source(clipped, sprite, ipos.x - 3, ipos.y - 3).blit(0, tl::ImageSlice::BlitTransparent);
+				u32 frame = (u32)ty.start_frame() + n->cur_frame;
+				
+				draw_small_sprite(state.mod, clipped, frame, ipos);
 			} else {
 				if (clipped.is_inside(ipos)) {
 					clipped.unsafe_pixel32(ipos.x, ipos.y) = n->cur_frame;
@@ -70,16 +79,30 @@ void Viewport::draw(State& state, DrawTarget& target) {
 		auto r = state.worms.all();
 
 		for (Worm* w; (w = r.next()) != 0; ) {
+			u32 index = state.worms.index_of(w);
 			auto ipos = w->pos.cast<i32>() + this->offset;
 
-			u32 worm_sprite = w->current_frame(state.current_time);
-			u32 y = worm_sprite * 16;
+			auto& worm_transient_state = transient_state.worm_state[index];
 
-			//auto sprite = state.mod.large_sprites.crop(tl::RectU(0, y, 16, y + 16));
-			auto sprite = state.mod.worm_sprites[w->direction < 0 ? 1 : 0].crop(tl::RectU(0, y, 16, y + 16));
+			if (w->ninjarope.st != Ninjarope::Hidden) {
+				auto anchor_pos = w->ninjarope.pos.cast<i32>() + this->offset;
+				auto from_pos = ipos - tl::VectorI2(0, 1);
 
-			worm_blit(
-				tl::BlitContext::one_source(clipped, sprite, ipos.x - 7 - (w->direction < 0 ? 1 : 0), ipos.y - 5));
+				draw_ninjarope(clipped, anchor_pos, from_pos,
+					tl::VecSlice<tl::Color>(
+						state.mod.pal.entries + state.mod.tcdata->nr_colour_begin(),
+						state.mod.pal.entries + state.mod.tcdata->nr_colour_end()));
+
+				draw_large_sprite(state.mod, clipped, 84, anchor_pos - tl::VectorI2(1, 1));
+			}
+
+			{
+				u32 worm_sprite = w->current_frame(state.current_time, worm_transient_state);
+				auto sprite = state.mod.worm_sprites[w->direction < 0 ? 1 : 0].crop_square_sprite_v(worm_sprite);
+
+				worm_blit(
+					tl::BlitContext::one_source(clipped, sprite, ipos.x - 7 - (w->direction < 0 ? 1 : 0), ipos.y - 5));
+			}
 		}
 	}
 
@@ -101,14 +124,21 @@ void Viewport::draw(State& state, DrawTarget& target) {
 	Worm& worm = state.worms.of_index(this->worm_idx);
 
 	if (true) { // TODO: worm && worm->visible
-		// TODO: Draw sight
+
+		{
+			auto sight_pos = worm.pos.cast<i32>() + (sincos(worm.abs_aiming_angle()) * 16).cast<i32>() + this->offset;
+
+			u32 frame = 43; // TODO: TC constants. Should be 44 when sight is green.
+
+			draw_small_sprite(state.mod, clipped, frame, sight_pos + tl::VectorI2(2, 1));
+		}
 
 		if (worm.control_flags[Worm::Change]) {
 			auto ipos = worm.pos.cast<i32>() + this->offset;
 
 			WeaponType const& ty = state.mod.get_weapon_type(worm.weapons[worm.current_weapon].ty_idx);
 
-			draw_text_small(clipped, state.mod.small_font_sprites.slice(), ty.name, ipos.x + 1, ipos.y - 10);
+			draw_text_small(clipped, state.mod.small_font_sprites.slice(), ty.name(), ipos.x + 1, ipos.y - 10);
 		}
 	}
 }

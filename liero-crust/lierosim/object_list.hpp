@@ -6,10 +6,10 @@
 namespace liero {
 
 template<typename T, int Limit>
-struct FixedObjectList
-{
-	struct range {
-		range(T* cur, T* end)
+struct FixedObjectList {
+
+	struct Range {
+		Range(T* cur, T* end)
 			: cur(cur), end(end) {
 		}
 
@@ -52,8 +52,8 @@ struct FixedObjectList
 		return ret;
 	}
 
-	range all() {
-		return range(arr, arr + count);
+	Range all() {
+		return Range(arr, arr + count);
 	}
 	
 	void free(T* ptr) {
@@ -61,11 +61,11 @@ struct FixedObjectList
 		*ptr = arr[--count];
 	}
 	
-	void free(range& r)	{
+	void free(Range& r)	{
 		free(--r.cur);
 		--r.end;
 	}
-	
+
 	void clear() {
 		count = 0;
 	}

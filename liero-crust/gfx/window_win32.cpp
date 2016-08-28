@@ -27,6 +27,7 @@
 namespace gfx {
 
 #define TICKS_FROM_MS(ms) ((ms) * 10000)
+#define TICKS_IN_SECOND (10000000)
 
 #define INPUT_BUFFER_SIZE (32)
 
@@ -685,11 +686,14 @@ int CommonWindow::set_visible(bool state) {
 		
 	ShowWindow((HWND)this->hwnd, state ? SW_SHOW : SW_HIDE);
 
+
 	{
 		DEVMODE devMode;
 		if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &devMode)) {
 			this->refresh_rate = devMode.dmDisplayFrequency;
-			this->min_swap_interval = TICKS_FROM_MS(1000ull) / devMode.dmDisplayFrequency; // TODO: uses _aulldiv
+#if GFX_PREDICT_VSYNC
+			this->min_swap_interval = TICKS_IN_SECOND / devMode.dmDisplayFrequency;
+#endif
 		}
 	}
 
@@ -702,32 +706,38 @@ int CommonWindow::update() {
 	update_mouse_pos(this);
 	update_win32_keys(this);
 
-
 	return !this->closed;
 }
 
+u32 slept_ms = 0;
+
 int CommonWindow::end_drawing() {
 
+#if GFX_PREDICT_VSYNC
 	if (this->min_swap_interval < TICKS_FROM_MS(18)
 	 && this->swaps * TICKS_FROM_MS(1) <= this->swap_delay) {
 		// Seems we get delay from SwapBuffers
 		u64 now = tl_get_ticks();
 
-		u64 threshold = TICKS_FROM_MS(10ull);
+		u64 threshold = TICKS_FROM_MS(5ull);
 
 		if ((now - this->swap_end) <= this->min_swap_interval - threshold) {
 			Sleep(1);
+			++slept_ms;
+			now = tl_get_ticks();
 			if ((now - this->swap_end) <= this->min_swap_interval - threshold) {
 				return 0;
 			}
 		}
 	}
+#endif
 
 	TL_TIME(lswap_delay, {
 		glFinish();
 		SwapBuffers((HDC)this->hdc);
 	});
 	
+#if GFX_PREDICT_VSYNC
 	this->prev_swap_end = this->swap_end;
 	this->swap_end = tl_get_ticks();
 
@@ -736,12 +746,15 @@ int CommonWindow::end_drawing() {
 
 	//printf("Frame: %lld\n", (this->swap_end - this->prev_swap_end));
 
+
 	if (this->prev_swap_end && this->min_swap_interval == 0) {
-		this->frame_intervals[this->frame_interval_n++ % 4] = this->swap_end - this->prev_swap_end;
+		this->frame_intervals[this->frame_interval_n++ % 4] = tl::narrow<u32>(this->swap_end - this->prev_swap_end);
 
 		if (this->frame_interval_n >= 4) {
-			u64 max_in_window = max(max(this->frame_intervals[0], this->frame_intervals[1]), max(this->frame_intervals[2], this->frame_intervals[3]));
-			u64 avg_in_window = (this->frame_intervals[0] + this->frame_intervals[1] + this->frame_intervals[2] + this->frame_intervals[3]) / 4;
+			u32 max_in_window = tl::max(
+				tl::max(this->frame_intervals[0], this->frame_intervals[1]),
+				tl::max(this->frame_intervals[2], this->frame_intervals[3]));
+			u32 avg_in_window = (this->frame_intervals[0] + this->frame_intervals[1] + this->frame_intervals[2] + this->frame_intervals[3]) / 4;
 
 			TL_UNUSED(avg_in_window);
 
@@ -749,11 +762,11 @@ int CommonWindow::end_drawing() {
 			if (this->min_swap_interval > max_in_window) {
 				this->min_swap_interval = max_in_window;
 #if 0
-				printf("M: %lld\n", self->min_swap_interval);
-				printf("%lld\n", self->frame_intervals[0]);
-				printf("%lld\n", self->frame_intervals[1]);
-				printf("%lld\n", self->frame_intervals[2]);
-				printf("%lld\n", self->frame_intervals[3]);
+				printf("M: %lld\n", this->min_swap_interval);
+				//printf("%lld\n", this->frame_intervals[0]);
+				//printf("%lld\n", this->frame_intervals[1]);
+				//printf("%lld\n", this->frame_intervals[2]);
+				//printf("%lld\n", this->frame_intervals[3]);
 #endif
 			}
 		}
@@ -767,13 +780,15 @@ int CommonWindow::end_drawing() {
 #if 0
 		printf("fps: %d. swap block: %f ms\n", (int)this->swaps, (this->swap_delay / 10000.0) / this->swaps);
 		//printf("prev frame: %f ms\n", (this->swap_end - this->prev_swap_end) / 10000.0);
-		printf("draw delay: %f ms\n", ((this->draw_delay) / 10000.0) / this->swaps);
+		printf("draw delay: %f ms. slept: %d ms\n", ((this->draw_delay) / 10000.0) / this->swaps, slept_ms);
 #endif
 
 		this->swaps = 0;
 		this->swap_delay = 0;
 		this->draw_delay = 0;
 	}
+
+#endif
 
 	return 1;
 }

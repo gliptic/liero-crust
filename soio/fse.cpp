@@ -375,140 +375,140 @@ static bool FSE_isError(size_t v) { return v >= (size_t)-1; }
 
 static size_t FSE_normalizeM2(short* norm, U32 tableLog, const unsigned* count, size_t total, U32 maxSymbolValue)
 {
-    U32 s;
-    U32 distributed = 0;
-    U32 ToDistribute;
+	U32 s;
+	U32 distributed = 0;
+	U32 ToDistribute;
 
-    /* Init */
-    U32 lowThreshold = (U32)(total >> tableLog);
-    U32 lowOne = (U32)((total * 3) >> (tableLog + 1));
+	/* Init */
+	U32 lowThreshold = (U32)(total >> tableLog);
+	U32 lowOne = (U32)((total * 3) >> (tableLog + 1));
 
-    for (s=0; s<=maxSymbolValue; s++) {
-        if (count[s] == 0) {
-            norm[s]=0;
-            continue;
-        }
-        if (count[s] <= lowThreshold) {
-            norm[s] = -1;
-            distributed++;
-            total -= count[s];
-            continue;
-        }
-        if (count[s] <= lowOne) {
-            norm[s] = 1;
-            distributed++;
-            total -= count[s];
-            continue;
-        }
-        norm[s]=-2;
-    }
-    ToDistribute = (1 << tableLog) - distributed;
+	for (s=0; s<=maxSymbolValue; s++) {
+		if (count[s] == 0) {
+			norm[s]=0;
+			continue;
+		}
+		if (count[s] <= lowThreshold) {
+			norm[s] = -1;
+			distributed++;
+			total -= count[s];
+			continue;
+		}
+		if (count[s] <= lowOne) {
+			norm[s] = 1;
+			distributed++;
+			total -= count[s];
+			continue;
+		}
+		norm[s]=-2;
+	}
+	ToDistribute = (1 << tableLog) - distributed;
 
-    if ((total / ToDistribute) > lowOne) {
-        /* risk of rounding to zero */
-        lowOne = (U32)((total * 3) / (ToDistribute * 2));
-        for (s=0; s<=maxSymbolValue; s++) {
-            if ((norm[s] == -2) && (count[s] <= lowOne)) {
-                norm[s] = 1;
-                distributed++;
-                total -= count[s];
-                continue;
-        }   }
-        ToDistribute = (1 << tableLog) - distributed;
-    }
+	if ((total / ToDistribute) > lowOne) {
+		/* risk of rounding to zero */
+		lowOne = (U32)((total * 3) / (ToDistribute * 2));
+		for (s=0; s<=maxSymbolValue; s++) {
+			if ((norm[s] == -2) && (count[s] <= lowOne)) {
+				norm[s] = 1;
+				distributed++;
+				total -= count[s];
+				continue;
+		}   }
+		ToDistribute = (1 << tableLog) - distributed;
+	}
 
-    if (distributed == maxSymbolValue+1) {
-        /* all values are pretty poor;
-           probably incompressible data (should have already been detected);
-           find max, then give all remaining points to max */
-        U32 maxV = 0, maxC = 0;
-        for (s=0; s<=maxSymbolValue; s++)
-            if (count[s] > maxC) maxV=s, maxC=count[s];
-        norm[maxV] += (short)ToDistribute;
-        return 0;
-    }
+	if (distributed == maxSymbolValue+1) {
+		/* all values are pretty poor;
+		   probably incompressible data (should have already been detected);
+		   find max, then give all remaining points to max */
+		U32 maxV = 0, maxC = 0;
+		for (s=0; s<=maxSymbolValue; s++)
+			if (count[s] > maxC) maxV=s, maxC=count[s];
+		norm[maxV] += (short)ToDistribute;
+		return 0;
+	}
 
-    {
-        U64 const vStepLog = 62 - tableLog;
-        U64 const mid = (1ULL << (vStepLog-1)) - 1;
-        U64 const rStep = ((((U64)1<<vStepLog) * ToDistribute) + mid) / total;   /* scale on remaining */
-        U64 tmpTotal = mid;
-        for (s=0; s<=maxSymbolValue; s++) {
-            if (norm[s]==-2) {
-                U64 end = tmpTotal + (count[s] * rStep);
-                U32 sStart = (U32)(tmpTotal >> vStepLog);
-                U32 sEnd = (U32)(end >> vStepLog);
-                U32 weight = sEnd - sStart;
-                if (weight < 1)
-                    return ERROR(GENERIC);
-                norm[s] = (short)weight;
-                tmpTotal = end;
-    }   }   }
+	{
+		U64 const vStepLog = 62 - tableLog;
+		U64 const mid = (1ULL << (vStepLog-1)) - 1;
+		U64 const rStep = ((((U64)1<<vStepLog) * ToDistribute) + mid) / total;   /* scale on remaining */
+		U64 tmpTotal = mid;
+		for (s=0; s<=maxSymbolValue; s++) {
+			if (norm[s]==-2) {
+				U64 end = tmpTotal + (count[s] * rStep);
+				U32 sStart = (U32)(tmpTotal >> vStepLog);
+				U32 sEnd = (U32)(end >> vStepLog);
+				U32 weight = sEnd - sStart;
+				if (weight < 1)
+					return ERROR(GENERIC);
+				norm[s] = (short)weight;
+				tmpTotal = end;
+	}   }   }
 
-    return 0;
+	return 0;
 }
 
 
 size_t FSE_normalizeCount (short* normalizedCounter, unsigned tableLog,
-                           const unsigned* count, size_t total,
-                           unsigned maxSymbolValue)
+						   const unsigned* count, size_t total,
+						   unsigned maxSymbolValue)
 {
-    /* Sanity checks */
-    if (tableLog==0) tableLog = FSE_DEFAULT_TABLELOG;
-    if (tableLog < FSE_MIN_TABLELOG) return ERROR(GENERIC);   /* Unsupported size */
-    if (tableLog > FSE_MAX_TABLELOG) return ERROR(tableLog_tooLarge);   /* Unsupported size */
-    if (tableLog < FSE_minTableLog(total, maxSymbolValue)) return ERROR(GENERIC);   /* Too small tableLog, compression potentially impossible */
+	/* Sanity checks */
+	if (tableLog==0) tableLog = FSE_DEFAULT_TABLELOG;
+	if (tableLog < FSE_MIN_TABLELOG) return ERROR(GENERIC);   /* Unsupported size */
+	if (tableLog > FSE_MAX_TABLELOG) return ERROR(tableLog_tooLarge);   /* Unsupported size */
+	if (tableLog < FSE_minTableLog(total, maxSymbolValue)) return ERROR(GENERIC);   /* Too small tableLog, compression potentially impossible */
 
-    {   U32 const rtbTable[] = {     0, 473195, 504333, 520860, 550000, 700000, 750000, 830000 };
+	{   U32 const rtbTable[] = {     0, 473195, 504333, 520860, 550000, 700000, 750000, 830000 };
 
-        U64 const scale = 62 - tableLog;
-        U64 const step = ((U64)1<<62) / total;   /* <== here, one division ! */
-        U64 const vStep = 1ULL<<(scale-20);
-        int stillToDistribute = 1<<tableLog;
-        unsigned s;
-        unsigned largest=0;
-        short largestP=0;
-        U32 lowThreshold = (U32)(total >> tableLog);
+		U64 const scale = 62 - tableLog;
+		U64 const step = ((U64)1<<62) / total;   /* <== here, one division ! */
+		U64 const vStep = 1ULL<<(scale-20);
+		int stillToDistribute = 1<<tableLog;
+		unsigned s;
+		unsigned largest=0;
+		short largestP=0;
+		U32 lowThreshold = (U32)(total >> tableLog);
 
-        for (s=0; s<=maxSymbolValue; s++) {
-            if (count[s] == total) return 0;   /* rle special case */
-            if (count[s] == 0) { normalizedCounter[s]=0; continue; }
-            if (count[s] <= lowThreshold) {
-                normalizedCounter[s] = -1;
-                stillToDistribute--;
-            } else {
-                short proba = (short)((count[s]*step) >> scale);
-                if (proba<8) {
-                    U64 restToBeat = vStep * rtbTable[proba];
-                    proba += (count[s]*step) - ((U64)proba<<scale) > restToBeat;
-                }
-                if (proba > largestP) largestP=proba, largest=s;
-                normalizedCounter[s] = proba;
-                stillToDistribute -= proba;
-        }   }
-        if (-stillToDistribute >= (normalizedCounter[largest] >> 1)) {
-            /* corner case, need another normalization method */
-            size_t errorCode = FSE_normalizeM2(normalizedCounter, tableLog, count, total, maxSymbolValue);
-            if (FSE_isError(errorCode)) return errorCode;
-        }
-        else normalizedCounter[largest] += (short)stillToDistribute;
-    }
+		for (s=0; s<=maxSymbolValue; s++) {
+			if (count[s] == total) return 0;   /* rle special case */
+			if (count[s] == 0) { normalizedCounter[s]=0; continue; }
+			if (count[s] <= lowThreshold) {
+				normalizedCounter[s] = -1;
+				stillToDistribute--;
+			} else {
+				short proba = (short)((count[s]*step) >> scale);
+				if (proba<8) {
+					U64 restToBeat = vStep * rtbTable[proba];
+					proba += (count[s]*step) - ((U64)proba<<scale) > restToBeat;
+				}
+				if (proba > largestP) largestP=proba, largest=s;
+				normalizedCounter[s] = proba;
+				stillToDistribute -= proba;
+		}   }
+		if (-stillToDistribute >= (normalizedCounter[largest] >> 1)) {
+			/* corner case, need another normalization method */
+			size_t errorCode = FSE_normalizeM2(normalizedCounter, tableLog, count, total, maxSymbolValue);
+			if (FSE_isError(errorCode)) return errorCode;
+		}
+		else normalizedCounter[largest] += (short)stillToDistribute;
+	}
 
 #if 0
-    {   /* Print Table (debug) */
-        U32 s;
-        U32 nTotal = 0;
-        for (s=0; s<=maxSymbolValue; s++)
-            printf("%3i: %4i \n", s, normalizedCounter[s]);
-        for (s=0; s<=maxSymbolValue; s++)
-            nTotal += abs(normalizedCounter[s]);
-        if (nTotal != (1U<<tableLog))
-            printf("Warning !!! Total == %u != %u !!!", nTotal, 1U<<tableLog);
-        getchar();
-    }
+	{   /* Print Table (debug) */
+		U32 s;
+		U32 nTotal = 0;
+		for (s=0; s<=maxSymbolValue; s++)
+			printf("%3i: %4i \n", s, normalizedCounter[s]);
+		for (s=0; s<=maxSymbolValue; s++)
+			nTotal += abs(normalizedCounter[s]);
+		if (nTotal != (1U<<tableLog))
+			printf("Warning !!! Total == %u != %u !!!", nTotal, 1U<<tableLog);
+		getchar();
+	}
 #endif
 
-    return tableLog;
+	return tableLog;
 }
 
 }

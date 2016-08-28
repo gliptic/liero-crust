@@ -5,8 +5,6 @@ VisualStudioVersion = 15.0.25428.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tl", "..\tl\_build\tl.vcxproj", "{7FC0A21B-7780-470B-960E-38294E4BA0AB}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "marfpu", "..\marfpu\_build\marfpu.vcxproj", "{B0242AB7-CB07-4EEB-B3F3-25C94BCC7991}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "liero-crust", "..\liero-crust\liero-crust.vcxproj", "{AA68ABEC-4FA5-4330-98BC-CFD1CD650384}"
 	ProjectSection(ProjectDependencies) = postProject
 		{7FC0A21B-7780-470B-960E-38294E4BA0AB} = {7FC0A21B-7780-470B-960E-38294E4BA0AB}
@@ -18,6 +16,13 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "soio", "..\soio\soio.vcxpro
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "prebuild", "..\prebuild\prebuild.vcxproj", "{56228DFC-8CAD-4303-8817-8596D75F467D}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "liero-sim", "..\liero-sim\liero-sim.vcxproj", "{9E29EFA2-7FE3-44E3-A610-F6BF9EB3C1B1}"
+	ProjectSection(ProjectDependencies) = postProject
+		{56228DFC-8CAD-4303-8817-8596D75F467D} = {56228DFC-8CAD-4303-8817-8596D75F467D}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tc-tool", "..\tc-tool\tc-tool.vcxproj", "{30210DCB-FED4-47D1-936E-65C86516064F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -35,14 +40,6 @@ Global
 		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Release|x64.Build.0 = Release|x64
 		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Release|x86.ActiveCfg = Release|Win32
 		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Release|x86.Build.0 = Release|Win32
-		{B0242AB7-CB07-4EEB-B3F3-25C94BCC7991}.Debug|x64.ActiveCfg = Debug|x64
-		{B0242AB7-CB07-4EEB-B3F3-25C94BCC7991}.Debug|x64.Build.0 = Debug|x64
-		{B0242AB7-CB07-4EEB-B3F3-25C94BCC7991}.Debug|x86.ActiveCfg = Debug|Win32
-		{B0242AB7-CB07-4EEB-B3F3-25C94BCC7991}.Debug|x86.Build.0 = Debug|Win32
-		{B0242AB7-CB07-4EEB-B3F3-25C94BCC7991}.Release|x64.ActiveCfg = Release|x64
-		{B0242AB7-CB07-4EEB-B3F3-25C94BCC7991}.Release|x64.Build.0 = Release|x64
-		{B0242AB7-CB07-4EEB-B3F3-25C94BCC7991}.Release|x86.ActiveCfg = Release|Win32
-		{B0242AB7-CB07-4EEB-B3F3-25C94BCC7991}.Release|x86.Build.0 = Release|Win32
 		{AA68ABEC-4FA5-4330-98BC-CFD1CD650384}.Debug|x64.ActiveCfg = Debug|x64
 		{AA68ABEC-4FA5-4330-98BC-CFD1CD650384}.Debug|x64.Build.0 = Debug|x64
 		{AA68ABEC-4FA5-4330-98BC-CFD1CD650384}.Debug|x86.ActiveCfg = Debug|Win32
@@ -67,6 +64,22 @@ Global
 		{56228DFC-8CAD-4303-8817-8596D75F467D}.Release|x64.Build.0 = Release|x64
 		{56228DFC-8CAD-4303-8817-8596D75F467D}.Release|x86.ActiveCfg = Release|Win32
 		{56228DFC-8CAD-4303-8817-8596D75F467D}.Release|x86.Build.0 = Release|Win32
+		{9E29EFA2-7FE3-44E3-A610-F6BF9EB3C1B1}.Debug|x64.ActiveCfg = Debug|x64
+		{9E29EFA2-7FE3-44E3-A610-F6BF9EB3C1B1}.Debug|x64.Build.0 = Debug|x64
+		{9E29EFA2-7FE3-44E3-A610-F6BF9EB3C1B1}.Debug|x86.ActiveCfg = Debug|Win32
+		{9E29EFA2-7FE3-44E3-A610-F6BF9EB3C1B1}.Debug|x86.Build.0 = Debug|Win32
+		{9E29EFA2-7FE3-44E3-A610-F6BF9EB3C1B1}.Release|x64.ActiveCfg = Release|x64
+		{9E29EFA2-7FE3-44E3-A610-F6BF9EB3C1B1}.Release|x64.Build.0 = Release|x64
+		{9E29EFA2-7FE3-44E3-A610-F6BF9EB3C1B1}.Release|x86.ActiveCfg = Release|Win32
+		{9E29EFA2-7FE3-44E3-A610-F6BF9EB3C1B1}.Release|x86.Build.0 = Release|Win32
+		{30210DCB-FED4-47D1-936E-65C86516064F}.Debug|x64.ActiveCfg = Debug|x64
+		{30210DCB-FED4-47D1-936E-65C86516064F}.Debug|x64.Build.0 = Debug|x64
+		{30210DCB-FED4-47D1-936E-65C86516064F}.Debug|x86.ActiveCfg = Debug|Win32
+		{30210DCB-FED4-47D1-936E-65C86516064F}.Debug|x86.Build.0 = Debug|Win32
+		{30210DCB-FED4-47D1-936E-65C86516064F}.Release|x64.ActiveCfg = Release|x64
+		{30210DCB-FED4-47D1-936E-65C86516064F}.Release|x64.Build.0 = Release|x64
+		{30210DCB-FED4-47D1-936E-65C86516064F}.Release|x86.ActiveCfg = Release|Win32
+		{30210DCB-FED4-47D1-936E-65C86516064F}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

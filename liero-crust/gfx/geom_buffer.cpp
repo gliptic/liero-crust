@@ -1,4 +1,6 @@
+#include "gfx.hpp"
 #include "geom_buffer.hpp"
+#include "window.hpp"
 #include "GL\glew.h"
 
 namespace gfx {
@@ -14,9 +16,20 @@ void GeomBuffer::flush() {
 
 	GLsizei vertex_count = GLsizei(this->cur_vert - this->vertices) / 2;
 
+#if BONK_USE_GL2
+	glEnableVertexAttribArray(AttribColor);
+	glEnableVertexAttribArray(AttribPosition);
+
+	if (this->last_texture != 0) {
+		glBindTexture(GL_TEXTURE_2D, this->last_texture);
+		glEnableVertexAttribArray(AttribTexCoord);
+	} else {
+		// TODO: White pixel texture
+		glVertexAttrib2f(AttribTexCoord, 0.f, 0.f);
+	}
+#else
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
-
 	glColor3d(1, 1, 1);
 
 	if (this->last_texture != 0) {
@@ -27,22 +40,42 @@ void GeomBuffer::flush() {
 	} else {
 		glDisable(GL_TEXTURE_2D);
 	}
+#endif
+	
+#if BONK_USE_GL2
+	glVertexAttribPointer(AttribPosition, 2, GL_FLOAT, GL_FALSE, 0, this->vertices);
+	glVertexAttribPointer(AttribColor, 4, GL_FLOAT, GL_FALSE, 0, this->colors);
 
+	if (this->last_texture != 0) {
+		glVertexAttribPointer(AttribTexCoord, 2, GL_FLOAT, GL_FALSE, 0, this->texcoords);
+	}
+#else
 	glVertexPointer(2, GL_FLOAT, 0, this->vertices);
 	glColorPointer(4, GL_FLOAT, 0, this->colors);
+#endif
 
 	if (this->geom_mode == gb_point) {
 		glDrawArrays(GL_POINTS, 0, vertex_count);
 	} else if (this->geom_mode == gb_quad) {
 		glDrawArrays(GL_QUADS, 0, vertex_count);
 	}
+	check_gl();
 
+#if BONK_USE_GL2
+	glDisableVertexAttribArray(AttribColor);
+	glDisableVertexAttribArray(AttribPosition);
+
+	if (this->last_texture != 0) {
+		glDisableVertexAttribArray(AttribTexCoord);
+	}
+#else
 	if (this->last_texture != 0) {
 		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	}
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_COLOR_ARRAY);
+#endif
 
 	this->last_texture = 0;
 	this->continuation = false;

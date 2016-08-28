@@ -128,13 +128,6 @@ void* dlGetProcAddress (const GLubyte* name)
  * GLEW, just like OpenGL or GLU, does not rely on the standard C library.
  * These functions implement the functionality required in this file.
  */
-static GLuint _glewStrLen (const GLubyte* s)
-{
-  GLuint i=0;
-  if (s == NULL) return 0;
-  while (s[i] != '\0') i++;
-  return i;
-}
 
 static GLuint _glewStrCLen (const GLubyte* s, GLubyte c)
 {
@@ -142,68 +135,6 @@ static GLuint _glewStrCLen (const GLubyte* s, GLubyte c)
   if (s == NULL) return 0;
   while (s[i] != '\0' && s[i] != c) i++;
   return (s[i] == '\0' || s[i] == c) ? i : 0;
-}
-
-static GLboolean _glewStrSame (const GLubyte* a, const GLubyte* b, GLuint n)
-{
-  GLuint i=0;
-  if(a == NULL || b == NULL)
-    return (a == NULL && b == NULL && n == 0) ? GL_TRUE : GL_FALSE;
-  while (i < n && a[i] != '\0' && b[i] != '\0' && a[i] == b[i]) i++;
-  return i == n ? GL_TRUE : GL_FALSE;
-}
-
-static GLboolean _glewStrSame1 (GLubyte** a, GLuint* na, const GLubyte* b, GLuint nb)
-{
-  while (*na > 0 && (**a == ' ' || **a == '\n' || **a == '\r' || **a == '\t'))
-  {
-    (*a)++;
-    (*na)--;
-  }
-  if(*na >= nb)
-  {
-    GLuint i=0;
-    while (i < nb && (*a)+i != NULL && b+i != NULL && (*a)[i] == b[i]) i++;
-	if(i == nb)
-	{
-		*a = *a + nb;
-		*na = *na - nb;
-		return GL_TRUE;
-	}
-  }
-  return GL_FALSE;
-}
-
-static GLboolean _glewStrSame2 (GLubyte** a, GLuint* na, const GLubyte* b, GLuint nb)
-{
-  if(*na >= nb)
-  {
-    GLuint i=0;
-    while (i < nb && (*a)+i != NULL && b+i != NULL && (*a)[i] == b[i]) i++;
-	if(i == nb)
-	{
-		*a = *a + nb;
-		*na = *na - nb;
-		return GL_TRUE;
-	}
-  }
-  return GL_FALSE;
-}
-
-static GLboolean _glewStrSame3 (GLubyte** a, GLuint* na, const GLubyte* b, GLuint nb)
-{
-  if(*na >= nb)
-  {
-    GLuint i=0;
-    while (i < nb && (*a)+i != NULL && b+i != NULL && (*a)[i] == b[i]) i++;
-    if (i == nb && (*na == nb || (*a)[i] == ' ' || (*a)[i] == '\n' || (*a)[i] == '\r' || (*a)[i] == '\t'))
-    {
-      *a = *a + nb;
-      *na = *na - nb;
-      return GL_TRUE;
-    }
-  }
-  return GL_FALSE;
 }
 
 static GLboolean _glewStrSame4 (const GLubyte* a, const GLubyte* b)
@@ -230,43 +161,38 @@ static GLboolean _glewStrSame4 (const GLubyte* a, const GLubyte* b)
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct _glewStringEntry_
-{
+typedef struct _glewStringEntry_ {
 	GLubyte const* str;
 	int index;
 } _glewStringEntry;
 
-static int _glewAvailable[2];
+static int _glewAvailable[5];
 
-static GLuint strhash(const GLubyte* str)
-{
+static GLuint strhash(const GLubyte* str) {
 	GLuint acc = 1;
 	while(*str != ' ' && *str != '\0')
 	{
 		acc = 0x10100021*acc ^ *str++;
 	}
 
-	return (acc & 0xffffffff) >> 29;
+	return (acc & 0xffffffff) >> 28;
 }
 
-static _glewStringEntry _glewStringTable[8];
+static _glewStringEntry _glewStringTable[16];
 
-static _glewStringEntry* _glewFindString(GLubyte const* str)
-{
+static _glewStringEntry* _glewFindString(GLubyte const* str) {
 	GLuint h = strhash(str);
 	const GLubyte* comp;
-	while(comp = _glewStringTable[h].str)
-	{
+	while ((comp = _glewStringTable[h].str) != 0) {
 		if (_glewStrSame4(str, comp))
 			return &_glewStringTable[h];
-		h = (h + 1) & (8 - 1);
+		h = (h + 1) & (16 - 1);
 	}
 	
 	return NULL;
 }
 
-static void _glewAddString(GLubyte const* str, int index)
-{
+static void _glewAddString(GLubyte const* str, int index) {
 	GLuint h;
 	if (NULL != _glewFindString(str))
 		return;
@@ -274,7 +200,7 @@ static void _glewAddString(GLubyte const* str, int index)
 	h = strhash(str);
 	while(_glewStringTable[h].str)
 	{
-		h = (h + 1) & (8 - 1);
+		h = (h + 1) & (16 - 1);
 	}
 
 	_glewStringTable[h].str = str;
@@ -282,12 +208,10 @@ static void _glewAddString(GLubyte const* str, int index)
 }
 
 /* For adding used extension strings. The strings are mapped to indices according
- to their order. The index is used to reference to the extension later on. */
-static void _glewAddStrings(GLubyte const* p)
-{
+ to their order. The index is used to reference the extension later on. */
+static void _glewAddStrings(GLubyte const* p) {
 	int index = 0;
-	while (*p)
-	{
+	while (*p) {
 		GLubyte const* begin = p;
 		while(*p && *p != ' ')
 			++p;
@@ -298,11 +222,9 @@ static void _glewAddStrings(GLubyte const* p)
 }
 
 /* Mark the extensions that appear in the supplied string */
-static void _glewMarkAvailable(GLubyte const* p)
-{
-	int index = 0;
-	while (*p)
-	{
+static void _glewMarkAvailable(GLubyte const* p) {
+
+	while (*p) {
 		_glewStringEntry* entry;
 		GLubyte const* begin = p;
 		while(*p && *p != ' ')
@@ -317,20 +239,19 @@ static void _glewMarkAvailable(GLubyte const* p)
 	}
 }
 
-char const* _glewUsed = "WGL_ARB_multisample WGL_ARB_pixel_format";
-void (*_glewFuncTable[2])();
+char const* _glewUsed = "  WGL_ARB_multisample WGL_ARB_pixel_format WGL_EXT_swap_control";
+void (*_glewFuncTable[30])();
 
-static GLubyte _glewFuncUsedPerExt[2] = {
-	0,2
+static GLubyte _glewFuncUsedPerExt[5] = {
+	1,26,0,2,1
 };
 
-static char const* __glewFuncUsedNames = "wglChoosePixelFormatARB\0wglGetPixelFormatAttribivARB\0";
+static char const* __glewFuncUsedNames = "glActiveTexture\0glAttachShader\0glBindAttribLocation\0glCompileShader\0glCreateProgram\0glCreateShader\0glDeleteProgram\0glDeleteShader\0glDetachShader\0glDisableVertexAttribArray\0glEnableVertexAttribArray\0glGetProgramiv\0glGetProgramInfoLog\0glGetShaderiv\0glGetShaderInfoLog\0glShaderSource\0glGetUniformLocation\0glLinkProgram\0glUseProgram\0glUniform1f\0glUniform1i\0glUniform2f\0glUniformMatrix2fv\0glValidateProgram\0glVertexAttrib2f\0glVertexAttrib4f\0glVertexAttribPointer\0wglChoosePixelFormatARB\0wglGetPixelFormatAttribivARB\0wglSwapIntervalEXT\0";
 
 static int _glewMajor, _glewMinor;
 static int wgl_crippled;
 
-GLenum glewInit()
-{
+GLenum glewInit() {
 	const GLubyte* s;
 	GLuint dot;
 	GLint major, minor;
@@ -351,28 +272,15 @@ GLenum glewInit()
 	/* Add used extensions */
 	_glewAddStrings((GLubyte const*)_glewUsed);
 
-	if (major == 1 && minor == 0)
-	{
+	if (major == 1 && minor == 0) {
 		return GLEW_ERROR_GL_VERSION_10_ONLY;
-	}
-	else
-	{
+	} else {
 		int v = major * 0x10 + minor;
 		_glewMajor = major;
 		_glewMinor = minor;
-
-		/* TODO: Only include those that are used */
-		if (v >= 0x11) _glewMarkAvailable("GL_VERSION_1_1");
-		if (v >= 0x12) _glewMarkAvailable("GL_VERSION_1_2");
-		if (v >= 0x13) _glewMarkAvailable("GL_VERSION_1_3");
-		if (v >= 0x14) _glewMarkAvailable("GL_VERSION_1_4");
-		if (v >= 0x15) _glewMarkAvailable("GL_VERSION_1_5");
-		if (v >= 0x20) _glewMarkAvailable("GL_VERSION_2_0");
-		if (v >= 0x21) _glewMarkAvailable("GL_VERSION_2_1");
-		if (v >= 0x31) _glewMarkAvailable("GL_VERSION_3_1");
-		if (v >= 0x32) _glewMarkAvailable("GL_VERSION_3_2");
-		if (v >= 0x33) _glewMarkAvailable("GL_VERSION_3_3");
-		if (v >= 0x40) _glewMarkAvailable("GL_VERSION_4_0");
+		
+if (v >= 0x13) _glewAvailable[0] = 1;
+if (v >= 0x20) _glewAvailable[1] = 1;
 	}
 
 	_glewMarkAvailable((GLubyte*)glGetString(GL_EXTENSIONS));
@@ -386,14 +294,10 @@ GLenum glewInit()
 		/* initialize extensions */
 		wgl_crippled = _wglewGetExtensionsStringARB == NULL && _wglewGetExtensionsStringEXT == NULL;
 
-		if (_wglewGetExtensionsStringARB == NULL)
-		{
-			if (_wglewGetExtensionsStringEXT != NULL)
-				p = (GLubyte*)_wglewGetExtensionsStringEXT();
-		}
-		else
-		{
+		if (_wglewGetExtensionsStringARB != NULL) {
 			p = (GLubyte*)_wglewGetExtensionsStringARB(wglGetCurrentDC());
+		} else if (_wglewGetExtensionsStringEXT != NULL) {
+			p = (GLubyte*)_wglewGetExtensionsStringEXT();
 		}
 
 		_glewMarkAvailable(p);
@@ -402,26 +306,23 @@ GLenum glewInit()
 
 	{
 		GLubyte const* funcs_per_ext = _glewFuncUsedPerExt;
-		char const* cur_func = __glewFuncUsedNames;
+		GLubyte const* cur_func = (GLubyte const*)__glewFuncUsedNames;
 		int ext_index = 0;
 		int func_index = 0;
 		int r = 1, k = 0;
 
-		for(ext_index = 0; ext_index < 2; ++ext_index)
-		{
+		for(ext_index = 0; ext_index < 5; ++ext_index) {
 			int available = _glewAvailable[ext_index];
 #ifdef _WIN32
-			if(cur_func[0] == 'w' && wgl_crippled)
+			if (cur_func[0] == 'w' && wgl_crippled)
 				available = 1; /* Try anyway */
 #endif
-			for(k = 0; k < funcs_per_ext[ext_index]; ++k)
-			{
-				if(available)
-					r = ((_glewFuncTable[func_index] = (void(*)())glewGetProcAddress((const GLubyte*)cur_func)) != NULL) && r;
-
+			for (k = 0; k < funcs_per_ext[ext_index]; ++k) {
+				if (available)
+					r = ((_glewFuncTable[func_index] = (void(*)())glewGetProcAddress(cur_func)) != NULL) && r;
 
 				++func_index;
-				cur_func += _glewStrLen(cur_func) + 1;
+				cur_func += _glewStrCLen(cur_func, '\0') + 1;
 			}
 
 			if(!r) available = 0;

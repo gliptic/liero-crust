@@ -28,12 +28,33 @@
 
 
 #include <stddef.h>
-
+#include <stdint.h>
 #include "lua.h"
 
 #include "lualib.h"
 #include "lauxlib.h"
 
+#include "lfs.h"
+
+
+int doubleasi64(lua_State* L) {
+	double d = luaL_checknumber(L, 1);
+	int64_t v;
+	memcpy(&v, &d, sizeof(v));
+	lua_pushinteger(L, v);
+	return 1;
+}
+
+static const luaL_Reg floatconv_funcs[] = {
+  {"doubleasint", doubleasi64},
+  {NULL, NULL}
+};
+
+
+LUAMOD_API int luaopen_floatconv(lua_State *L) {
+	luaL_newlib(L, floatconv_funcs);
+	return 1;
+}
 
 /*
 ** these libs are loaded by lua.c and are readily available to any Lua
@@ -50,6 +71,8 @@ static const luaL_Reg loadedlibs[] = {
   {LUA_MATHLIBNAME, luaopen_math},
   {LUA_UTF8LIBNAME, luaopen_utf8},
   {LUA_DBLIBNAME, luaopen_debug},
+  {"lfs", luaopen_lfs},
+  {"floatconv", luaopen_floatconv},
 #if defined(LUA_COMPAT_BITLIB)
   {LUA_BITLIBNAME, luaopen_bit32},
 #endif

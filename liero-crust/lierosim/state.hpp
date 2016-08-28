@@ -15,26 +15,33 @@
 
 namespace liero {
 
-//static int const NObjectLimit = 600 + 600;
-
-//typedef FixedObjectList<NObject, NObjectLimit> NObjectList;
 typedef FixedObjectList<BObject, 700> BObjectList; // TODO: Configurable limit
 typedef FixedObjectList<SObject, 700> SObjectList;
 typedef FixedObjectList<Worm, 128> WormList;
 
-struct StateInput {
-	StateInput() {
-		// TODO
-		worm_controls.push_back(ControlState());
-		worm_controls.push_back(ControlState());
+typedef void (*PlaySoundFunc)(liero::ModRef& mod, TransientState& transient_state);
+
+struct TransientState {
+	TransientState(usize worm_count, PlaySoundFunc play_sound_init, void* sound_user_data_init)
+		: play_sound(play_sound_init)
+		, sound_user_data(sound_user_data_init) {
+
+		for (usize i = 0; i < worm_count; ++i) {
+			worm_state.push_back(WormTransientState());
+		}
 	}
 
-	tl::Vec<ControlState> worm_controls;
+	tl::Vec<WormTransientState> worm_state;
+
+	PlaySoundFunc play_sound;
+	void* sound_user_data;
 };
+
+#define PROFILE 1
 
 struct State {
 	Level level;
-	Mod& mod;
+	ModRef mod;
 
 	NObjectList nobjects;
 	BObjectList bobjects;
@@ -43,24 +50,34 @@ struct State {
 
 	Cellphase nobject_broadphase;
 
-	tl::XorShift rand;
-	tl::XorShift gfx_rand; // GFX
-
+	tl::LcgPair rand;
+	tl::LcgPair gfx_rand; // GFX
+	
 	u32 current_time;
 
-	void update(gfx::CommonWindow& window);
+#if PROFILE
+	u32 col_mask_tests, col_tests, col2_tests;
+#endif
 
-	State(Mod& mod)
+	u32 worm_bloom_x, worm_bloom_y; // TEMP: This is transient. Shouldn't be in State
+
+	void update(TransientState& transient_state);
+
+	State(ModRef mod)
 		: mod(mod)
 		, current_time(0)
 		, nobject_broadphase(NObjectLimit)
-		, gfx_rand(0xff) {
-
+		, gfx_rand(0xf0f0f0, 0x777777)
+#if PROFILE
+		, col_mask_tests(0), col_tests(0), col2_tests(0)
+#endif
+	{
+	/*
 		auto r = worms.all();
 		u32 index = 0;
 		for (Worm* w; (w = r.next()) != 0; ) {
 			w->index = index++;
-		}
+	*/
 	}
 };
 

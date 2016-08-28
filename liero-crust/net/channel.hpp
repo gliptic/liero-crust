@@ -1,7 +1,7 @@
 #ifndef CHANNEL_HPP
 #define CHANNEL_HPP 1
 
-#include "tl/cstdint.h"
+#include <tl/std.h>
 #include <cstddef>
 #include <algorithm>
 
@@ -33,7 +33,7 @@ struct channel {
 	// TODO: Make the channel into a writable buffer
 	void send(u8 const* msg, std::size_t len) {
 		while (len) {
-			std::size_t count = std::min(len, (std::size_t)(this->end - this->next));
+			std::size_t count = tl::min(len, (std::size_t)(this->end - this->next));
 			memcpy(this->next, msg, count);
 			this->next += count;
 			len -= count;

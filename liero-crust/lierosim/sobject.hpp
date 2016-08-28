@@ -5,6 +5,11 @@
 
 namespace liero {
 
+struct SObjectType;
+struct State;
+
+void create(SObjectType const& self, State& state, tl::VectorI2 pos);
+
 struct SObject {
 	tl::VectorI2 pos;
 	u32 ty_idx;

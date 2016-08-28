@@ -26,7 +26,7 @@ typedef BOOL(WINAPI * PFNWGLSWAPINTERVALEXTPROC) (int interval);
 
 
 void test_net() {
-	tl::sink snk(std::unique_ptr<tl::pushable_vector>(new tl::pushable_vector));
+	tl::Sink snk(std::unique_ptr<tl::pushable_vector>(new tl::pushable_vector));
 
 	snk.put(0);
 	snk.put(1);
@@ -192,7 +192,7 @@ void hyp_build(tl::vector_slice<u8> code) {
 		printf("Estimate packed size: %u\n", printer.estimated_size);
 	}
 
-	printf("Source size: %u\n", (u32)code.size());
+	printf("source size: %u\n", (u32)code.size());
 	printf("Size: %u bytes\n", (u32)p.output.size()); // + mod.binding_arr.size_in_bytes() + mod.expr_arr.size_in_bytes()));
 
 	int compressed_size = 0;
@@ -352,7 +352,7 @@ void test_local_set() {
 }
 
 void test_tga() {
-	auto file = tl::source::from_file("D:\\cpp\\marfpu\\_build\\TC\\lierov133winxp\\sprites\\large.tga");
+	auto file = tl::Source::from_file("D:\\cpp\\marfpu\\_build\\TC\\lierov133winxp\\sprites\\large.tga");
 
 	tl::Image img;
 	tl::Palette pal;

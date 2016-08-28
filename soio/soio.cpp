@@ -60,7 +60,7 @@ Tag const value_tags[KiObject] = {
 	{ State::perform, id_activate, 0 }, // Symbol
 };
 
-Value block_activate(Message* m, Value locals, Value target, Value self, State* state) {
+Value block_activate(Message* m, Value locals, Value target, Value /*self*/, State* state) {
 	Block* block = ((Block *)target.obj);
 	Obj* new_locals = state->make_object(block->context);
 
@@ -81,7 +81,7 @@ Value block_activate(Message* m, Value locals, Value target, Value self, State* 
 	return state->perform_on(block->body, Value(new_locals), Value(new_locals));
 }
 
-Value block_make(Message* m, Value locals, Value target, Value self, State* state) {
+Value block_make(Message* m, Value locals, Value /*target*/, Value /*self*/, State* state) {
 	Block* block = state->make_block(0, locals);
 
 	Message* args = m->first_child;
@@ -109,7 +109,7 @@ Value block_make(Message* m, Value locals, Value target, Value self, State* stat
 	return Value(block);
 }
 
-Value obj_set_slot(Message* m, Value locals, Value target, Value self, State* state) {
+Value obj_set_slot(Message* m, Value locals, Value /*target*/, Value self, State* state) {
 	Message* arg = m->first_child;
 
 	if (self.kind != KiObject) {
@@ -127,7 +127,7 @@ Value obj_set_slot(Message* m, Value locals, Value target, Value self, State* st
 	return val;
 }
 
-Value obj_then(Message* m, Value locals, Value target, Value self, State* state) {
+Value obj_then(Message* m, Value locals, Value /*target*/, Value self, State* state) {
 
 	if (is_true(self)) {
 		// TODO: Check number of arguments
@@ -138,7 +138,7 @@ Value obj_then(Message* m, Value locals, Value target, Value self, State* state)
 	return Value(false);
 }
 
-Value obj_else(Message* m, Value locals, Value target, Value self, State* state) {
+Value obj_else(Message* m, Value locals, Value /*target*/, Value self, State* state) {
 
 	if (!is_true(self)) {
 		// TODO: Check number of arguments
@@ -187,7 +187,7 @@ void block_mark(Obj* block, u32 cur_sweep_bit) {
 
 Block* State::make_block(Message* body, Value context) {
 	void *p = malloc(sizeof(Block));
-	Block* m = register_obj(new (p) Block);
+	Block* m = register_obj(new (p, tl::non_null()) Block);
 
 	static Tag const block_tag = {
 		State::perform,
@@ -220,7 +220,7 @@ static Tag const message_tag = {
 Message* State::make_message(Message* target, Value name, Message* first_child) {
 	void *p = malloc(sizeof(Message));
 
-	Message* m = register_obj(new (p) Message(first_child));
+	Message* m = register_obj(new (p, tl::non_null()) Message(first_child));
 
 	if (target)
 		target->next = m;
@@ -235,7 +235,7 @@ Message* State::make_message(Message* target, Value name, Message* first_child) 
 Message* State::make_message_lit(Message* target, Value literal) {
 	void *p = malloc(sizeof(Message));
 
-	Message* m = register_obj(new (p) Message(0));
+	Message* m = register_obj(new (p, tl::non_null()) Message(0));
 
 	if (target)
 		target->next = m;
@@ -254,7 +254,7 @@ static Tag const obj_tag = {
 Obj* State::make_object(Value proto) {
 	void *p = malloc(sizeof(Obj));
 
-	Obj* m = register_obj(new (p) Obj);
+	Obj* m = register_obj(new (p, tl::non_null()) Obj);
 
 	m->t = &obj_tag;
 	m->proto = proto;
@@ -272,7 +272,7 @@ String* State::make_string(tl::String value) {
 	return m;
 }*/
 
-Value str_len(Message* m, Value locals, Value target, Value self, State* state) {
+Value str_len(Message* /*m*/, Value /*locals*/, Value /*target*/, Value self, State* /*state*/) {
 
 	String* str = (String *)self.obj;
 
@@ -388,7 +388,7 @@ struct Parser {
 			this->tt = is_op ? TOp : TSymbol;
 			this->literal = sym;
 		} else if ((ch >= '0' && ch <= '9')) {
-			u8 const* start = cur - 1;
+			//u8 const* start = cur - 1;
 			u32 num = (ch - '0');
 			do {
 				ch = *cur;
@@ -420,7 +420,7 @@ struct Parser {
 				}
 			}
 
-			str = new (str) String();
+			str = new (str, tl::non_null()) String();
 
 			str->t = &obj_tag;
 			str->proto = state.string_proto;
@@ -676,13 +676,13 @@ void print_tree(Message* m, State* state) {
 	}
 }
 
-Value pm_activate(Message* m, Value locals, Value target, Value self, State* state) {
+Value pm_activate(Message* m, Value /*locals*/, Value /*target*/, Value /*self*/, State* state) {
 	Message* start = m->first_child;
 	print_tree(start, state);
 	return Value();
 }
 
-Value eq_activate(Message* m, Value locals, Value target, Value self, State* state) {
+Value eq_activate(Message* m, Value locals, Value /*target*/, Value /*self*/, State* state) {
 	Message* arg1 = m->first_child;
 	if (arg1) {
 		Message* arg2 = arg1->next_child;
@@ -697,7 +697,7 @@ Value eq_activate(Message* m, Value locals, Value target, Value self, State* sta
 }
 
 
-Value fail_activate(Message* m, Value locals, Value target, Value self, State* state) {
+Value fail_activate(Message* m, Value locals, Value /*target*/, Value /*self*/, State* state) {
 	if (m->first_child) {
 		printf("Failure because:");
 
@@ -711,7 +711,7 @@ Value fail_activate(Message* m, Value locals, Value target, Value self, State* s
 	return Value();
 }
 
-Value seq_activate(Message* m, Value locals, Value target, Value self, State* state) {
+Value seq_activate(Message* m, Value locals, Value /*target*/, Value /*self*/, State* state) {
 	Message* arg = m->first_child;
 	Value last_value;
 	

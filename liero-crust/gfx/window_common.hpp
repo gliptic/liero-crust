@@ -11,17 +11,47 @@ static void init_extensions() {
 	}
 }
 
+void DefaultProgram::init(Shader vs_init, Shader fs_init, u32 width, u32 height) {
+	this->vs = std::move(vs_init);
+	this->fs = std::move(fs_init);
+
+	this->Program::operator=(Program::create());
+	this->attach(this->vs);
+	this->attach(this->fs);
+
+	this->bind_attrib_location(AttribPosition, "position");
+	this->bind_attrib_location(AttribColor, "color");
+	this->bind_attrib_location(AttribTexCoord, "texcoord");
+
+	this->link();
+
+	this->transform_uni = this->uniform("transform");
+	this->translation_uni = this->uniform("translation");
+	this->texture = this->uniform("texture");
+
+	GLfloat tr[4] = {
+		2.f / width, 0.f,
+		0.f, -2.f / height
+	};
+
+	this->use();
+	this->transform_uni.set(tr);
+	this->translation_uni.set(tl::VectorF2(-1.f, 1.f));
+	this->texture.set(0);
+}
+
 static int common_setup_gl(CommonWindow* self) {
 	// OpenGL stuff
 
 	init_extensions();
 
 #if BONK_USE_GL2
-	if(!GLEW_VERSION_2_0)
+	if(!GL_VERSION_2_0)
 		return -1; // TODO: OpenGL 2.0 required
 #endif
 
 	glViewport(0, 0, self->width, self->height);
+
 	//glClearColor(0.15f, 0.15f, 0.4f, 0.0f);
 	glClearColor(0.f, 0.f, 0.f, 0.0f);
 	glClearDepth(0.0f);
@@ -31,7 +61,50 @@ static int common_setup_gl(CommonWindow* self) {
 	glDisable(GL_DEPTH_TEST);
 
 #if BONK_USE_GL2
-	// TODO: OpenGL 2.0+ stuff if supported
+	static char const defaultVsSrc[] = {
+
+R"=(#version 110
+uniform mat2 transform;
+uniform vec2 translation;
+attribute vec2 position;
+attribute vec2 texcoord;
+attribute vec4 color;
+
+varying vec2 fragTexcoord;
+varying vec4 fragColor;
+
+void main()
+{
+	gl_Position = vec4((transform * position) + translation, 0.0, 1.0);
+	fragTexcoord = texcoord;
+	fragColor = color;
+})="
+	};
+
+	static char const defaultFsSrc[] = {
+R"=(#version 110
+
+uniform sampler2D texture;
+varying vec2 fragTexcoord;
+varying vec4 fragColor;
+
+void main()
+{
+	gl_FragColor = vec4((texture2D(texture, fragTexcoord) * fragColor).rgb, 1);
+})="
+	};
+
+	check_gl();
+	
+	glActiveTexture(GL_TEXTURE0);
+
+	self->textured.init(
+		Shader(Shader::Vertex, defaultVsSrc),
+		Shader(Shader::Fragment, defaultFsSrc),
+		self->width,
+		self->height
+	);
+
 #else
 	glOrtho(0.0, self->width, self->height, 0.0, -1.0, 1.0);
 #endif
@@ -74,9 +147,12 @@ static void set_button(CommonWindow* self, int id, char down, uint32_t character
 
 CommonWindow::CommonWindow() {
 	memset(this, 0, sizeof(CommonWindow));
+
+#if GFX_PREDICT_VSYNC
+	this->min_swap_interval = 0xffffffff;
+#endif
 	this->refresh_rate = 60;
 	this->bpp = 32;
-	this->min_swap_interval = 0xffffffffffffffffull;
 	init_keymaps();
 }
 

@@ -1,7 +1,7 @@
 #ifndef LIERO_NOBJECT_HPP
 #define LIERO_NOBJECT_HPP 1
 
-#include "config.hpp"
+#include <liero-sim/config.hpp>
 #include <tl/cstdint.h>
 
 #include "object_list.hpp"
@@ -32,7 +32,8 @@ static int const NObjectLimit = 600 + 600;
 
 typedef FixedObjectList<NObject, NObjectLimit> NObjectList;
 
-bool update(NObject& self, State& state, NObjectList::range& range);
+void create(NObjectType const& self, State& state, Scalar angle, Vector2 pos, Vector2 vel, tl::Color override_color = tl::Color(0));
+bool update(NObject& self, State& state, NObjectList::Range& range);
 
 }
 
