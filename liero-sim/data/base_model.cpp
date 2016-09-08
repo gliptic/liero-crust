@@ -15,4 +15,17 @@ WriterRef<u64> Expander::expand_array_(Offset const& from, usize struct_words, S
 	return new_arr;
 }*/
 
+
+usize StringOffset::calc_extra_size(usize cur_size, Expander& expander, StringOffset const& src) {
+	TL_UNUSED(expander); TL_UNUSED(src);
+	return cur_size + round_size_up(src.size);
+}
+
+void StringOffset::expand_raw(Ref<StringOffset> dest, Expander& expander, StringOffset const& src) {
+	TL_UNUSED(expander);
+
+	dest.set(expander.alloc_str_raw(src.get()));
+}
+
+
 }

@@ -7,7 +7,7 @@
 
 namespace sfx {
 
-typedef tl::VecSlice<i16> Sound;
+typedef tl::Vec<i16> Sound;
 
 struct Channel {
 	// Mutator write once, mixer read

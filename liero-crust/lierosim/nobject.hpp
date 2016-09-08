@@ -10,6 +10,7 @@
 namespace liero {
 
 struct State;
+struct TransientState;
 struct NObjectType;
 
 struct NObject {
@@ -24,16 +25,17 @@ struct NObject {
 	u32 ty_idx, time_to_die, cur_frame;
 
 	u16 cell;
+	i16 owner;
 
-	static void explode_obj(NObjectType const& ty, Vector2 pos, Vector2 vel, State& state);
+	static void explode_obj(NObjectType const& ty, Vector2 pos, Vector2 vel, i16 owner, State& state, TransientState& transient_state);
 };
 
 static int const NObjectLimit = 600 + 600;
 
 typedef FixedObjectList<NObject, NObjectLimit> NObjectList;
 
-void create(NObjectType const& self, State& state, Scalar angle, Vector2 pos, Vector2 vel, tl::Color override_color = tl::Color(0));
-bool update(NObject& self, State& state, NObjectList::Range& range);
+void create(NObjectType const& self, State& state, Scalar angle, Vector2 pos, Vector2 vel, i16 owner = -1, tl::Color override_color = tl::Color(0));
+bool update(NObject& self, State& state, NObjectList::Range& range, TransientState& transient_state);
 
 }
 

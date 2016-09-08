@@ -21,12 +21,6 @@ struct PixelCount {
 		counts[3] = 0;
 	}
 
-	/*
-	void add(Direction dir, u32 v) {
-		counts[dir] += u8(v);
-	}
-	*/
-
 	u8& operator[](usize idx) {
 		return counts[idx];
 	}
@@ -110,11 +104,12 @@ inline PixelCount count_worm_pixels(Worm& worm, State& state) {
 	return pixel_counts;
 }
 
-inline void update_aiming(Worm& worm, State& state, ControlState controls) {
+inline void update_aiming(Worm& worm, State& state, WormTransientState& transient_state) {
 
 	ModRef& mod = state.mod;
-	bool up = controls[Worm::Up];
-	bool down = controls[Worm::Down];
+	auto& input = transient_state.input;
+	bool up = input.up();
+	bool down = input.down();
 
 	worm.aiming_angle += worm.aiming_angle_vel;
 
@@ -132,8 +127,8 @@ inline void update_aiming(Worm& worm, State& state, ControlState controls) {
 		worm.aiming_angle = Scalar(-32);
 	}
 
-	if (worm.movable()
-	 && (worm.ninjarope.st == Ninjarope::Hidden || !controls[Worm::Change])) {
+	if (transient_state.movable()
+	 && (worm.ninjarope.st == Ninjarope::Hidden || !input.change_or_rope())) {
 
 		if (up && worm.aiming_angle_vel > -mod.tcdata->max_aim_vel()) {
 			worm.aiming_angle_vel -= mod.tcdata->aim_acc();
@@ -145,14 +140,14 @@ inline void update_aiming(Worm& worm, State& state, ControlState controls) {
 	}
 }
 
-inline void update_actions(Worm& worm, State& state, ControlState controls, PixelCount pixel_counts, TransientState& transient_state) {
+inline void update_actions(Worm& worm, u32 worm_idx, State& state, WormInput input, PixelCount pixel_counts, TransientState& transient_state) {
 
 	ModRef& mod = state.mod;
 
-	if (controls[Worm::Change]) {
+	if (input.change_or_rope()) {
 		if (worm.ninjarope.st != Ninjarope::Hidden) {
-			if (controls[Worm::Up]) worm.ninjarope.length -= mod.tcdata->nr_pull_vel();
-			if (controls[Worm::Down]) worm.ninjarope.length += mod.tcdata->nr_release_vel();
+			if (input.up()) worm.ninjarope.length -= mod.tcdata->nr_pull_vel();
+			if (input.down()) worm.ninjarope.length += mod.tcdata->nr_release_vel();
 
 			if (worm.ninjarope.length < mod.tcdata->nr_min_length())
 				worm.ninjarope.length = mod.tcdata->nr_min_length();
@@ -161,25 +156,21 @@ inline void update_actions(Worm& worm, State& state, ControlState controls, Pixe
 		}
 
 		// !Jump | !Change -> Jump & Change
-		if (controls[Worm::Jump]
-		 && (!worm.control_flags[Worm::Jump] || !worm.control_flags[Worm::Change])) {
+		if (worm.prev_no_jump_or_no_change() && input.rope()) {
 			worm.ninjarope.st = Ninjarope::Floating;
 
-			// TODO: game.soundPlayer->play(5);
-			transient_state.play_sound(mod, transient_state); // TEMP. Specify exact sound.
+			transient_state.play_sound(mod, 5, transient_state); // TODO: 5 should be stored in TC
 
 			worm.ninjarope.pos = worm.pos;
 			worm.ninjarope.vel = sincos(worm.abs_aiming_angle()) * mod.tcdata->nr_throw_vel();
 			worm.ninjarope.length = mod.tcdata->nr_initial_length();
-		} else {
-			worm.control_flags.set(Worm::Jump, false);
 		}
 
 		worm.muzzle_fire = 0;
 
 		// TODO: if(weapons[currentWeapon].available() || game.settings->loadChange)    ...maybe
 		if (true) {
-			if (!worm.control_flags[Worm::Left] && controls[Worm::Left]) {
+			if (worm.prev_no_left() && input.left()) {
 				if (worm.current_weapon-- == 0) {
 					worm.current_weapon = Worm::SelectableWeapons - 1;
 				}
@@ -187,7 +178,7 @@ inline void update_actions(Worm& worm, State& state, ControlState controls, Pixe
 				// TODO: hotspotX/Y? That should be in rendering code
 			}
 
-			if (!worm.control_flags[Worm::Right] && controls[Worm::Right]) {
+			if (worm.prev_no_right() && input.right()) {
 				if (++worm.current_weapon >= Worm::SelectableWeapons) {
 					worm.current_weapon = 0;
 				}
@@ -197,28 +188,19 @@ inline void update_actions(Worm& worm, State& state, ControlState controls, Pixe
 		}
 	} else {
 
-		if (controls[Worm::Left] && controls[Worm::Right]) {
+		// !Left | !Right | Change -> Left & Right & !Change
+		if (input.dig() && worm.prev_change_or_no_dig()) {
 
-			// Change -> Left & Right & !Change
-			// !Left | !Right -> Left & Right
+			auto step = sincos(worm.abs_aiming_angle()) * 2;
+			auto dig_pos = worm.pos + step;
 
-			if (worm.control_flags[Worm::Change]
-			 || !worm.control_flags[Worm::Left]
-			 || !worm.control_flags[Worm::Right]) {
-				auto step = sincos(worm.abs_aiming_angle()) * 2;
-				auto dig_pos = worm.pos + step;
-
-				// TODO: TC should have dig effect constant
-				draw_level_effect(state, dig_pos.cast<i32>(), 7);
-				dig_pos += step;
-				draw_level_effect(state, dig_pos.cast<i32>(), 7);
-			}
+			// TODO: TC should have dig effect constant
+			draw_level_effect(state, dig_pos.cast<i32>(), 7);
+			draw_level_effect(state, (dig_pos + step).cast<i32>(), 7);
 		}
 
 		// !Jump & !Change -> Jump & !Change
-		if (controls[Worm::Jump]
-		  && !worm.control_flags[Worm::Jump]
-		  && !worm.control_flags[Worm::Change]) {
+		if (worm.prev_no_jump_nor_change() && input.jump()) {
 
 			worm.ninjarope.st = Ninjarope::Hidden;
 
@@ -229,13 +211,13 @@ inline void update_actions(Worm& worm, State& state, ControlState controls, Pixe
 
 		WormWeapon& ww = worm.weapons[worm.current_weapon];
 
-		if (controls[Worm::Fire] && ww.loading_left == 0 && ww.delay_left == 0) {
+		if (input.fire() && ww.loading_left == 0 && ww.delay_left == 0) {
 			WeaponType const& w = mod.get_weapon_type(ww.ty_idx);
 			--ww.ammo;
 			ww.delay_left = w.delay();
 			// TODO: worm.muzzle_fire = w.muzzle_fire;
 
-			fire(w, state, worm.abs_aiming_angle(), worm.vel, worm.pos - Vector2(0, 1));
+			fire(w, state, transient_state, worm.abs_aiming_angle(), worm.vel, worm.pos - Vector2(0, 1), tl::narrow<i16>(worm_idx));
 
 			worm.vel += sincos(worm.abs_aiming_angle()) * w.recoil();
 		}
@@ -246,29 +228,25 @@ inline void update_actions(Worm& worm, State& state, ControlState controls, Pixe
 
 inline void update_movements(Worm& worm, State& state, WormTransientState& transient_state) {
 
-	auto controls = transient_state.controls;
+	auto input = transient_state.input;
 
-	if (!controls[Worm::Change] && worm.movable()) {
+	if (!input.change_or_rope() && transient_state.movable()) {
 		ModRef& mod = state.mod;
-		bool left = controls[Worm::Left];
-		bool right = controls[Worm::Right];
+		bool left = input.left();
+		bool right = input.right();
 
-		//worm.flags_gfx &= ~Worm::Animate;
+		if (left ^ right) {
+			u8 new_dir = left;
+			i8 sign = new_dir ? -1 : 1;
 
-		if (left && right) {
-			// TODO: Dig
-		} else if (left || right) {
-			i8 new_dir = left ? -1 : 1;
+			if (worm.vel.x * sign < mod.tcdata->max_vel())
+				worm.vel.x += mod.tcdata->walk_vel() * sign;
 
-			if (worm.vel.x * new_dir < mod.tcdata->max_vel())
-				worm.vel.x += mod.tcdata->walk_vel() * new_dir;
-
-			if (worm.direction != new_dir) {
+			if (worm.direction() != new_dir) {
 				worm.aiming_angle_vel = Scalar(0);
 			}
 
-			worm.direction = new_dir;
-			//worm.flags_gfx |= Worm::Animate;
+			worm.direction(new_dir);
 			transient_state.gfx_flags |= WormTransientState::Animate;
 		}
 	}
@@ -365,6 +343,35 @@ inline void update_weapons(Worm& worm, State& state) {
 	}
 }
 
+inline void update_steerables(Worm& worm, u32 worm_index, State& state, WormTransientState& transient_state) {
+	auto& w = worm.weapons[worm.current_weapon];
+	auto& weapon_ty = state.mod.get_weapon_type(w.ty_idx);
+	auto& nobj_ty = state.mod.get_nobject_type(weapon_ty.nobject_type());
+
+	u32 count = 0;
+	tl::VectorI2 sum;
+
+	if (nobj_ty.kind() == NObjectKind::Steerable) {
+		auto r = state.nobjects.all();
+		for (NObject* nobj; (nobj = r.next()) != 0; ) {
+			if (nobj->ty_idx == w.ty_idx && nobj->owner == tl::narrow<i16>(worm_index)) {
+				if (transient_state.input.left()) {
+					nobj->cur_frame -= 1 + (state.current_time & 1);
+				}
+				if (transient_state.input.right()) {
+					nobj->cur_frame += 1 + (state.current_time & 1);
+				}
+
+				nobj->cur_frame &= 127;
+				++count;
+				sum += nobj->pos.cast<i32>();
+			}
+		}
+	}
+
+	transient_state.steerable_count = count;
+}
+
 }
 
 void Worm::reset_weapons(ModRef& mod) {
@@ -393,12 +400,10 @@ void Worm::update(State& state, TransientState& transient_state, u32 index) {
 
 		// TODO: Bonus coldet?
 
-		// TODO: processSteerables?
-		//bool movable = true; // TODO: Set to false when steering
-
-		update_aiming(*this, state, worm_transient_state.controls);
+		update_steerables(*this, index, state, worm_transient_state);
+		update_aiming(*this, state, worm_transient_state);
 		update_weapons(*this, state);
-		update_actions(*this, state, worm_transient_state.controls, pixel_counts, transient_state);
+		update_actions(*this, index, state, worm_transient_state.input, pixel_counts, transient_state);
 		update_physics(*this, state, pixel_counts);
 		update_movements(*this, state, worm_transient_state);
 
@@ -407,7 +412,7 @@ void Worm::update(State& state, TransientState& transient_state, u32 index) {
 		*/
 	}
 
-	this->control_flags = worm_transient_state.controls;
+	this->prev_controls(worm_transient_state.input);
 }
 
 void Ninjarope::update(Worm& owner, State& state) {

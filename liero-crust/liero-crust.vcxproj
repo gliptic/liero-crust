@@ -184,6 +184,7 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ai.cpp" />
     <ClCompile Include="bmp.cpp" />
     <ClCompile Include="gfx\buttons.cpp" />
     <ClCompile Include="gfx\geom_buffer.cpp" />
@@ -224,6 +225,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="runtime.cpp" />
     <ClCompile Include="sfx\mixer.cpp" />
     <ClCompile Include="sfx\sfx_win32.cpp" />
     <ClCompile Include="test_comp.cpp" />

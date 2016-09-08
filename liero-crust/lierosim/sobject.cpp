@@ -3,7 +3,7 @@
 
 namespace liero {
 
-void create(SObjectType const& self, State& state, tl::VectorI2 pos) {
+void create(SObjectType const& self, State& state, TransientState& transient_state, tl::VectorI2 pos) {
 	SObject* obj = state.sobjects.new_object_reuse();
 	obj->pos = tl::VectorI2(pos.x - 8, pos.y - 8);
 	obj->ty_idx = u32(&self - state.mod.sobject_types);
@@ -11,11 +11,17 @@ void create(SObjectType const& self, State& state, tl::VectorI2 pos) {
 
 	// TODO: Damage and stuff
 
-	Scalar blow_away = 3000_lf; // TODO: This is for large_explosion
-	Scalar obj_blow_away = blow_away * (1.0 / 3.0); // TODO: Store
+	if (self.start_sound() >= 0) {
+		i16 sound = i16(self.start_sound() + state.gfx_rand.get_i32(self.num_sounds()));
+		transient_state.play_sound(state.mod, sound, transient_state);
+	}
 
-	if (self.detect_range()) {
-		u32 ldetect_range = self.detect_range();
+	Scalar worm_blow_away = self.worm_blow_away();
+	Scalar obj_blow_away = self.nobj_blow_away();
+
+	i32 ldetect_range = self.detect_range();
+
+	if (ldetect_range) {
 
 		auto r = state.nobject_broadphase.area(pos.x - ldetect_range + 1, pos.y - ldetect_range + 1, pos.x + ldetect_range - 1, pos.y + ldetect_range - 1);
 
@@ -34,6 +40,43 @@ void create(SObjectType const& self, State& state, tl::VectorI2 pos) {
 
 					nobj.vel.x += obj_blow_away * power.x * sign(delta.x);
 					nobj.vel.y += obj_blow_away * power.y * sign(delta.y);
+				}
+			}
+		}
+	}
+
+	if (self.damage()) {
+		
+		// TODO: might_collide_with_worm assumes the worm is not a point, but this test is against a point.
+
+		if (transient_state.might_collide_with_worm(pos, ldetect_range)) {
+			++transient_state.col_tests;
+
+			auto wr = state.worms.all();
+
+			for (Worm* w; (w = wr.next()) != 0; ) {
+				auto wpos = w->pos.cast<i32>();
+				if (wpos.x < pos.x + ldetect_range
+					&& wpos.x > pos.x - ldetect_range
+					&& wpos.y < pos.y + ldetect_range
+					&& wpos.y > pos.y - ldetect_range) {
+
+					auto delta = wpos - pos;
+					auto power = tl::VectorI2(ldetect_range - abs(delta.x), ldetect_range - abs(delta.y));
+
+					if (fabs(w->vel.x) < Scalar(2)) {
+						w->vel.x += worm_blow_away * power.x * sign(delta.x);
+					}
+
+					if (fabs(w->vel.y) < Scalar(2)) {
+						w->vel.y += worm_blow_away * power.y * sign(delta.y);
+					}
+
+					i32 ldamage = (2 * self.damage()) / (power.x + power.y);
+					if (ldetect_range)
+						ldamage /= ldetect_range;
+
+					// TODO: Cause damage to worm
 				}
 			}
 		}

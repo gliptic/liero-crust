@@ -32,6 +32,32 @@ namespace liero {
 				c -= dy; } \
 			body_ } } }
 
+#define DO_LINE2(body_) { \
+	tl::VectorI2 cv = from; \
+	tl::VectorI2 dv = to - from; \
+	i32 sx = sign(dx); \
+	i32 sy = sign(dy); \
+	dx = std::abs(dx); \
+	dy = std::abs(dy); \
+	if (dx > dy) { \
+		i32 c = -(dx >> 1); \
+		while (cx != to.x) { \
+			c += dy; \
+			cx += sx; \
+			if (c > 0) { \
+				cy += sy; \
+				c -= dx; } \
+			body_ } \
+	} else { \
+		i32 c = -(dy >> 1); \
+		while (cy != to.y) { \
+			c += dx; \
+			cy += sy; \
+			if (c > 0) { \
+				cx += sx; \
+				c -= dy; } \
+			body_ } } }
+
 void draw_ninjarope(tl::ImageSlice img, tl::VectorI2 from, tl::VectorI2 to, tl::VecSlice<tl::Color> colors) {
 
 	u32 max_color = u32(colors.size());
@@ -63,8 +89,10 @@ void worm_blit(tl::BlitContext ctx) {
 		for (u32 i = 0; i < w; ++i) {
 			auto c = tl::Color::read(fp + i*4);
 			if (c.a()) {
+#if 0
 				if (Material(mat_from_index[c.a()]).worm())
 					c = tl::Color(0xff0000ff);
+#endif
 				tl::Color::write(tp + i*4, c);
 			}
 		}

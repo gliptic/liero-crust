@@ -38,14 +38,14 @@ enum struct NObjectAnimation : u8 {
 };
 
 struct alignas(8) WeaponTypeReader : ss::Struct {
-	u8 data[64];
+	u8 data[72];
 
 };
 
 struct alignas(8) WeaponType : ss::Struct {
-	static u8 _defaults[64];
+	static u8 _defaults[72];
 
-	u8 data[64];
+	u8 data[72];
 
 	WeaponType() { memcpy(data, _defaults, sizeof(_defaults)); }
 
@@ -61,6 +61,7 @@ struct alignas(8) WeaponType : ss::Struct {
 	u32 delay() const { return this->_field<u32, 52>(); }
 	bool play_reload_sound() const { return (this->_field<u8, 38>() & 1) != 0; }
 	f64 recoil() const { return this->_field<f64, 56>(); }
+	i16 fire_sound() const { return this->_field<i16, 64>(); }
 
 	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<WeaponTypeReader> const& src) {
 		TL_UNUSED(expander); TL_UNUSED(src);
@@ -76,7 +77,7 @@ struct alignas(8) WeaponType : ss::Struct {
 		u64 *p = (u64 *)dest.ptr;
 		u64 const *s = (u64 const*)srcp;
 		u64 const *d = (u64 const*)WeaponType::_defaults;
-		for (u32 i = 0; i < 8; ++i) {
+		for (u32 i = 0; i < 9; ++i) {
 			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
 		}
 		auto name_copy = expander.alloc_str_raw(srcp->_field<ss::StringOffset, 0>().get());
@@ -124,6 +125,7 @@ struct WeaponTypeBuilder : ss::Ref<WeaponTypeReader> {
 		memcpy(&s, &v, sizeof(v));
 		this->_field<u64, 56>() = s ^ 0;
 	}
+	void fire_sound(i16 v) { this->_field<i16, 64>() = v ^ 0; }
 
 };
 
@@ -176,14 +178,14 @@ struct WeaponTypeListBuilder : ss::Ref<WeaponTypeListReader> {
 };
 
 struct alignas(8) NObjectTypeReader : ss::Struct {
-	u8 data[144];
+	u8 data[160];
 
 };
 
 struct alignas(8) NObjectType : ss::Struct {
-	static u8 _defaults[144];
+	static u8 _defaults[160];
 
-	u8 data[144];
+	u8 data[160];
 
 	NObjectType() { memcpy(data, _defaults, sizeof(_defaults)); }
 
@@ -226,6 +228,11 @@ struct alignas(8) NObjectType : ss::Struct {
 	i16 level_effect() const { return this->_field<i16, 140>(); }
 	bool affect_by_sobj() const { return (this->_field<u8, 11>() & 16) != 0; }
 	bool draw_on_level() const { return (this->_field<u8, 11>() & 32) != 0; }
+	f64 acceleration_up() const { return this->_field<f64, 144>(); }
+	i16 expl_sound() const { return this->_field<i16, 142>(); }
+	bool worm_coldet() const { return (this->_field<u8, 11>() & 64) != 0; }
+	u32 worm_col_remove_prob() const { return this->_field<u32, 152>(); }
+	bool worm_col_expl() const { return (this->_field<u8, 11>() & 128) != 0; }
 
 	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<NObjectTypeReader> const& src) {
 		TL_UNUSED(expander); TL_UNUSED(src);
@@ -239,7 +246,7 @@ struct alignas(8) NObjectType : ss::Struct {
 		u64 *p = (u64 *)dest.ptr;
 		u64 const *s = (u64 const*)srcp;
 		u64 const *d = (u64 const*)NObjectType::_defaults;
-		for (u32 i = 0; i < 18; ++i) {
+		for (u32 i = 0; i < 20; ++i) {
 			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
 		}
 	}
@@ -338,17 +345,27 @@ struct NObjectTypeBuilder : ss::Ref<NObjectTypeReader> {
 	void affect_by_sobj(bool v) { this->_field<u8, 11>() = (this->_field<u8, 11>() & 0xef) | ((v ^ 0) << 4); }
 	void draw_on_level(bool v) { this->_field<u8, 11>() = (this->_field<u8, 11>() & 0xdf) | ((v ^ 0) << 5); }
 
+	void acceleration_up(f64 v) {
+		u64 s;
+		memcpy(&s, &v, sizeof(v));
+		this->_field<u64, 144>() = s ^ 0;
+	}
+	void expl_sound(i16 v) { this->_field<i16, 142>() = v ^ 65535; }
+	void worm_coldet(bool v) { this->_field<u8, 11>() = (this->_field<u8, 11>() & 0xbf) | ((v ^ 0) << 6); }
+	void worm_col_remove_prob(u32 v) { this->_field<u32, 152>() = v ^ 0; }
+	void worm_col_expl(bool v) { this->_field<u8, 11>() = (this->_field<u8, 11>() & 0x7f) | ((v ^ 0) << 7); }
+
 };
 
 struct alignas(8) SObjectTypeReader : ss::Struct {
-	u8 data[16];
+	u8 data[32];
 
 };
 
 struct alignas(8) SObjectType : ss::Struct {
-	static u8 _defaults[16];
+	static u8 _defaults[32];
 
-	u8 data[16];
+	u8 data[32];
 
 	SObjectType() { memcpy(data, _defaults, sizeof(_defaults)); }
 
@@ -357,6 +374,11 @@ struct alignas(8) SObjectType : ss::Struct {
 	u16 num_frames() const { return this->_field<u16, 6>(); }
 	u32 detect_range() const { return this->_field<u32, 8>(); }
 	i16 level_effect() const { return this->_field<i16, 12>(); }
+	i16 start_sound() const { return this->_field<i16, 14>(); }
+	u8 num_sounds() const { return this->_field<u8, 16>(); }
+	Scalar worm_blow_away() const { return this->_field<Scalar, 20>(); }
+	Scalar nobj_blow_away() const { return this->_field<Scalar, 24>(); }
+	u32 damage() const { return this->_field<u32, 28>(); }
 
 	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<SObjectTypeReader> const& src) {
 		TL_UNUSED(expander); TL_UNUSED(src);
@@ -370,7 +392,7 @@ struct alignas(8) SObjectType : ss::Struct {
 		u64 *p = (u64 *)dest.ptr;
 		u64 const *s = (u64 const*)srcp;
 		u64 const *d = (u64 const*)SObjectType::_defaults;
-		for (u32 i = 0; i < 2; ++i) {
+		for (u32 i = 0; i < 4; ++i) {
 			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
 		}
 	}
@@ -389,6 +411,11 @@ struct SObjectTypeBuilder : ss::Ref<SObjectTypeReader> {
 	void num_frames(u16 v) { this->_field<u16, 6>() = v ^ 0; }
 	void detect_range(u32 v) { this->_field<u32, 8>() = v ^ 0; }
 	void level_effect(i16 v) { this->_field<i16, 12>() = v ^ 65535; }
+	void start_sound(i16 v) { this->_field<i16, 14>() = v ^ 65535; }
+	void num_sounds(u8 v) { this->_field<u8, 16>() = v ^ 0; }
+	void worm_blow_away(Scalar v) { this->_field<i32, 20>() = (v.raw()) ^ 0; }
+	void nobj_blow_away(Scalar v) { this->_field<i32, 24>() = (v.raw()) ^ 0; }
+	void damage(u32 v) { this->_field<u32, 28>() = v ^ 0; }
 
 };
 
@@ -443,14 +470,14 @@ struct LevelEffectBuilder : ss::Ref<LevelEffectReader> {
 };
 
 struct alignas(8) TcDataReader : ss::Struct {
-	u8 data[248];
+	u8 data[264];
 
 };
 
 struct alignas(8) TcData : ss::Struct {
-	static u8 _defaults[248];
+	static u8 _defaults[264];
 
-	u8 data[248];
+	u8 data[264];
 
 	TcData() { memcpy(data, _defaults, sizeof(_defaults)); }
 
@@ -504,6 +531,8 @@ struct alignas(8) TcData : ss::Struct {
 	u32 worm_float_level() const { return this->_field<u32, 232>(); }
 	Scalar worm_float_power() const { return this->_field<Scalar, 236>(); }
 	i16 rem_exp_object() const { return this->_field<i16, 240>(); }
+	tl::VecSlice<ss::StringOffset const> sound_names() const { return this->_field<ss::ArrayOffset<ss::StringOffset>, 248>().get(); }
+	tl::VecSlice<u8 const> materials() const { return this->_field<ss::ArrayOffset<u8>, 256>().get(); }
 
 	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<TcDataReader> const& src) {
 		TL_UNUSED(expander); TL_UNUSED(src);
@@ -512,6 +541,8 @@ struct alignas(8) TcData : ss::Struct {
 		cur_size = expander.array_calc_size<SObjectType, ss::StructOffset<SObjectTypeReader>>(cur_size, srcp->_field<ss::Offset, 8>());
 		cur_size = expander.array_calc_size<WeaponType, ss::StructOffset<WeaponTypeReader>>(cur_size, srcp->_field<ss::Offset, 16>());
 		cur_size = expander.array_calc_size<LevelEffect, ss::StructOffset<LevelEffectReader>>(cur_size, srcp->_field<ss::Offset, 24>());
+		cur_size = expander.array_calc_size<ss::StringOffset, ss::StringOffset>(cur_size, srcp->_field<ss::Offset, 248>());
+		cur_size = expander.array_calc_size_plain<u8, u8>(cur_size, srcp->_field<ss::Offset, 256>());
 		return cur_size;
 	}
 
@@ -522,17 +553,21 @@ struct alignas(8) TcData : ss::Struct {
 		u64 *p = (u64 *)dest.ptr;
 		u64 const *s = (u64 const*)srcp;
 		u64 const *d = (u64 const*)TcData::_defaults;
-		for (u32 i = 0; i < 31; ++i) {
+		for (u32 i = 0; i < 33; ++i) {
 			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
 		}
 		auto nobjects_copy = expander.expand_array_raw<NObjectType, ss::StructOffset<NObjectTypeReader>>(srcp->_field<ss::Offset, 0>());
 		auto sobjects_copy = expander.expand_array_raw<SObjectType, ss::StructOffset<SObjectTypeReader>>(srcp->_field<ss::Offset, 8>());
 		auto weapons_copy = expander.expand_array_raw<WeaponType, ss::StructOffset<WeaponTypeReader>>(srcp->_field<ss::Offset, 16>());
 		auto level_effects_copy = expander.expand_array_raw<LevelEffect, ss::StructOffset<LevelEffectReader>>(srcp->_field<ss::Offset, 24>());
+		auto sound_names_copy = expander.expand_array_raw<ss::StringOffset, ss::StringOffset>(srcp->_field<ss::Offset, 248>());
+		auto materials_copy = expander.expand_array_raw_plain<u8, u8>(srcp->_field<ss::Offset, 256>());
 		dest._field_ref<ss::ArrayOffset<NObjectType>, 0>().set(nobjects_copy);
 		dest._field_ref<ss::ArrayOffset<SObjectType>, 8>().set(sobjects_copy);
 		dest._field_ref<ss::ArrayOffset<WeaponType>, 16>().set(weapons_copy);
 		dest._field_ref<ss::ArrayOffset<LevelEffect>, 24>().set(level_effects_copy);
+		dest._field_ref<ss::ArrayOffset<ss::StringOffset>, 248>().set(sound_names_copy);
+		dest._field_ref<ss::ArrayOffset<u8>, 256>().set(materials_copy);
 	}
 
 };
@@ -644,6 +679,8 @@ struct TcDataBuilder : ss::Ref<TcDataReader> {
 	void worm_float_level(u32 v) { this->_field<u32, 232>() = v ^ 0; }
 	void worm_float_power(Scalar v) { this->_field<i32, 236>() = (v.raw()) ^ 0; }
 	void rem_exp_object(i16 v) { this->_field<i16, 240>() = v ^ 0; }
+	void sound_names(ss::ArrayRef<ss::StringOffset> v) { return this->_field_ref<ss::ArrayOffset<ss::StringOffset>, 248>().set(v); }
+	void materials(ss::ArrayRef<u8> v) { return this->_field_ref<ss::ArrayOffset<u8>, 256>().set(v); }
 
 };
 

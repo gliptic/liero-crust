@@ -27,6 +27,14 @@ struct FixedObjectList {
 	FixedObjectList() {
 		clear();
 	}
+
+	FixedObjectList(FixedObjectList const&) = delete;
+
+	FixedObjectList& operator=(FixedObjectList const& other) {
+		memcpy(arr, other.arr, other.count * sizeof(T));
+		this->count = other.count;
+		return *this;
+	}
 	
 	T* get_free_object() {
 		assert(count < Limit);

@@ -542,7 +542,7 @@ local Context_mt = {
 								deref_src()
 
 								local func = 'array_calc_size_plain'
-								if element_type.kind == 'Struct' then
+								if element_type.kind == 'Struct' or element_type.kind == 'String' then
 									func = 'array_calc_size'
 								end
 
@@ -583,7 +583,7 @@ local Context_mt = {
 								local element_type = f.type.element_type
 
 								local func = 'expand_array_raw_plain'
-								if element_type.kind == 'Struct' then
+								if element_type.kind == 'Struct' or element_type.kind == 'String' then
 									func = 'expand_array_raw'
 								end
 
@@ -753,7 +753,11 @@ local function Context()
 		end },
 		String = { kind = 'String', ref_size = 64, align = 64, datatype = function(name, kind)
 			if name then name = ' ' .. name else name = '' end
-			return 'ss::StringRef' .. name
+			if kind == 'strict2' or kind == 'expanded2' then
+				return 'ss::StringOffset' .. name
+			else
+				return 'ss::StringRef' .. name
+			end
 		end },
 		F64 = { kind = 'Float', ref_size = 64, align = 64, datatype = function(name, kind)
 			if name then name = ' ' .. name else name = '' end
@@ -847,6 +851,7 @@ local function generate(header_path, source_path)
 		{'nobject_type', 5, t.U16},
 		{'loading_time', 6, t.U32},
 		{'fire_offset', 7, t.U32},
+		{'fire_sound', 12, t.I16},
 		{'recoil', 11, t.F64},
 
 		{'ammo', 8, t.U32},
@@ -873,12 +878,14 @@ local function generate(header_path, source_path)
 		{'sobj_trail_when_bounced', 33, t.Bit, 0},
 		{'sobj_trail_when_hitting', 22, t.Bit},
 		{'sobj_expl_type', 10, t.I16, -1},
+		{'expl_sound', 40, t.I16, -1},
 
 		{'bounce', 11, t.F64, Ratio(-1)},
 		{'friction', 12, t.F64, Ratio(1)},
 		{'drag', 13, t.F64, Ratio(1)},
 		{'blowaway', 14, t.F64},
 		{'acceleration', 15, t.F64},
+		{'acceleration_up', 39, t.F64},
 		{'affect_by_sobj', 37, t.Bit},
 
 		{'start_frame', 16, t.I32},
@@ -887,6 +894,9 @@ local function generate(header_path, source_path)
 
 		{'detect_distance', 19, t.U32},
 		{'hit_damage', 35, t.U16},
+		{'worm_coldet', 41, t.Bit},
+		{'worm_col_remove_prob', 42, t.U32},
+		{'worm_col_expl', 43, t.Bit},
 
 		{'expl_ground', 20, t.Bit},
 		{'draw_on_level', 38, t.Bit},
@@ -904,14 +914,19 @@ local function generate(header_path, source_path)
 		
 		{'physics_speed', 31, t.U8, 1})
 
-		-- 38
+		-- 43
 
 	ctx:Struct(t.SObjectType,
 		{'anim_delay', 0, t.U32},
 		{'start_frame', 1, t.U16},
 		{'num_frames', 2, t.U16},
 		{'detect_range', 3, t.U32},
-		{'level_effect', 4, t.I16, -1})
+		{'level_effect', 4, t.I16, -1},
+		{'start_sound', 5, t.I16, -1},
+		{'worm_blow_away', 7, t.Scalar},
+		{'nobj_blow_away', 8, t.Scalar},
+		{'damage', 9, t.U32},
+		{'num_sounds', 6, t.U8})
 
 	ctx:Struct(t.LevelEffect,
 		{'mframe', 0, t.U32},
@@ -924,6 +939,7 @@ local function generate(header_path, source_path)
 		{'sobjects', 1, ctx:Array(t.SObjectType)},
 		{'weapons', 2, ctx:Array(t.WeaponType)},
 		{'level_effects', 3, ctx:Array(t.LevelEffect)},
+		{'sound_names', 73, ctx:Array(t.String)},
 
 		{'nr_initial_length', 5, t.F64, (4000 / 16)},
 		{'nr_attach_length', 6, t.F64, (450 / 16)},
@@ -971,7 +987,8 @@ local function generate(header_path, source_path)
 		{'fall_damage_up', 69, t.U32},
 		{'worm_float_level', 70, t.U32},
 		{'worm_float_power', 71, t.Scalar},
-		{'rem_exp_object', 72, t.I16})
+		{'rem_exp_object', 72, t.I16},
+		{'materials', 73, ctx:Array(t.U8, 256)})
 
 	ctx:Struct(t.PlayerControls,
 		{'up', 0, t.U16},

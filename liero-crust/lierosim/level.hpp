@@ -2,6 +2,7 @@
 #define LIERO_LEVEL_HPP 1
 
 #include <liero-sim/config.hpp>
+#include <liero-sim/material.hpp>
 #include <tl/cstdint.h>
 #include <tl/vector.hpp>
 #include <tl/gfx/image.hpp>
@@ -10,73 +11,26 @@
 namespace liero {
 
 struct State;
-
-/* The liero materials in use are:
- 0
- dirt | back
- dirt2 | back
- dirt
- dirt2
- rock
- worm
- back | seeshadow
- back
-
- We can get rid of dirt2 because it's only used for selecting better colors.
- We don't have to support shadows and we can ignore worm material in levels.
- This gives us:
-
- 0
- dirt | back
- dirt
- rock
- back
-
- This only uses 3 bits, so we have 5 bits to do something with!
-
-*/ 
-
-struct Material {
-
-	enum {
-		Dirt = 1<<0,
-		Dirt2 = 1<<1,
-		Rock = 1<<2,
-		Background = 1<<3,
-		SeeShadow = 1<<4,
-		WormM = 1<<5
-	};
-	
-	u8 flags;
-
-	Material(u8 flags)
-		: flags(flags) {
-	}
-
-	//bool dirt() const { return (flags & Dirt) != 0; }
-	//bool dirt2() const { return (flags & Dirt2) != 0; }
-	bool rock() const { return (flags & Rock) != 0; }
-	bool background() const { return (flags & Background) != 0; }
-	bool see_shadow() const { return (flags & SeeShadow) != 0; }
-		
-	// Constructed
-	bool dirt_rock() const { return (flags & (Dirt | Dirt2 | Rock)) != 0; }
-	bool any_dirt() const { return (flags & (Dirt | Dirt2)) != 0; }
-	bool dirt_back() const { return (flags & (Dirt | Dirt2 | Background)) != 0; }
-	bool worm() const { return (flags & WormM) != 0; }
-};
-
-extern u8 mat_from_index[256];
+struct ModRef;
 
 struct Level {
 
 	tl::Image materials;
 	tl::Image graphics;
 
-	Level(tl::Source& src, tl::Palette& pal);
+	Level(tl::Source& src, tl::Palette& pal, ModRef& mod);
 
 	~Level() = default;
 	TL_DEFAULT_CTORS(Level);
+
+	void copy_from(Level const& other, bool copy_graphics = false) {
+		materials.copy_from(other.materials);
+		if (copy_graphics) {
+			graphics.copy_from(other.graphics);
+		} else {
+			graphics.alloc_uninit(other.graphics.width(), other.graphics.height(), other.graphics.bytespp());
+		}
+	}
 
 	Material unsafe_mat(tl::VectorI2 pos) const {
 		return Material(materials.unsafe_pixel8((u32)pos.x, (u32)pos.y));

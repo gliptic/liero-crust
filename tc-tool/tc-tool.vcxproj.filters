@@ -3,11 +3,10 @@
   <ItemGroup>
     <ClInclude Include="exereader.hpp" />
     <ClInclude Include="offsets.hpp" />
-    <ClInclude Include="archive.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="exereader.cpp" />
     <ClCompile Include="tc-tool-main.cpp" />
-    <ClCompile Include="archive.cpp" />
+    <ClCompile Include="runtime.cpp" />
   </ItemGroup>
 </Project>

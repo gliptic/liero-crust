@@ -128,13 +128,12 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="archive.hpp" />
     <ClInclude Include="exereader.hpp" />
     <ClInclude Include="offsets.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="archive.cpp" />
     <ClCompile Include="exereader.cpp" />
+    <ClCompile Include="runtime.cpp" />
     <ClCompile Include="tc-tool-main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

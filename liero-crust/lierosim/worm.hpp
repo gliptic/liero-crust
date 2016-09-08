@@ -14,6 +14,15 @@ struct ModRef;
 struct TransientState;
 struct Worm;
 
+enum WormControl {
+	WcLeft = 0, WcRight,
+	WcChange, WcJump,
+	WcFire, WcUp, WcDown,
+	WcDig,
+	WcMaxControl = WcDig,
+	WcMaxControlEx
+};
+
 struct ControlState	{
 	ControlState()
 	: istate(0)	{
@@ -50,20 +59,131 @@ struct ControlState	{
 	u32 istate;
 };
 
+struct WormInput {
+	u8 v;
+
+	enum struct Action : u8 {
+		Jump = 1 << 4, Fire = 2 << 4,
+
+		Change = 4 << 4,
+		Ninjarope = 5 << 4,
+
+		Mask = 7 << 4
+	};
+
+	enum struct Move : u8 {
+		None = 0 << 2,
+		Left = 1 << 2,
+		Right = 2 << 2,
+		Dig = 3 << 2,
+
+		Mask = 3 << 2
+	};
+
+	enum struct Aim : u8 {
+		None = 0,
+		Up = 1,
+		Down = 2,
+		Both = 3,
+
+		Mask = 3
+	};
+
+	enum struct ChangeDir : u8 {
+		None = 0 << 2,
+		Left = 1 << 2,
+		Right = 2 << 2,
+
+		Mask = 3 << 2
+	};
+
+	WormInput(u8 v_init = 0) : v(v_init) {
+		assert(v < 6 * 4 * 4);
+	}
+
+	static WormInput from_keys(ControlState state) {
+		u8 aim = (state[WcUp] ? (u8)Aim::Up : 0)
+			| (state[WcDown] ? (u8)Aim::Down : 0);
+
+		if (state[WcChange]) {
+			ChangeDir dir = ChangeDir::None;
+			if (state[WcLeft] && !state[WcRight]) {
+				dir = ChangeDir::Left;
+			} else if (!state[WcLeft] && state[WcRight]) {
+				dir = ChangeDir::Right;
+			}
+
+			if (state[WcJump]) {
+				return ninjarope(dir, (Aim)aim);
+			} else {
+				return change(dir, (Aim)aim);
+			}
+		} else {
+			Move dir = Move::None;
+			if (state[WcLeft] && state[WcRight]) {
+				dir = Move::Dig;
+			} else if (state[WcLeft] && !state[WcRight]) {
+				dir = Move::Left;
+			} else if (!state[WcLeft] && state[WcRight]) {
+				dir = Move::Right;
+			}
+
+			return combo(state[WcJump], state[WcFire], dir, (Aim)aim);
+		}
+	}
+
+	static WormInput change(ChangeDir dir, Aim aim) {
+		return WormInput((u8)Action::Change | (u8)dir | (u8)aim);
+	}
+
+	static WormInput ninjarope(ChangeDir dir, Aim aim) {
+		return WormInput((u8)Action::Ninjarope | (u8)dir | (u8)aim);
+	}
+
+	static WormInput combo(bool jump, bool fire, Move move, Aim aim) {
+		return WormInput(
+			(jump ? (u8)Action::Jump : 0) |
+			(fire ? (u8)Action::Fire : 0) |
+			(u8)move | (u8)aim);
+	}
+
+	bool rope() const { return (v & (u8)Action::Mask) == (u8)Action::Ninjarope; }
+	bool change() const { return (v & (u8)Action::Mask) == (u8)Action::Change; }
+	bool change_or_rope() const { return v >= (u8)Action::Change; }
+
+	bool jump() const { return (v & ((u8)Action::Mask & ~(u8)Action::Fire)) == (u8)Action::Jump; }
+	bool fire() const { return (v & ((u8)Action::Mask & ~(u8)Action::Jump)) == (u8)Action::Fire; }
+
+	bool left() const { return (v & (u8)Move::Left) != 0; }
+	bool right() const { return (v & (u8)Move::Right) != 0; }
+	bool dig() const { return (v & ((u8)Move::Left | (u8)Move::Right)) == ((u8)Move::Left | (u8)Move::Right); }
+
+	bool up() const { return (v & (u8)Aim::Up) != 0; }
+	bool down() const { return (v & (u8)Aim::Down) != 0; }
+};
+
 struct WormTransientState {
 	enum FlagsGfx : u8 {
 		Animate = (1 << 0)
 	};
 
 	WormTransientState()
-		: gfx_flags(0) {
+		: gfx_flags(0)
+		, steerable_count(0) {
 	}
 
-	ControlState controls;
+	WormInput input;
 	u8 gfx_flags;
+	u32 steerable_count;
 
 	bool animate() const {
 		return (gfx_flags & Animate) != 0;
+	}
+
+	// TODO: After left or right is held, and steerable_count is non-zero, this should not return until
+	// both left/right are released and steerable_count is 0.
+	bool movable() const {
+		return steerable_count == 0;
 	}
 };
 
@@ -101,19 +221,11 @@ struct Ninjarope {
 };
 
 struct Worm {
-	enum WormControl {
-		Up = 0, Down, Left, Right,
-		Fire, Change, Jump,
-		Dig,
-		MaxControl = Dig,
-		MaxControlEx
-	};
-
 	static u32 const SelectableWeapons = 40;
 
 	Worm() :
-		aiming_angle(0), aiming_angle_vel(0), current_weapon(0), leave_shell_time(0), direction(1),
-		muzzle_fire(0) {
+		aiming_angle(0), aiming_angle_vel(0), current_weapon(0), leave_shell_time(0),
+		muzzle_fire(0), bits0(PrevNoLeft | PrevNoRight | PrevNoJump) {
 	}
 
 	Vector2 pos, vel;
@@ -124,15 +236,52 @@ struct Worm {
 	u32 current_weapon;
 	u32 leave_shell_time;
 
-	ControlState control_flags;
-
 	u32 muzzle_fire; // GFX
 
 	// TODO: Direction is one bit. We can store it as a flag
-	i8 direction; // 1 = right, -1 = left
+	//i8 direction; // 1 = right, -1 = left
+
+	u8 bits0;
+
+	enum {
+		PrevNoLeft = 0,
+		PrevNoRight = 1,
+		PrevChange = 2,
+		PrevNoJump = 3
+	};
+
+	void prev_controls(u32 controls) {
+		bits0 = (bits0 & ~15) | (controls & 15);
+	}
+
+	void prev_controls(WormInput input) {
+		bits0 = (bits0 & ~15)
+			| ((u8)input.change_or_rope() << PrevChange)
+			| ((u8)!(input.jump() || input.rope()) << PrevNoJump)
+			| ((u8)!input.left() << PrevNoLeft)
+			| ((u8)!input.right() << PrevNoRight);
+	}
+
+	void direction(u8 dir) {
+		assert(dir == 0 || dir == 1);
+		bits0 = (bits0 & ~16) | (dir << 4);
+	}
+
+	u8 direction() const {
+		return (bits0 >> 4) & 1;
+	}
+
+	bool prev_no_left() const { return (bits0 & (1 << PrevNoLeft)) != 0; }
+	bool prev_no_right() const { return (bits0 & (1 << PrevNoRight)) != 0; }
+	bool prev_change() const { return (bits0 & (1 << PrevChange)) != 0; }
+	bool prev_no_jump() const { return (bits0 & (1 << PrevNoJump)) != 0; }
+
+	bool prev_change_or_no_dig() const { return prev_change() || prev_no_left() || prev_no_right(); }
+	bool prev_no_jump_nor_change() const { return prev_no_jump() && !prev_change(); }
+	bool prev_no_jump_or_no_change() const { return prev_no_jump() || !prev_change(); }
 
 	Scalar abs_aiming_angle() const {
-		return direction > 0 ? aiming_angle : Fixed(64) - aiming_angle;
+		return direction() == 0 ? aiming_angle : Fixed(64) - aiming_angle;
 	}
 
 	u32 current_frame(u32 current_time, WormTransientState const& transient_state) const {
@@ -146,10 +295,6 @@ struct Worm {
 		u32 angle_frame = (u32)x;
 		u32 anim_frame = transient_state.animate() ? (current_time & 31) >> 3 : 0;
 		return angle_frame + worm_anim_tab[anim_frame];
-	}
-
-	bool movable() const {
-		return true;
 	}
 
 	void update(State& state, TransientState& state_input, u32 index);

@@ -9,6 +9,8 @@
 
 namespace ss {
 
+struct Expander;
+
 template<typename T>
 struct Ref {
 	u8* ptr;
@@ -32,6 +34,10 @@ struct Ref {
 	template<typename U>
 	void set(U other_ref) {
 		((T *)ptr)->set_ref(*this, other_ref);
+	}
+
+	void set_raw(T other) {
+		*(T *)ptr = other;
 	}
 
 	template<typename U, usize Offset>
@@ -83,6 +89,10 @@ struct ArrayRef : Ref<T> {
 #endif
 };
 
+inline usize round_size_up(usize s) {
+	return (s + 7) & ~usize(7);
+}
+
 struct Offset {
 	u32 rel_offs;
 	u32 size;
@@ -113,6 +123,9 @@ struct StringOffset : Offset {
 		u8 const* p = ptr();
 		return tl::StringSlice(p, p + this->size);
 	}
+
+	static usize calc_extra_size(usize cur_size, Expander& expander, StringOffset const& src);
+	static void expand_raw(Ref<StringOffset> dest, Expander& expander, StringOffset const& src);
 
 #if SS_BACKWARD
 	void set_ref(Ref<StringOffset> self_ref, StringRef value) {
@@ -327,7 +340,7 @@ struct Builder {
 
 template<typename T>
 struct ArrayBuilder : ArrayRef<T> {
-	static_assert((sizeof(T) & 7) == 0, "Arrays only support types with size a multiple of 8");
+	//static_assert((sizeof(T) & 7) == 0, "Arrays only support types with size a multiple of 8");
 
 	ArrayBuilder(Builder& b, usize count)
 		: ArrayRef<T>(b.alloc<T>(count), tl::narrow<u32>(count)) {
@@ -337,10 +350,6 @@ struct ArrayBuilder : ArrayRef<T> {
 		return std::move(*this);
 	}
 };
-
-inline usize round_size_up(usize s) {
-	return (s + 7) & ~usize(7);
-}
 
 struct Expander {
 	tl::BufferMixed buf;

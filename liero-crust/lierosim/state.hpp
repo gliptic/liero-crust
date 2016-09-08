@@ -19,12 +19,22 @@ typedef FixedObjectList<BObject, 700> BObjectList; // TODO: Configurable limit
 typedef FixedObjectList<SObject, 700> SObjectList;
 typedef FixedObjectList<Worm, 128> WormList;
 
-typedef void (*PlaySoundFunc)(liero::ModRef& mod, TransientState& transient_state);
+typedef void (*PlaySoundFunc)(liero::ModRef& mod, i16 sound_index, TransientState& transient_state);
+
+#define PROFILE 1
+
+inline u32 rotl(u32 x, u32 v) {
+	return (x << v) | (x >> (32 - v));
+}
 
 struct TransientState {
 	TransientState(usize worm_count, PlaySoundFunc play_sound_init, void* sound_user_data_init)
 		: play_sound(play_sound_init)
-		, sound_user_data(sound_user_data_init) {
+		, sound_user_data(sound_user_data_init)
+#if PROFILE
+		, col_mask_tests(0), col_tests(0), col2_tests(0)
+#endif
+		{
 
 		for (usize i = 0; i < worm_count; ++i) {
 			worm_state.push_back(WormTransientState());
@@ -33,15 +43,36 @@ struct TransientState {
 
 	tl::Vec<WormTransientState> worm_state;
 
+#if PROFILE
+	u32 col_mask_tests, col_tests, col2_tests;
+#endif
+
+	u32 worm_bloom_x, worm_bloom_y;
+
+	bool might_collide_with_worm(tl::VectorI2 ipos, i32 detect_distance) {
+		u32 xsh1 = (ipos.x + 8) >> 4;
+		u32 ysh1 = (ipos.y + 8) >> 4;
+
+		u32 max = ((detect_distance + 7 + 15) >> 4);
+
+		u32 mask = (1 << (max & 31)) - 1;
+		u32 mask2 = mask | (mask << (32 - max));
+
+		u32 xmask = rotl(mask2, xsh1);
+		u32 ymask = rotl(mask2, ysh1);
+
+		++this->col_mask_tests;
+
+		return (this->worm_bloom_x & xmask) && (this->worm_bloom_y & ymask);
+	}
+
 	PlaySoundFunc play_sound;
 	void* sound_user_data;
 };
 
-#define PROFILE 1
-
 struct State {
-	Level level;
 	ModRef mod;
+	Level level;
 
 	NObjectList nobjects;
 	BObjectList bobjects;
@@ -55,29 +86,31 @@ struct State {
 	
 	u32 current_time;
 
-#if PROFILE
-	u32 col_mask_tests, col_tests, col2_tests;
-#endif
-
-	u32 worm_bloom_x, worm_bloom_y; // TEMP: This is transient. Shouldn't be in State
-
 	void update(TransientState& transient_state);
+
+	void copy_from(State const& other, bool copy_graphics = false) {
+		this->level.copy_from(other.level, copy_graphics);
+		this->nobjects = other.nobjects;
+		this->worms = other.worms;
+		this->nobject_broadphase.copy_from(other.nobject_broadphase, nobjects.size());
+		this->rand = other.rand;
+		this->current_time = other.current_time;
+
+		if (copy_graphics) {
+			this->sobjects = other.sobjects;
+			this->bobjects = other.bobjects;
+			this->gfx_rand = other.gfx_rand;
+		} else {
+			this->sobjects.clear();
+			this->bobjects.clear();
+		}
+	}
 
 	State(ModRef mod)
 		: mod(mod)
 		, current_time(0)
 		, nobject_broadphase(NObjectLimit)
-		, gfx_rand(0xf0f0f0, 0x777777)
-#if PROFILE
-		, col_mask_tests(0), col_tests(0), col2_tests(0)
-#endif
-	{
-	/*
-		auto r = worms.all();
-		u32 index = 0;
-		for (Worm* w; (w = r.next()) != 0; ) {
-			w->index = index++;
-	*/
+		, gfx_rand(0xf0f0f0, 0x777777) {
 	}
 };
 

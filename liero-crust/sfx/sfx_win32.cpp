@@ -237,7 +237,7 @@ DWORD ds_get_min_latency_frames(DWORD sampleRate) {
 	else
 #endif
 
-	int minLatencyMsec = 280; // TODO: Decide based on OS version
+	int minLatencyMsec = 50; // TODO: Decide based on OS version
 	return minLatencyMsec * sampleRate / 1000;
 }
 

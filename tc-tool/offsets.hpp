@@ -83,7 +83,7 @@
 	_(i16, gravity) \
 	_(u8, shadow) \
 	_(u8, laser_sight) \
-	_(u8, launch_sound) \
+	_(i8, launch_sound) \
 	_(u8, loop_sound) \
 	_(u8, explo_sound) \
 	_(i16, speed) \
@@ -166,7 +166,7 @@
 	_(u8, num_frames) \
 	_(u8, detect_range) \
 	_(u8, damage) \
-	_(u8, blow_away) \
+	_(i32, blow_away) \
 	pos(115368) \
 	_(u8, shadow) \
 	_(u8, shake) \

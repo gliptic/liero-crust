@@ -4,7 +4,7 @@
 
 namespace liero {
 
-void create(NObjectType const& self, State& state, Scalar angle, Vector2 pos, Vector2 vel, tl::Color override_color) {
+void create(NObjectType const& self, State& state, Scalar angle, Vector2 pos, Vector2 vel, i16 owner, tl::Color override_color) {
 	auto* obj = state.nobjects.new_object_reuse();
 	obj->ty_idx = u32(&self - state.mod.nobject_types);
 	obj->pos = pos;
@@ -13,13 +13,14 @@ void create(NObjectType const& self, State& state, Scalar angle, Vector2 pos, Ve
 	// TODO: nobjects created with create2 have their velocity applied once immediately
 
 	obj->cell = state.nobject_broadphase.insert(narrow<CellNode::Index>(state.nobjects.index_of(obj)), pos.cast<i32>());
+	obj->owner = owner;
 
 	obj->time_to_die = state.current_time + self.time_to_live() - state.rand.get_i32(self.time_to_live_v());
 
 	if (self.start_frame() >= 0) {
 
 		// TODO: Combine NObjectKind and NObjectAnimation?
-		if (self.kind() == NObjectKind::DType1 || self.kind() == NObjectKind::DType2) {
+		if (self.kind() == NObjectKind::DType1 || self.kind() == NObjectKind::DType2 || self.kind() == NObjectKind::Steerable) {
 
 			i32 iangle = i32(angle);
 
@@ -44,11 +45,13 @@ void create(NObjectType const& self, State& state, Scalar angle, Vector2 pos, Ve
 }
 
 
-void NObject::explode_obj(NObjectType const& ty, Vector2 pos, Vector2 vel, State& state) {
+void NObject::explode_obj(NObjectType const& ty, Vector2 pos, Vector2 vel, i16 owner, State& state, TransientState& transient_state) {
 	
 	if (ty.sobj_expl_type() >= 0) {
-		create(state.mod.get_sobject_type(ty.sobj_expl_type()), state, pos.cast<i32>());
+		create(state.mod.get_sobject_type(ty.sobj_expl_type()), state, transient_state, pos.cast<i32>());
 	}
+
+	transient_state.play_sound(state.mod, ty.expl_sound(), transient_state);
 	
 	u32 count = ty.splinter_count();
 
@@ -61,7 +64,7 @@ void NObject::explode_obj(NObjectType const& ty, Vector2 pos, Vector2 vel, State
 			Scalar angle = Scalar(0);
 			Vector2 part_vel = vel; // TODO: vel_ratio
 
-			// TODO: In original, nobjects splinter into Angular and wobjects get to choose
+			// TODO: In original, nobjects splinter into Angular and wobjects get to choose.
 			// Angular never inherits velocity there.
 
 			if (ty.splinter_scatter() == ScatterType::ScAngular) {
@@ -78,18 +81,14 @@ void NObject::explode_obj(NObjectType const& ty, Vector2 pos, Vector2 vel, State
 				part_vel += rand_max_vector2(state.rand, ty.splinter_distribution());
 			}
 
-			create(splinter_ty, state, angle, pos, part_vel, ty.splinter_color());
+			create(splinter_ty, state, angle, pos, part_vel, owner, ty.splinter_color());
 		}
 	}
 
 	draw_level_effect(state, pos.cast<i32>(), ty.level_effect());
 }
 
-u32 rotl(u32 x, u32 v) {
-	return (x << v) | (x >> (32 - v));
-}
-
-bool update(NObject& self, State& state, NObjectList::Range& range) {
+bool update(NObject& self, State& state, NObjectList::Range& range, TransientState& transient_state) {
 	NObject::ObjState obj_state = NObject::Alive;
 	u32 iteration = 0;
 
@@ -100,7 +99,7 @@ bool update(NObject& self, State& state, NObjectList::Range& range) {
 
 	tl::VectorI2 ipos;
 
-	while (iteration < max_iteration) {
+	do {
 		++iteration;
 
 		lpos += lvel;
@@ -109,7 +108,6 @@ bool update(NObject& self, State& state, NObjectList::Range& range) {
 		ipos = lpos.cast<i32>();
 		bool bounced = false;
 
-		// -- NObjectType things --
 		Level& level = state.level;
 		
 		tl::VectorI2 inexthoz(inextpos.x, ipos.y);
@@ -118,13 +116,20 @@ bool update(NObject& self, State& state, NObjectList::Range& range) {
 		// TODO: Convert lvel to VectorD2 during computation with acceleration/bounce/friction/drag/trail/collide
 
 		if (ty.acceleration() != Ratio()) {
-			// TODO: Also for steerables
-			if (ty.kind() == NObjectKind::DType2) {
-				auto dir = sincos(Scalar((i32)self.cur_frame)) * ty.acceleration();
 
-				lvel += dir;
-				// TODO: In-flight distribution
+			f64 acc;
+			if (ty.kind() == NObjectKind::Steerable
+				&& self.owner >= 0
+				&& transient_state.worm_state[self.owner].input.up()) {
+				acc = ty.acceleration_up();
+			} else {
+				acc = ty.acceleration();
 			}
+
+			auto dir = sincos(Scalar((i32)self.cur_frame)) * acc;
+
+			lvel += dir;
+			// TODO: In-flight distribution
 		}
 
 		if (ty.bounce() != Ratio()) { // TODO: Not sure this will work for real nobjects
@@ -177,7 +182,7 @@ bool update(NObject& self, State& state, NObjectList::Range& range) {
 			for (u16 idx; r.next(idx); ) {
 				auto& nobj = state.nobjects.of_index(idx);
 
-				if (nobj.ty_idx != self.ty_idx) { // TODO: nobj.owner_idx != self.owner_idx
+				if (nobj.ty_idx != self.ty_idx || nobj.owner != self.owner) {
 					auto other_pos = nobj.pos;
 
 					if (other_pos.x <= lpos.x + Scalar(detect_range)
@@ -195,11 +200,11 @@ bool update(NObject& self, State& state, NObjectList::Range& range) {
 
 		// TODO: Limit lpos if inewpos is outside the level
 
-		bool animate, sobj_trail;
+		bool sobj_trail;
 
 		if (!level.is_inside(inextpos) || level.unsafe_mat(inextpos).dirt_rock()) {
 			if (ty.expl_ground()) {
-				// TODO: Draw on map for nobject
+
 				if (self.cur_frame >= 0 && ty.draw_on_level()) {
 					// TODO: Make sure (ty.start_frame() + self.cur_frame) isn't out of range
 					auto sprite = state.mod.small_sprites.crop_square_sprite_v(ty.start_frame() + self.cur_frame);
@@ -213,82 +218,93 @@ bool update(NObject& self, State& state, NObjectList::Range& range) {
 				}
 
 				obj_state = NObject::Exploded;
-				break; // TODO: doing break here means we don't do worm coldet. Original would do worm coldet.
+				break; // TODO: Doing break here means we don't do worm coldet. Original would do worm coldet for wobjects, but not for nobjects.
 			} else if (ty.bounce() == Ratio()) {
 				// TODO: NObjects do this regardless of ty.bounce()
 				lvel = Vector2();
 			}
 
-			animate = false;
 			sobj_trail = ty.sobj_trail_when_hitting();
 		} else {
 			lvel.y += ty.gravity();
-			animate = true;
 			sobj_trail = !bounced || ty.sobj_trail_when_bounced();
+
+			if (ty.animation() != NObjectAnimation::Static
+				&& (state.current_time & 7) == 0) { // TODO: Animation interval
+
+				if (ty.animation() == NObjectAnimation::OneWay || self.vel.x < Scalar()) {
+					if (self.cur_frame == 0) {
+						self.cur_frame = (u32)ty.num_frames(); // TODO: Shouldn't num_frames be unsigned
+					} else {
+						--self.cur_frame;
+					}
+				} else if (self.vel.x > Scalar()) {
+					if (self.cur_frame >= (u32)ty.num_frames()) {
+						self.cur_frame = 0;
+					} else {
+						++self.cur_frame;
+					}
+				}
+			}
 		}
 
 		if (ty.sobj_trail_interval()
 		 && sobj_trail
 	     && (state.current_time % ty.sobj_trail_interval()) == 0) {
-			create(state.mod.get_sobject_type(ty.sobj_trail_type()), state, ipos);
-		}
-
-		if (ty.animation() != NObjectAnimation::Static
-		 && animate
-		 && (state.current_time & 7) == 0) { // TODO: Animation interval
-
-			if (ty.animation() == NObjectAnimation::OneWay || self.vel.x < Scalar()) {
-				if (self.cur_frame == 0) {
-					self.cur_frame = (u32)ty.num_frames(); // TODO: Shouldn't num_frames be unsigned
-				} else {
-					--self.cur_frame;
-				}
-			} else if (self.vel.x > Scalar()) {
-				if (self.cur_frame >= (u32)ty.num_frames()) {
-					self.cur_frame = 0;
-				} else {
-					++self.cur_frame;
-				}
-			}
+			create(state.mod.get_sobject_type(ty.sobj_trail_type()), state, transient_state, ipos);
 		}
 
 		if (state.current_time == self.time_to_die) {
 			obj_state = NObject::Exploded;
-			break;
+			break; // TODO: Doing break here means we don't do worm coldet. Original would do worm coldet for wobjects, but not for nobjects.
 		}
 
 		// Coldet with worms
-		if (ty.hit_damage()) {
-			u32 xsh1 = (ipos.x - ty.detect_distance()) >> 4;
-			u32 ysh1 = (ipos.y - ty.detect_distance()) >> 4;
+		if (ty.worm_coldet()) {
 
-			u32 maxx = ((2 * ty.detect_distance() + 15 + 15) >> 4);
-			u32 maxy = ((2 * ty.detect_distance() + 15 + 15) >> 4);
+			if (transient_state.might_collide_with_worm(ipos, (i32)ty.detect_distance())) {
+				++transient_state.col_tests;
 
-			u32 xmask = (1 << (maxx & 31)) - 1;
-			u32 ymask = (1 << (maxy & 31)) - 1;
+				auto wr = state.worms.all();
 
-			xmask = rotl(xmask, xsh1);
-			ymask = rotl(ymask, ysh1);
+				for (Worm* w; (w = wr.next()) != 0; ) {
+					auto wpos = w->pos.cast<i32>();
+					if (wpos.x - 2 < ipos.x + (i32)ty.detect_distance() // TODO: detect_distance() should probably be i32
+					 && wpos.x + 2 > ipos.x - (i32)ty.detect_distance()
+					 && wpos.y - 4 < ipos.y + (i32)ty.detect_distance()
+					 && wpos.y + 4 > ipos.y - (i32)ty.detect_distance()) {
 
-			++state.col_mask_tests;
+						// TODO:
+						w->vel += lvel * ty.blowaway();
+						// game.doDamage(worm, w.hitDamage, ownerIdx);
 
-			if ((state.worm_bloom_x & xmask)
-			 && (state.worm_bloom_y & ymask)) {
-				//obj_state = NObject::Exploded;
-				//break;
+						// TODO: Blood
 
-				++state.col_tests;
+						// TODO: Play hurt sound if hit_damage > 0 etc.
+						
+						if (state.rand.next() <= ty.worm_col_remove_prob()) {
+							obj_state = ty.worm_col_expl() ? NObject::Exploded : NObject::Removed;
+						}
+					}
+				}
+
+				if (obj_state != NObject::Alive) {
+					break;
+				}
 			}
 
-			auto& w = state.worms.of_index(0);
+#if 0
+			{
+				auto& w = state.worms.of_index(0);
 
-			if (!(ipos.x + (i32)ty.detect_distance() <= i32(w.pos.x) - 4 || ipos.x - (i32)ty.detect_distance() >= i32(w.pos.x) + 4)) {
-				++state.col2_tests;
+				if (!(ipos.x + (i32)ty.detect_distance() <= i32(w.pos.x) - 4 || ipos.x - (i32)ty.detect_distance() >= i32(w.pos.x) + 4)) {
+					++transient_state.col2_tests;
+				}
 			}
+#endif
 		}
 		
-	} // while (iteration < max_iteration)
+	} while (iteration < max_iteration);
 
 	if (obj_state == NObject::Alive) {
 		self.pos = lpos;
@@ -298,11 +314,12 @@ bool update(NObject& self, State& state, NObjectList::Range& range) {
 
 		return true;
 	} else {
+		auto owner = self.owner;
 		state.nobject_broadphase.swap_remove(CellNode::Index(state.nobjects.index_of(&self)), CellNode::Index(state.nobjects.size() - 1));
 		state.nobjects.free(range);
 
 		if (obj_state == NObject::Exploded) {
-			NObject::explode_obj(ty, lpos, lvel, state);
+			NObject::explode_obj(ty, lpos, lvel, owner, state, transient_state);
 		}
 
 		return false;

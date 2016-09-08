@@ -11,6 +11,7 @@
     <ClCompile Include="lz5\lz5hc.cpp">
       <Filter>lz5</Filter>
     </ClCompile>
+    <ClCompile Include="runtime.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="soio.hpp" />

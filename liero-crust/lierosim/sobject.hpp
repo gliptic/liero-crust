@@ -7,8 +7,9 @@ namespace liero {
 
 struct SObjectType;
 struct State;
+struct TransientState;
 
-void create(SObjectType const& self, State& state, tl::VectorI2 pos);
+void create(SObjectType const& self, State& state, TransientState& transient_state, tl::VectorI2 pos);
 
 struct SObject {
 	tl::VectorI2 pos;

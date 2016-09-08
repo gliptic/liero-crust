@@ -5,9 +5,7 @@
 
 namespace liero {
 
-u8 mat_from_index[] = {0, 9, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 9, 9, 0, 0, 1, 1, 1, 4, 4, 4, 1, 1, 1, 4, 4, 4, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 4, 4, 4, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 24, 24, 24, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-Level::Level(tl::Source& src, tl::Palette& pal) {
+Level::Level(tl::Source& src, tl::Palette& pal, ModRef& mod) {
 
 	this->graphics.alloc_uninit(504, 350, 1);
 	this->materials.alloc_uninit(504, 350, 1);
@@ -18,7 +16,7 @@ Level::Level(tl::Source& src, tl::Palette& pal) {
 	u8* mat = this->materials.data();
 	u8* index_bitmap = this->graphics.data();
 	for (usize i = 0; i < this->graphics.size(); ++i) {
-		mat[i] = mat_from_index[index_bitmap[i]];
+		mat[i] = mod.materials[index_bitmap[i]]; // mat_from_index[index_bitmap[i]];
 	}
 
 	this->graphics = this->graphics.convert(4, &pal);
@@ -60,7 +58,8 @@ void draw_level_effect(tl::BasicBlitContext<2, 1, true> ctx, u8 const* tframe, b
 
 	u32 ty = ctx.offset.y;
 
-	u8 draw_mask = draw_on_background ? Material::Background : (Material::Dirt | Material::Dirt2);
+	u8 draw_mask = draw_on_background ? (u8)Material::Background : (u8)Material::Dirt;
+	u8 draw_mat = draw_on_background ? (u8)Material::Dirt : (u8)Material::Background;
 
 	for(; hleft-- > 0; tp += tpitch, tpmat += tpitchmat, fp += fpitch, ++ty) {
 		u32 tx = ctx.offset.x;
@@ -82,7 +81,7 @@ void draw_level_effect(tl::BasicBlitContext<2, 1, true> ctx, u8 const* tframe, b
 					bg = org.blend_half(bg).with_a(org.a());
 					tpmat[i] = (Material::Dirt | Material::Background);
 				} else {
-					tpmat[i] = Material::Background;
+					tpmat[i] = draw_mat;
 				}
 
 				tl::Color::write(tp + i*4, bg);

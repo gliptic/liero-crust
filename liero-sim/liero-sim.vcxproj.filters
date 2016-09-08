@@ -28,5 +28,6 @@
     </ClInclude>
     <ClInclude Include="fixed.hpp" />
     <ClInclude Include="config.hpp" />
+    <ClInclude Include="material.hpp" />
   </ItemGroup>
 </Project>

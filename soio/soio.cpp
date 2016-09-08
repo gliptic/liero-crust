@@ -796,9 +796,9 @@ int main() {
 
 	//vectest::test();
 	//fse::test();
-	//rans::test();
+	rans::test();
 
-#if 1
+#if 0
 	soio::State s;
 
 	s.init();

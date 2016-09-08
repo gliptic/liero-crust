@@ -2,16 +2,17 @@
 
 using std::move;
 
-namespace liero {
+namespace tl {
 
 inline u32 quad(char a, char b, char c, char d) {
 	return (u32)a + ((u32)b << 8) + ((u32)c << 16) + ((u32)d << 24);
 }
 
-void Archive::write(tl::Sink& out) {
+tl::Vec<u8> ArchiveBuilder::write() {
 
-	out.put(quad('h', 'a', 'r', 'c'));
-	out.put(u32(0)); // Offset to tree table
+	tl::SinkVector out;
+	out.put_raw(quad('h', 'a', 'r', 'c'));
+	out.put_raw(u32(0)); // Offset to tree table
 
 	// Write streams
 	for (auto& str : this->streams) {
@@ -24,7 +25,7 @@ void Archive::write(tl::Sink& out) {
 		auto& tree = this->trees[i];
 		tree.pos = u32(out.position());
 
-		out.put((u32)tree.children.size());
+		out.put_raw((u32)tree.children.size());
 
 		for (auto& child : tree.children) {
 			assert(child.name.size() <= 255);
@@ -33,20 +34,26 @@ void Archive::write(tl::Sink& out) {
 
 			if (child.is_tree) {
 				auto& child_tree = this->trees[child.contents.tree.index];
-				out.put(u32((child_tree.pos << 1) | 1));
+				out.put_raw(u32((child_tree.pos << 1) | 1));
 			} else {
-				out.put(u32((child.contents.file.offset << 1) | 0));
-				out.put(u32(child.contents.file.size));
+				out.put_raw(u32((child.contents.file.offset << 1) | 0));
+				out.put_raw(u32(child.contents.file.size));
 
 				auto& stream = this->streams[child.contents.file.stream.index];
-				out.put(u32(stream.pos));
+				out.put_raw(u32(stream.pos));
 			}
 		}
 	}
+
+	auto vec = out.unwrap_vec();
+	memcpy(vec.begin() + 4, &trees[0].pos, sizeof(u32));
+
+	return move(vec);
 }
 
+#if 0
 void archive_test() {
-	Archive ar;
+	ArchiveBuilder ar;
 
 	{
 		auto str = ar.add_stream();
@@ -57,13 +64,14 @@ void archive_test() {
 		ar.add_entry_to_dir(ar.root(), move(dir));
 	}
 
-	tl::SinkVector out;
+	//tl::SinkVector out;
 
-	ar.write(out);
+	auto vec = ar.write();
 
-	auto vec = out.unwrap_vec();
-	memcpy(vec.begin() + 4, &ar.trees[0].pos, sizeof(u32));
+	//auto vec = out.unwrap_vec();
+	//memcpy(vec.begin() + 4, &ar.trees[0].pos, sizeof(u32));
 	printf("%d\n", (u32)vec.size());
 }
+#endif
 
 }

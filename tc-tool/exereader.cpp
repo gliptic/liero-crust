@@ -1,6 +1,11 @@
 #include "exereader.hpp"
 
 #include "offsets.hpp"
+#include <liero-sim/material.hpp>
+#include <tl/gfx/tga.hpp>
+#include <tl/wav.hpp>
+#include <tl/rand.hpp>
+#include <tl/char.h>
 
 namespace liero {
 
@@ -66,7 +71,15 @@ static u32 constant_32_offsets[constant_32_count][2] = {
 	CONSTANTS_32(DEF_CONSTANT_32_DESC)
 };
 
-bool load_from_exe(ss::Builder& tcdata, tl::Source src) {
+static char const* sound_names[] = {
+	"shotgun.wav", "shot.wav", "rifle.wav", "bazooka.wav", "blaster.wav", "throw.wav",
+	"larpa.wav", "exp3a.wav", "exp3b.wav", "exp2.wav", "exp3.wav", "exp4.wav", "exp5.wav",
+	"dirt.wav", "bump.wav", "death1.wav", "death2.wav", "death3.wav", "hurt1.wav", "hurt2.wav",
+	"hurt3.wav", "alive.wav", "begin.wav", "dropshel.wav", "reloaded.wav", "moveup.wav",
+	"movedown.wav", "select.wav", "boing.wav", "burner.wav"
+};
+
+bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src) {
 	auto window = src.window(135000);
 
 	if (window.empty()) {
@@ -139,8 +152,6 @@ bool load_from_exe(ss::Builder& tcdata, tl::Source src) {
 	CONSTANTS_24(DEF_CONSTANT_24_ACC);
 	CONSTANTS_32(DEF_CONSTANT_32_ACC);
 
-	tl::Palette pal;
-
 	{
 		u8 const* p = window.begin() + 132774;
 
@@ -160,6 +171,8 @@ bool load_from_exe(ss::Builder& tcdata, tl::Source src) {
 		ss::ArrayBuilder<ss::StructOffset<NObjectTypeReader>> nt_arr(tcdata, weapon_count + nobject_count);
 		ss::ArrayBuilder<ss::StructOffset<SObjectTypeReader>> st_arr(tcdata, sobject_count);
 		ss::ArrayBuilder<ss::StructOffset<LevelEffectReader>> le_arr(tcdata, level_effect_count);
+		ss::ArrayBuilder<ss::StringOffset> snd_arr(tcdata, sizeof(sound_names) / sizeof(*sound_names));
+		ss::ArrayBuilder<u8> materials_arr(tcdata, 256);
 
 		u8 const* strp = window.begin() + 0x1B676;
 
@@ -185,6 +198,8 @@ bool load_from_exe(ss::Builder& tcdata, tl::Source src) {
 			wt.parts(w_parts[i]);
 			wt.play_reload_sound(w_play_reload_sound[i] != 0);
 
+			wt.fire_sound(w_launch_sound[i] - 1);
+
 			Ratio worm_vel_ratio(0);
 			if (w_affect_by_worm[i]) {
 				w_speed[i] = tl::max(w_speed[i], i16(100));
@@ -194,13 +209,36 @@ bool load_from_exe(ss::Builder& tcdata, tl::Source src) {
 			wt.worm_vel_ratio(worm_vel_ratio);
 
 			// NObject for weapon
-			nt.acceleration(ratio_from_speed(w_add_speed[i]));
+			f64 acceleration, acceleration_up;
+			f64 drag = ratio_from_speed(w_mult_speed[i]);
+			if (w_shot_type[i] == 2) {
+				acceleration = ratio_from_speed(w_speed[i]) / 9.0;
+				acceleration_up = ratio_from_speed(w_speed[i] + w_add_speed[i]) / 9.0;
+				drag = drag * 8.0 / 9.0;
+			} else if (w_shot_type[i] == 3) {
+				acceleration = ratio_from_speed(w_add_speed[i]);
+				acceleration_up = 0.0;
+			} else {
+				acceleration = 0.0;
+				acceleration_up = 0.0;
+			}
+
+			nt.acceleration(acceleration);
+			nt.acceleration_up(acceleration_up);
+			nt.drag(drag);
+
 			nt.blood_trail_interval(0); // wobject doesn't have blood trail
 			nt.collide_with_objects(w_collide_with_objects[i] != 0);
 			nt.blowaway(ratio_from_speed(w_blow_away[i]));
 			nt.bounce(-ratio_from_speed(w_bounce[i]));
 			nt.detect_distance(w_detect_distance[i]);
 			nt.hit_damage(w_hit_damage[i]);
+
+			nt.worm_coldet(w_hit_damage[i] || w_blow_away[i] || w_blood_on_hit[i] || w_worm_collide[i]);
+			if (w_worm_collide[i] != 0) {
+				nt.worm_col_remove_prob(0xffffffff / w_worm_collide[i]);
+				nt.worm_col_expl(w_worm_explode[i] != 0);
+			}
 
 			NObjectAnimation anim;
 			i32 num_frames;
@@ -220,7 +258,6 @@ bool load_from_exe(ss::Builder& tcdata, tl::Source src) {
 			nt.animation(anim);
 			nt.num_frames(num_frames);
 
-			nt.drag(ratio_from_speed(w_mult_speed[i]));
 			nt.expl_ground(w_expl_ground[i] != 0 && w_bounce[i] == 0); // WObjects don't explode if they are bouncy
 			nt.level_effect(i16(w_dirt_effect[i]) - 1);
 
@@ -258,6 +295,7 @@ bool load_from_exe(ss::Builder& tcdata, tl::Source src) {
 					nt.splinter_color(pal.entries[w_splinter_colour[i]]);
 			}
 
+			nt.expl_sound(w_explo_sound[i] - 1);
 			nt.sobj_expl_type(w_create_on_exp[i] - 1); // TODO: Validate
 
 			auto sobj_trail_type = i32(w_obj_trail_type[i]) - 1;
@@ -282,7 +320,6 @@ bool load_from_exe(ss::Builder& tcdata, tl::Source src) {
 		for (usize i = 0; i < nobject_count; ++i) {
 			usize desti = weapon_count + i;
 
-			//auto nt = tcdata.alloc<NObjectTypeReader>();
 			NObjectTypeBuilder nt(tcdata);
 
 			nt.blood_trail_interval(n_blood_trail[i] ? n_blood_trail_delay[i] : 0);
@@ -290,8 +327,6 @@ bool load_from_exe(ss::Builder& tcdata, tl::Source src) {
 			nt.bounce(-ratio_from_speed(n_bounce[i]));
 			nt.friction(n_bounce[i] != 100 ? ratio(4, 5) : Ratio(1)); // TODO: This should probably be read from the EXE
 			nt.collide_with_objects(false);
-			nt.detect_distance(n_detect_distance[i]);
-			nt.hit_damage(n_hit_damage[i]);
 			nt.drag(Ratio(1));
 			nt.expl_ground(n_expl_ground[i] != 0);
 			nt.draw_on_level(n_draw_on_map[i] != 0);
@@ -299,6 +334,15 @@ bool load_from_exe(ss::Builder& tcdata, tl::Source src) {
 			nt.nobj_trail_interval(0); // No trail for nobjects
 			nt.sobj_expl_type(i16(n_create_on_exp[i]) - 1);
 			nt.level_effect(i16(n_dirt_effect[i]) - 1);
+
+			nt.detect_distance(n_detect_distance[i]);
+			nt.hit_damage(n_hit_damage[i]);
+
+			nt.worm_coldet(n_hit_damage[i] != 0);
+			if (n_worm_explode[i] || n_worm_destroy[i]) {
+				nt.worm_col_remove_prob(0xffffffff);
+				nt.worm_col_expl(n_worm_explode[i] != 0);
+			}
 
 			auto sobj_trail_type = i32(n_leave_obj[i] - 1);
 			if (sobj_trail_type >= 0) {
@@ -350,7 +394,12 @@ bool load_from_exe(ss::Builder& tcdata, tl::Source src) {
 			st.level_effect(s_dirt_effect[i] - 1);
 			st.num_frames(s_num_frames[i]);
 			st.start_frame(s_start_frame[i]);
-			// TODO: shake, flash, shadow, blow_away
+			st.start_sound(s_start_sound[i] - 1);
+			st.num_sounds(s_num_sounds[i]);
+			st.worm_blow_away(Scalar::from_raw(s_blow_away[i]));
+			st.nobj_blow_away(Scalar::from_raw(s_blow_away[i]) * (1.0 / 3.0));
+			st.damage(s_damage[i]);
+			// TODO: shake, flash, shadow
 
 			st_arr[i].set(st);
 		}
@@ -364,6 +413,37 @@ bool load_from_exe(ss::Builder& tcdata, tl::Source src) {
 			le.sframe(t_sframe[i]); // TODO: Validate?
 
 			le_arr[i].set(le);
+		}
+
+		for (usize i = 0; i < sizeof(sound_names) / sizeof(*sound_names); ++i) {
+			char const* n = sound_names[i];
+			auto name = tcdata.alloc_str(tl::StringSlice((u8 const*)n, (u8 const*)n + strlen(n)));
+
+			snd_arr[i].set(name);
+		}
+
+		{
+			u8 const* first = window.begin() + 0x01C2E0;
+			u8 const* second = window.begin() + 0x01AEA8;
+
+			#define BITF(bit) ((first[(bit)*32 + (i >> 3)] >> (i & 7)) & 1)
+			#define BITS(bit) ((second[(bit)*32 + (i >> 3)] >> (i & 7)) & 1)
+
+			for (usize i = 0; i < 256; ++i) {
+
+				u8 dirt = -BITF(0);
+				u8 dirt2 = -BITF(1);
+				u8 rock = -BITF(2);
+				u8 background = -BITF(3);
+				//u8 seeshadow = -BITF(4);
+				u8 wormm = -BITS(0);
+
+				materials_arr[i].set_raw(
+					(Material::Dirt & (dirt | dirt2)) |
+					(Material::Rock & rock) |
+					(Material::Background & background) |
+					(Material::WormM & wormm));
+			}
 		}
 
 		tc.nr_initial_length(ratio(c_nr_initial_length, 1 << c_nr_force_len_shl));
@@ -402,10 +482,137 @@ bool load_from_exe(ss::Builder& tcdata, tl::Source src) {
 		tc.weapons(wt_arr.done());
 		tc.level_effects(le_arr.done());
 
+		tc.sound_names(snd_arr.done());
+		tc.materials(materials_arr.done());
+
 		root.set(tc.done());
 	}
 
 	return true;
+}
+
+static tl::Image load_sprites_from_gfx(tl::VecSlice<u8 const>& src, u32 width, u32 height, u32 count) {
+	tl::Image img(width, height * count, 1);
+
+	//auto w = src.window(width * height * count);
+	usize sprites_size = width * height * count;
+	assert(src.size() >= sprites_size);
+
+	u8 const* srcp = src.begin();
+	src.unsafe_cut_front(sprites_size);
+
+	for (u32 i = 0; i < count; ++i) {
+		for (u32 x = 0; x < width; ++x) {
+			for (u32 y = 0; y < height; ++y) {
+				img.unsafe_pixel8(x, y + i * height) = srcp[y];
+			}
+
+			srcp += height;
+		}
+	}
+
+	return move(img);
+}
+
+void load_from_gfx(
+	tl::ArchiveBuilder& archive,
+	tl::TreeRef sprites_dir,
+	tl::StreamRef stream,
+	tl::Palette const& pal,
+	tl::Source src) {
+
+	auto data = src.window(35028);
+	if (data.empty()) return;
+	
+	data.unsafe_cut_front(10);
+
+	auto large_sprites = load_sprites_from_gfx(data, 16, 16, 110);
+	data.unsafe_cut_front(4);
+	auto small_sprites = load_sprites_from_gfx(data, 7, 7, 130);
+	data.unsafe_cut_front(4);
+	auto text_sprites = load_sprites_from_gfx(data, 4, 4, 26);
+	data.unsafe_cut_front(4);
+
+	tl::LcgPair rand(0xffff, 0xffff0000);
+
+	for(u32 y = 0; y < 16; ++y) {
+		for(u32 x = 0; x < 16; ++x) {
+			large_sprites.unsafe_pixel8(x, y + 73 * 16) = u8(160 + rand.get_i32(4));
+			large_sprites.unsafe_pixel8(x, y + 74 * 16) = u8(160 + rand.get_i32(4));
+
+			large_sprites.unsafe_pixel8(x, y + 87 * 16) = u8(12 + rand.get_i32(4));
+			large_sprites.unsafe_pixel8(x, y + 88 * 16) = u8(12 + rand.get_i32(4));
+
+			large_sprites.unsafe_pixel8(x, y + 82 * 16) = u8(94 + rand.get_i32(4));
+			large_sprites.unsafe_pixel8(x, y + 83 * 16) = u8(94 + rand.get_i32(4));
+		}
+	}
+
+	{
+		tl::SinkVector vec;
+		tl::write_tga(vec, large_sprites.slice(), pal);
+		auto file = archive.add_file(tl::String("large.tga"_S), stream, vec.unwrap_vec().slice_const());
+		archive.add_entry_to_dir(sprites_dir, move(file));
+	}
+
+	{
+		tl::SinkVector vec;
+		tl::write_tga(vec, small_sprites.slice(), pal);
+		auto file = archive.add_file(tl::String("small.tga"_S), stream, vec.unwrap_vec().slice_const());
+		archive.add_entry_to_dir(sprites_dir, move(file));
+	}
+
+	{
+		tl::SinkVector vec;
+		tl::write_tga(vec, text_sprites.slice(), pal);
+		auto file = archive.add_file(tl::String("text.tga"_S), stream, vec.unwrap_vec().slice_const());
+		archive.add_entry_to_dir(sprites_dir, move(file));
+	}
+}
+
+void load_from_sfx(
+	tl::ArchiveBuilder& archive,
+	tl::TreeRef sounds_dir,
+	tl::StreamRef stream,
+	tl::Source src) {
+
+	auto data = src.read_all();
+	if (data.size() < 2) return;
+
+	u32 count = tl::read_le<u16>(data.begin());
+	if (data.size() < 2 + (8 + 4 + 4)*count) return;
+
+	auto directory = data;
+	directory.unsafe_cut_front(2);
+
+	for (u32 i = 0; count; ++i) {
+		
+		u8 name[9];
+		name[8] = 0;
+		memcpy(name, directory.begin(), 8);
+
+		usize name_len = 0;
+		for (; name_len < 8 && name[name_len]; ) {
+			name[name_len] = tl_char_tolower(name[name_len]);
+			++name_len;
+		}
+
+		tl::StringSlice name_sl(name, name + name_len);
+		directory.unsafe_cut_front(8);
+
+		u32 offset = tl::read_le<u32>(directory.begin());
+		u32 length = tl::read_le<u32>(directory.begin() + 4);
+		directory.unsafe_cut_front(4 + 4);
+
+		if (data.size() < offset + length) return;
+
+		tl::VecSlice<u8 const> sound_data(data.begin() + offset, data.begin() + offset + length);
+
+		tl::SinkVector vec;
+		tl::write_wav(vec, sound_data);
+		auto file = archive.add_file(tl::String::concat(name_sl, ".wav"_S), stream, vec.unwrap_vec().slice_const());
+		archive.add_entry_to_dir(sounds_dir, move(file));
+	}
 }
 
 }

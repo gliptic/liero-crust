@@ -160,6 +160,7 @@
     <ClInclude Include="data\base_model.hpp" />
     <ClInclude Include="data\model.hpp" />
     <ClInclude Include="fixed.hpp" />
+    <ClInclude Include="material.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

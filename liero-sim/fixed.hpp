@@ -96,7 +96,7 @@ struct Fixed {
 	}
 
 	explicit operator f64() const {
-		return this->s / 65536.0;
+		return this->s * (1.0 / 65536.0);
 	}
 
 	static Fixed from_i32(i32 i) {

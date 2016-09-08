@@ -11,8 +11,9 @@
 namespace liero {
 
 struct State;
+struct TransientState;
 
-void fire(WeaponType const& self, State& state, Scalar angle, Vector2 vel, Vector2 pos);
+void fire(WeaponType const& self, State& state, TransientState& transient_state, Scalar angle, Vector2 vel, Vector2 pos, i16 owner);
 
 inline u32 computed_loading_time(WeaponType const& self) {
 	// TODO: Compute based on settings
@@ -25,11 +26,12 @@ struct ModRef {
 	NObjectType const* nobject_types;
 	SObjectType const* sobject_types;
 	LevelEffect const* level_effects;
+	u8 const* materials;
 
 	tl::ImageSlice large_sprites, small_sprites, small_font_sprites;
 	tl::ImageSlice worm_sprites[2];
 
-	tl::VecSlice<i16> ninjarope_sound;
+	tl::VecSlice<tl::Vec<i16>> sounds;
 
 	tl::Palette pal;
 	
@@ -68,8 +70,9 @@ struct Mod {
 		ret.small_font_sprites = this->small_font_sprites.slice();
 		ret.worm_sprites[0] = this->worm_sprites[0].slice();
 		ret.worm_sprites[1] = this->worm_sprites[1].slice();
+		ret.materials = this->tcdata->materials().begin();
 
-		ret.ninjarope_sound = this->ninjarope_sound.slice();
+		ret.sounds = this->sounds.slice();
 		ret.pal = this->pal;
 		return ret;
 	}
@@ -83,7 +86,7 @@ struct Mod {
 	tl::Image large_sprites, small_sprites, small_font_sprites;
 	tl::Image worm_sprites[2];
 
-	tl::Vec<i16> ninjarope_sound;
+	tl::Vec<tl::Vec<i16>> sounds;
 	tl::Palette pal;
 
 	tl::BufferMixed mod_data;

@@ -26,14 +26,12 @@ tl::Image read_full_tga(tl::Source file, tl::Palette* pal_out = 0) {
 
 Mod::Mod(tl::FsNode& root) {
 	
-	auto sprites = root / "sprites"_S;
-	auto sounds = root / "sounds"_S;
+	auto sprite_dir = root / "sprites"_S;
+	auto sound_dir = root / "sounds"_S;
 
-	this->large_sprites = read_full_tga((sprites / "large.tga"_S).try_get_source(), &this->pal);
-	this->small_sprites = read_full_tga((sprites / "small.tga"_S).try_get_source(), &this->pal);
-	this->small_font_sprites = read_full_tga((sprites / "text.tga"_S).try_get_source(), &this->pal);
-
-	read_wav((sounds / "throw.wav"_S).try_get_source(), this->ninjarope_sound);
+	this->large_sprites = read_full_tga((sprite_dir / "large.tga"_S).try_get_source(), &this->pal);
+	this->small_sprites = read_full_tga((sprite_dir / "small.tga"_S).try_get_source(), &this->pal);
+	this->small_font_sprites = read_full_tga((sprite_dir / "text.tga"_S).try_get_source(), &this->pal);
 
 	worm_sprites[0] = tl::Image(16, 7 * 3 * 16, 4);
 	worm_sprites[1] = tl::Image(16, 7 * 3 * 16, 4);
@@ -42,7 +40,9 @@ Mod::Mod(tl::FsNode& root) {
 	worm_sprites[0].blit(worms);
 	worm_sprites[1].blit(worms, 0, 0, 0, tl::ImageSlice::Flip);
 
-	auto src = (root / "tc.dat"_S).try_get_source();
+	auto r = (root / "tc.dat"_S);
+
+	auto src = r.try_get_source();
 	auto buf = src.read_all();
 
 	ss::Expander expander(buf);
@@ -54,10 +54,18 @@ Mod::Mod(tl::FsNode& root) {
 	this->level_effects = tc->level_effects().begin();
 	this->nobject_types = tc->nobjects().begin();
 	this->sobject_types = tc->sobjects().begin();
+
+	for (auto& sound_name : tc->sound_names()) {
+		tl::Vec<i16> sound_data;
+		read_wav((sound_dir / sound_name.get()).try_get_source(), sound_data);
+
+		this->sounds.push_back(move(sound_data));
+	}
+
 	this->mod_data = expander.to_buffer();
 }
 
-void fire(WeaponType const& self, State& state, Scalar angle, Vector2 vel, Vector2 pos) {
+void fire(WeaponType const& self, State& state, TransientState& transient_state, Scalar angle, Vector2 vel, Vector2 pos, i16 owner) {
 
 	//auto& mod = state.mod;
 
@@ -86,6 +94,8 @@ void fire(WeaponType const& self, State& state, Scalar angle, Vector2 vel, Vecto
 	}
 	*/
 
+	transient_state.play_sound(state.mod, self.fire_sound(), transient_state);
+
 	auto dir = sincos(angle);
 	auto anglevel = vel * self.worm_vel_ratio() + dir * self.speed();
 
@@ -103,7 +113,7 @@ void fire(WeaponType const& self, State& state, Scalar angle, Vector2 vel, Vecto
 			part_vel += rand_max_vector2(state.rand, self.distribution());
 		}
 
-		create(ty, state, angle, pos, part_vel);
+		create(ty, state, angle, pos, part_vel, owner);
 	}
 }
 

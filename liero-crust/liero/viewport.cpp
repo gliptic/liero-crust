@@ -61,6 +61,14 @@ void Viewport::draw(State& state, DrawTarget& target, TransientState const& tran
 				u32 frame = (u32)ty.start_frame() + cur_frame;
 				draw_small_sprite(state.mod, clipped, frame, ipos);
 
+			} else if (ty.start_frame() >= 0 && ty.kind() == NObjectKind::Steerable) {
+				i32 iangle = (n->cur_frame - 32 + 4) & 127;
+
+				i32 cur_frame = iangle >> 3;
+
+				u32 frame = (u32)ty.start_frame() + cur_frame;
+				draw_small_sprite(state.mod, clipped, frame, ipos);
+
 			} else if (ty.start_frame() > 0) {
 			
 				u32 frame = (u32)ty.start_frame() + n->cur_frame;
@@ -98,10 +106,10 @@ void Viewport::draw(State& state, DrawTarget& target, TransientState const& tran
 
 			{
 				u32 worm_sprite = w->current_frame(state.current_time, worm_transient_state);
-				auto sprite = state.mod.worm_sprites[w->direction < 0 ? 1 : 0].crop_square_sprite_v(worm_sprite);
+				auto sprite = state.mod.worm_sprites[w->direction()].crop_square_sprite_v(worm_sprite);
 
 				worm_blit(
-					tl::BlitContext::one_source(clipped, sprite, ipos.x - 7 - (w->direction < 0 ? 1 : 0), ipos.y - 5));
+					tl::BlitContext::one_source(clipped, sprite, ipos.x - 7 - w->direction(), ipos.y - 5));
 			}
 		}
 	}
@@ -133,7 +141,7 @@ void Viewport::draw(State& state, DrawTarget& target, TransientState const& tran
 			draw_small_sprite(state.mod, clipped, frame, sight_pos + tl::VectorI2(2, 1));
 		}
 
-		if (worm.control_flags[Worm::Change]) {
+		if (worm.prev_change()) {
 			auto ipos = worm.pos.cast<i32>() + this->offset;
 
 			WeaponType const& ty = state.mod.get_weapon_type(worm.weapons[worm.current_weapon].ty_idx);

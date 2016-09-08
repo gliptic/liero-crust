@@ -148,6 +148,7 @@
     <ClCompile Include="lz5\lz5.cpp" />
     <ClCompile Include="lz5\lz5hc.cpp" />
     <ClCompile Include="rans.cpp" />
+    <ClCompile Include="runtime.cpp" />
     <ClCompile Include="soio.cpp" />
     <ClCompile Include="vectest.cpp" />
   </ItemGroup>

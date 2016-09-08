@@ -82,6 +82,8 @@
     <ClCompile Include="lierosim\sobject.cpp">
       <Filter>lierosim</Filter>
     </ClCompile>
+    <ClCompile Include="runtime.cpp" />
+    <ClCompile Include="ai.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="gfx">

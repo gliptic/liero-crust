@@ -6,8 +6,8 @@ namespace liero {
 
 void State::update(TransientState& transient_state) {
 
-	this->worm_bloom_x = 0;
-	this->worm_bloom_y = 0;
+	transient_state.worm_bloom_x = 0;
+	transient_state.worm_bloom_y = 0;
 
 	{
 		auto r = this->worms.all();
@@ -22,10 +22,10 @@ void State::update(TransientState& transient_state) {
 			u32 ysh0 = (yr - (4 << 16)) >> (16 + 4),
 				ysh1 = (yr + (4 << 16)) >> (16 + 4);
 
-			this->worm_bloom_x |= (1 << (xsh0 & 31));
-			this->worm_bloom_x |= (1 << (xsh1 & 31));
-			this->worm_bloom_y |= (1 << (ysh0 & 31));
-			this->worm_bloom_y |= (1 << (ysh1 & 31));
+			transient_state.worm_bloom_x |= (1 << (xsh0 & 31));
+			transient_state.worm_bloom_x |= (1 << (xsh1 & 31));
+			transient_state.worm_bloom_y |= (1 << (ysh0 & 31));
+			transient_state.worm_bloom_y |= (1 << (ysh1 & 31));
 		}
 	}
 
@@ -43,7 +43,7 @@ void State::update(TransientState& transient_state) {
 		auto r = this->nobjects.all();
 
 		for (NObject* b; (b = r.next()) != 0; ) {
-			liero::update(*b, *this, r);
+			liero::update(*b, *this, r, transient_state);
 		}
 	}
 

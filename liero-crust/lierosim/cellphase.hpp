@@ -11,7 +11,7 @@ namespace liero {
 using tl::narrow;
 
 struct CellNode {
-	typedef u16 Index;
+	typedef i16 Index;
 
 	CellNode(Index n, Index p) : next(n), prev(p) {
 	}
@@ -28,81 +28,100 @@ struct Cellphase {
 	static u32 const CellMask = GridWidth - 1;
 
 	struct AreaRange {
+
 		CellNode const* base;
-		u32 xbeg;
-		u32 x, y;
-		u32 xend, yend;
+		CellNode::Index pitch_minus_w;
+		CellNode::Index xy_h_end, xy_v_end;
 		CellNode::Index n;
 
-		bool next(CellNode::Index& ret) {
+		bool next(u16& ret) {
 			while (true) {
 				n = base[n].next;
-				if (n >= GridSize) {
-					ret = n - GridSize;
+				if (n >= 0) {
+					ret = (u16)n;
 					return true;
 				}
 
-				if (x == xend) {
-					if (y == yend)
+				if (n == xy_h_end) {
+					if (n == xy_v_end)
 						return false;
-					y += GridWidth;
-					x = xbeg;
+					n += pitch_minus_w; // This will be masked below
+					xy_h_end = mask_neg(xy_h_end + GridWidth);
 				}
-				
-				++x;
 
-				n = CellNode::Index((x + y) & (CellMask | (CellMask << GridShift)));
+				n = mask_neg(n + 1);
 			}
 		}
 	};
 
 	// TODO: If max_count is limited to (2^16 - GridSize) anyway, it's probably better to allocate inline
 	CellNode* cells;
+	CellNode* base;
+	u32 max_count;
 
-	Cellphase(u32 max_count) {
-		this->cells = (CellNode *)malloc(sizeof(CellNode) * (GridSize + max_count));
-		for (u32 i = 0; i < GridSize + max_count; ++i) {
-			cells[i] = CellNode(narrow<CellNode::Index>(i), narrow<CellNode::Index>(i));
+	Cellphase(u32 max_count_init)
+		: max_count(max_count_init) {
+
+		this->cells = (CellNode *)malloc(sizeof(CellNode) * (GridSize + max_count_init));
+
+		for (u32 i = 0; i < GridSize + max_count_init; ++i) {
+			auto self_index = narrow<CellNode::Index>(i - GridSize);
+
+			cells[i] = CellNode(self_index, self_index);
 		}
+
+		this->base = this->cells + GridSize;
+	}
+
+	static CellNode::Index mask_neg(u32 n) {
+		return CellNode::Index(n | ~(CellMask | (CellMask << GridShift)));
+	}
+
+	void copy_from(Cellphase const& other, usize count) {
+		assert(max_count == other.max_count && count <= max_count);
+
+		memcpy(this->cells, other.cells, sizeof(CellNode) * (GridSize + count));
 	}
 
 	~Cellphase() {
 		free(cells);
 	}
 
-	CellNode::Index insert(CellNode::Index idx_, tl::VectorI2 pos) {
+	CellNode::Index insert(CellNode::Index idx, tl::VectorI2 pos) {
 		u32 cx = (u32)pos.x >> CellShift;
 		u32 cy = ((u32)pos.y >> CellShift) << GridShift;
-		auto new_cell = CellNode::Index((cx + cy) & (CellMask | (CellMask << GridShift)));
-		auto idx = CellNode::Index(idx_ + GridSize);
 
-		auto sp = this->cells[new_cell].prev;
+		auto new_cell = mask_neg(cx + cy);
+
+		auto sp = this->base[new_cell].prev;
 
 		// sp <-> new_cell  ---->  sp <-> idx <-> new_cell
-		this->cells[sp].next = idx;
-		this->cells[idx] = CellNode(new_cell, sp);
-		this->cells[new_cell].prev = idx;
+		this->base[sp].next = idx;
+		this->base[idx] = CellNode(new_cell, sp);
+		this->base[new_cell].prev = idx;
+		
 		return new_cell;
 	}
 
-	CellNode::Index update(CellNode::Index idx_, tl::VectorI2 pos, CellNode::Index cur_cell) {
+	CellNode::Index update(CellNode::Index idx, tl::VectorI2 pos, CellNode::Index cur_cell) {
 		u32 cx = (u32)pos.x >> CellShift;
 		u32 cy = ((u32)pos.y >> CellShift) << GridShift;
-		auto new_cell = CellNode::Index((cx + cy) & (CellMask | (CellMask << GridShift)));
-		auto idx = CellNode::Index(idx_ + GridSize);
+		auto new_cell = mask_neg(cx + cy);
 
 		if (cur_cell != new_cell) {
-			// Unlink
-			CellNode np = this->cells[idx];
-			this->cells[np.prev].next = np.next;
-			this->cells[np.next].prev = np.prev;
 
-			auto sp = this->cells[new_cell].prev;
+			// Unlink
+			CellNode np = this->base[idx];
+			this->base[np.prev].next = np.next;
+			this->base[np.next].prev = np.prev;
+
+			auto sp = this->base[new_cell].prev;
 
 			// Relink
-			this->cells[sp].next = idx;
-			this->cells[idx] = CellNode(new_cell, sp);
-			this->cells[new_cell].prev = idx;
+			this->base[sp].next = idx;
+			this->base[idx] = CellNode(new_cell, sp);
+			this->base[new_cell].prev = idx;
+			
 		}
 
 		return new_cell;
@@ -116,55 +135,53 @@ struct Cellphase {
 		u32 cx2 = u32(x2 >> CellShift);
 		u32 cy2 = u32(y2 >> CellShift) << GridShift;
 
-		auto first = CellNode::Index((cx1 + cy1) & (CellMask | (CellMask << GridShift)));
+		auto first = mask_neg(cx1 + cy1);
 
 		ar.n = first;
-		ar.base = cells;
-		ar.x = cx1;
-		ar.xbeg = cx1 - 1;
-		ar.y = cy1;
-		ar.xend = cx2;
-		ar.yend = cy2;
+		ar.base = base;
+		ar.pitch_minus_w = CellNode::Index(GridWidth + cx1 - cx2 - 1);
+
+		ar.xy_h_end = mask_neg(cx2 + cy1);
+		ar.xy_v_end = mask_neg(cx2 + cy2);
+
 		return ar;
 	}
 
-	void swap_remove(CellNode::Index idx_, CellNode::Index last_idx_) {
-		auto idx = CellNode::Index(idx_ + GridSize);
-		auto last_idx = CellNode::Index(last_idx_ + GridSize);
+	void swap_remove(CellNode::Index idx, CellNode::Index last_idx) {
 
 		{
-			auto np = this->cells[idx];
-			assert(this->cells[np.prev].next == idx);
-			assert(this->cells[np.next].prev == idx);
-			this->cells[np.prev].next = np.next;
-			this->cells[np.next].prev = np.prev;
+			auto np = this->base[idx];
+			assert(this->base[np.prev].next == idx);
+			assert(this->base[np.next].prev == idx);
+			this->base[np.prev].next = np.next;
+			this->base[np.next].prev = np.prev;
 		}
 
 		// There are two options, either we do the self-link of [idx], or we do the (last_idx != idx) check.
 		// The (last_idx != idx) branch should be well-predicted.
 #if 1
-		this->cells[idx].next = idx;
-		this->cells[idx].prev = idx;
+		this->base[idx].next = idx;
+		this->base[idx].prev = idx;
 
 		if (true) {
 #else
 		if (last_idx != idx) {
 #endif
 			// Fix up neighbours of moved node
-			auto last = this->cells[last_idx];
-			this->cells[idx] = last;
+			auto last = this->base[last_idx];
+			this->base[idx] = last;
 
-			assert(this->cells[last.prev].next == last_idx);
-			assert(this->cells[last.next].prev == last_idx);
-			this->cells[last.prev].next = idx;
-			this->cells[last.next].prev = idx;
+			assert(this->base[last.prev].next == last_idx);
+			assert(this->base[last.next].prev == last_idx);
+			this->base[last.prev].next = idx;
+			this->base[last.next].prev = idx;
 		}
 
 
 #if !defined(NDEBUG) && 0
 		for (u32 i = 0; i < GridSize; ++i) {
-			assert(this->cells[i].next != last_idx);
-			assert(this->cells[i].prev != last_idx);
+			assert(this->base[i].next != last_idx);
+			assert(this->base[i].prev != last_idx);
 		}
 #endif
 	}

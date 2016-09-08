@@ -34,9 +34,7 @@ bool BObject::update(State& state) {
 		}
 
 		if (m.dirt_rock()) {
-			if (!state.level.graphics.is_empty()) {
-				state.level.graphics.unsafe_pixel32(ipos.x, ipos.y) = this->color;
-			}
+			state.level.graphics.unsafe_pixel32(ipos.x, ipos.y) = this->color;
 
 			return false;
 		}
