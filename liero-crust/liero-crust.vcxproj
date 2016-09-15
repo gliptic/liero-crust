@@ -247,6 +247,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ai.hpp" />
     <ClInclude Include="bmp.hpp" />
     <ClInclude Include="gfx\buttons.hpp" />
     <ClInclude Include="gfx\buttons_common.hpp" />
@@ -314,6 +315,7 @@
     <ClInclude Include="liero\viewport.hpp" />
     <ClInclude Include="liero\blit.hpp" />
     <ClInclude Include="net\channel.hpp" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="sfx\mixer.hpp" />
     <ClInclude Include="sfx\sfx.hpp" />
   </ItemGroup>
@@ -324,6 +326,12 @@
   <ItemGroup>
     <Text Include="gfx\glext.txt" />
     <Text Include="gfx\_build\ideas.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="liero-crust.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon1.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

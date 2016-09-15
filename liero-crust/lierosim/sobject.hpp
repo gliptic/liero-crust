@@ -9,7 +9,7 @@ struct SObjectType;
 struct State;
 struct TransientState;
 
-void create(SObjectType const& self, State& state, TransientState& transient_state, tl::VectorI2 pos);
+TL_NEVER_INLINE void create(SObjectType const& self, State& state, TransientState& transient_state, tl::VectorI2 pos);
 
 struct SObject {
 	tl::VectorI2 pos;

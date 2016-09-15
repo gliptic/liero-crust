@@ -79,7 +79,7 @@ static char const* sound_names[] = {
 	"movedown.wav", "select.wav", "boing.wav", "burner.wav"
 };
 
-bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src) {
+bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src, u8 (&used_sounds)[256]) {
 	auto window = src.window(135000);
 
 	if (window.empty()) {
@@ -163,6 +163,37 @@ bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src) {
 		}
 	}
 
+	u8 c_throw_sound = 1 + 5; // TODO: Read from EXE?
+
+	i8 sound_index[256] = {-1};
+	u32 sound_count = 0;
+
+	{
+		used_sounds[c_throw_sound] = 1;
+
+		for (u32 i = 0; i < weapon_count; ++i) {
+			used_sounds[w_launch_sound[i]] = 1;
+			used_sounds[w_explo_sound[i]] = 1;
+		}
+
+		for (u32 i = 0; i < sobject_count; ++i) {
+			if (s_start_sound[i]) {
+				for (u8 s = 0;; ++s) {
+					used_sounds[s_start_sound[i] + s] = 1;
+
+					if (s >= s_num_sounds[i])
+						break;
+				}
+			}
+		}
+
+		for (u32 i = 1; i < 256; ++i) {
+			if (used_sounds[i]) {
+				sound_index[i] = tl::narrow<i8>(sound_count++);
+			}
+		}
+	}
+
 	{
 		auto root = tcdata.alloc<ss::StructOffset<TcDataReader>>();
 		TcDataBuilder tc(tcdata);
@@ -171,7 +202,7 @@ bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src) {
 		ss::ArrayBuilder<ss::StructOffset<NObjectTypeReader>> nt_arr(tcdata, weapon_count + nobject_count);
 		ss::ArrayBuilder<ss::StructOffset<SObjectTypeReader>> st_arr(tcdata, sobject_count);
 		ss::ArrayBuilder<ss::StructOffset<LevelEffectReader>> le_arr(tcdata, level_effect_count);
-		ss::ArrayBuilder<ss::StringOffset> snd_arr(tcdata, sizeof(sound_names) / sizeof(*sound_names));
+		ss::ArrayBuilder<ss::StringOffset> snd_arr(tcdata, sound_count);
 		ss::ArrayBuilder<u8> materials_arr(tcdata, 256);
 
 		u8 const* strp = window.begin() + 0x1B676;
@@ -193,12 +224,13 @@ bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src) {
 			wt.distribution(ratio_for_bi_rand(w_distribution[i]));
 			wt.fire_offset(w_detect_distance[i] + 5);
 			wt.recoil(-ratio_from_speed(w_recoil[i])); // TODO: Handle signed recoil if hack enabled
+			wt.muzzle_fire(w_fire_cone[i]);
 			wt.loading_time(w_loading_time[i]);
 			wt.nobject_type(u16(i));
 			wt.parts(w_parts[i]);
 			wt.play_reload_sound(w_play_reload_sound[i] != 0);
 
-			wt.fire_sound(w_launch_sound[i] - 1);
+			wt.fire_sound(sound_index[w_launch_sound[i]]);
 
 			Ratio worm_vel_ratio(0);
 			if (w_affect_by_worm[i]) {
@@ -233,6 +265,7 @@ bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src) {
 			nt.bounce(-ratio_from_speed(w_bounce[i]));
 			nt.detect_distance(w_detect_distance[i]);
 			nt.hit_damage(w_hit_damage[i]);
+			nt.worm_col_blood(w_blood_on_hit[i]);
 
 			nt.worm_coldet(w_hit_damage[i] || w_blow_away[i] || w_blood_on_hit[i] || w_worm_collide[i]);
 			if (w_worm_collide[i] != 0) {
@@ -295,7 +328,7 @@ bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src) {
 					nt.splinter_color(pal.entries[w_splinter_colour[i]]);
 			}
 
-			nt.expl_sound(w_explo_sound[i] - 1);
+			nt.expl_sound(sound_index[w_explo_sound[i]]);
 			nt.sobj_expl_type(w_create_on_exp[i] - 1); // TODO: Validate
 
 			auto sobj_trail_type = i32(w_obj_trail_type[i]) - 1;
@@ -307,10 +340,10 @@ bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src) {
 			nt.affect_by_sobj(w_affect_by_explosions[i] != 0);
 			nt.sobj_trail_when_bounced(true);
 			nt.sobj_trail_when_hitting(true);
-			if (w_shot_type[i] == 4) { // "laser" type
-				nt.physics_speed(8);
-			} else if (c_laser_weapon == i + 1) {
+			if (c_laser_weapon == i + 1) {
 				nt.physics_speed(255); // TODO: Laser in Liero has infinite
+			} else if (w_shot_type[i] == 4) { // "laser" type
+				nt.physics_speed(8);
 			}
 
 			wt_arr[i].set(wt.done());
@@ -394,7 +427,7 @@ bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src) {
 			st.level_effect(s_dirt_effect[i] - 1);
 			st.num_frames(s_num_frames[i]);
 			st.start_frame(s_start_frame[i]);
-			st.start_sound(s_start_sound[i] - 1);
+			st.start_sound(sound_index[s_start_sound[i]]);
 			st.num_sounds(s_num_sounds[i]);
 			st.worm_blow_away(Scalar::from_raw(s_blow_away[i]));
 			st.nobj_blow_away(Scalar::from_raw(s_blow_away[i]) * (1.0 / 3.0));
@@ -416,10 +449,13 @@ bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src) {
 		}
 
 		for (usize i = 0; i < sizeof(sound_names) / sizeof(*sound_names); ++i) {
-			char const* n = sound_names[i];
-			auto name = tcdata.alloc_str(tl::StringSlice((u8 const*)n, (u8 const*)n + strlen(n)));
+			if (used_sounds[i + 1]) {
+				i8 index = sound_index[i + 1];
+				char const* n = sound_names[i];
+				auto name = tcdata.alloc_str(tl::StringSlice((u8 const*)n, (u8 const*)n + strlen(n)));
 
-			snd_arr[i].set(name);
+				snd_arr[index].set(name);
+			}
 		}
 
 		{
@@ -476,6 +512,8 @@ bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src) {
 		tc.aim_max_right(c_aim_max_right);
 		tc.aim_min_right(c_aim_min_right);
 		tc.aim_fric_mult(ratio(c_aim_fric_mult, c_aim_fric_div));
+
+		tc.throw_sound(sound_index[c_throw_sound]);
 
 		tc.nobjects(nt_arr.done());
 		tc.sobjects(st_arr.done());
@@ -574,7 +612,8 @@ void load_from_sfx(
 	tl::ArchiveBuilder& archive,
 	tl::TreeRef sounds_dir,
 	tl::StreamRef stream,
-	tl::Source src) {
+	tl::Source src,
+	u8 (&used_sounds)[256]) {
 
 	auto data = src.read_all();
 	if (data.size() < 2) return;
@@ -608,10 +647,12 @@ void load_from_sfx(
 
 		tl::VecSlice<u8 const> sound_data(data.begin() + offset, data.begin() + offset + length);
 
-		tl::SinkVector vec;
-		tl::write_wav(vec, sound_data);
-		auto file = archive.add_file(tl::String::concat(name_sl, ".wav"_S), stream, vec.unwrap_vec().slice_const());
-		archive.add_entry_to_dir(sounds_dir, move(file));
+		if (used_sounds[i + 1]) {
+			tl::SinkVector vec;
+			tl::write_wav(vec, sound_data);
+			auto file = archive.add_file(tl::String::concat(name_sl, ".wav"_S), stream, vec.unwrap_vec().slice_const());
+			archive.add_entry_to_dir(sounds_dir, move(file));
+		}
 	}
 }
 

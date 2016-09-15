@@ -853,6 +853,7 @@ local function generate(header_path, source_path)
 		{'fire_offset', 7, t.U32},
 		{'fire_sound', 12, t.I16},
 		{'recoil', 11, t.F64},
+		{'muzzle_fire', 13, t.U8},
 
 		{'ammo', 8, t.U32},
 		{'delay', 9, t.U32},
@@ -897,6 +898,7 @@ local function generate(header_path, source_path)
 		{'worm_coldet', 41, t.Bit},
 		{'worm_col_remove_prob', 42, t.U32},
 		{'worm_col_expl', 43, t.Bit},
+		{'worm_col_blood', 44, t.U32},
 
 		{'expl_ground', 20, t.Bit},
 		{'draw_on_level', 38, t.Bit},
@@ -914,7 +916,7 @@ local function generate(header_path, source_path)
 		
 		{'physics_speed', 31, t.U8, 1})
 
-		-- 43
+		-- 44
 
 	ctx:Struct(t.SObjectType,
 		{'anim_delay', 0, t.U32},
@@ -988,7 +990,8 @@ local function generate(header_path, source_path)
 		{'worm_float_level', 70, t.U32},
 		{'worm_float_power', 71, t.Scalar},
 		{'rem_exp_object', 72, t.I16},
-		{'materials', 73, ctx:Array(t.U8, 256)})
+		{'materials', 73, ctx:Array(t.U8, 256)},
+		{'throw_sound', 74, t.U8})
 
 	ctx:Struct(t.PlayerControls,
 		{'up', 0, t.U16},

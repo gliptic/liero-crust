@@ -38,7 +38,7 @@ struct Material {
 
 	u8 flags;
 
-	Material(u8 flags)
+	explicit Material(u8 flags)
 		: flags(flags) {
 	}
 

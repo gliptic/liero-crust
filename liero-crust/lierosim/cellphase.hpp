@@ -30,75 +30,88 @@ struct Cellphase {
 	struct AreaRange {
 
 		CellNode const* base;
-		CellNode::Index pitch_minus_w;
-		CellNode::Index xy_h_end, xy_v_end;
-		CellNode::Index n;
+		i32 pitch_minus_w;
+		i32 xy_h_end, xy_v_end;
+		i32 n;
 
 		bool next(u16& ret) {
-			while (true) {
+			do {
 				n = base[n].next;
 				if (n >= 0) {
 					ret = (u16)n;
 					return true;
 				}
 
-				if (n == xy_h_end) {
-					if (n == xy_v_end)
-						return false;
-					n += pitch_minus_w; // This will be masked below
-					xy_h_end = mask_neg(xy_h_end + GridWidth);
-				}
+				i32 skip = i32(n & CellMask) == xy_h_end ? pitch_minus_w : 0;
 
-				n = mask_neg(n + 1);
-			}
+				n = mask_neg(n + skip);
+			} while (n != xy_v_end);
+
+			return false;
 		}
 	};
 
 	// TODO: If max_count is limited to (2^16 - GridSize) anyway, it's probably better to allocate inline
-	CellNode* cells;
+	//CellNode* cells;
 	CellNode* base;
 	u32 max_count;
 
 	Cellphase(u32 max_count_init)
 		: max_count(max_count_init) {
 
-		this->cells = (CellNode *)malloc(sizeof(CellNode) * (GridSize + max_count_init));
+		auto cells = (CellNode *)malloc(sizeof(CellNode) * (GridSize + max_count_init));
 
 		for (u32 i = 0; i < GridSize + max_count_init; ++i) {
-			auto self_index = narrow<CellNode::Index>(i - GridSize);
-
-			cells[i] = CellNode(self_index, self_index);
+			auto prev_index = mask_neg(i - GridSize - 1);
+			auto next_index = mask_neg(i - GridSize + 1);
+			cells[i] = CellNode(next_index, prev_index);
 		}
 
-		this->base = this->cells + GridSize;
+		this->base = cells + GridSize;
 	}
 
-	static CellNode::Index mask_neg(u32 n) {
+	static CellNode::Index mask_neg(i32 n) {
 		return CellNode::Index(n | ~(CellMask | (CellMask << GridShift)));
+	}
+
+	static CellNode::Index mask(i32 n) {
+		return CellNode::Index(n & (CellMask | (CellMask << GridShift)));
+	}
+
+	inline CellNode* cells() {
+		return base - GridSize;
+	}
+
+	inline CellNode const* cells() const {
+		return base - GridSize;
 	}
 
 	void copy_from(Cellphase const& other, usize count) {
 		assert(max_count == other.max_count && count <= max_count);
 
-		memcpy(this->cells, other.cells, sizeof(CellNode) * (GridSize + count));
+		memcpy(this->cells(), other.cells(), sizeof(CellNode) * (GridSize + count));
 	}
 
 	~Cellphase() {
-		free(cells);
+		free(cells());
+	}
+
+	void insert_outside_grid(CellNode::Index idx) {
+		this->base[idx] = CellNode(idx, idx);
 	}
 
 	CellNode::Index insert(CellNode::Index idx, tl::VectorI2 pos) {
+		assert((i32)idx < (i32)max_count);
 		u32 cx = (u32)pos.x >> CellShift;
 		u32 cy = ((u32)pos.y >> CellShift) << GridShift;
 
 		auto new_cell = mask_neg(cx + cy);
 
-		auto sp = this->base[new_cell].prev;
-
 		// sp <-> new_cell  ---->  sp <-> idx <-> new_cell
-		this->base[sp].next = idx;
-		this->base[idx] = CellNode(new_cell, sp);
-		this->base[new_cell].prev = idx;
+		auto sp = this->base[new_cell].next;
+		this->base[sp].prev = idx;
+		this->base[idx] = CellNode(sp, new_cell);
+		this->base[new_cell].next = idx;
 		
 		return new_cell;
 	}
@@ -111,55 +124,54 @@ struct Cellphase {
 		if (cur_cell != new_cell) {
 
 			// Unlink
-			CellNode np = this->base[idx];
-			this->base[np.prev].next = np.next;
-			this->base[np.next].prev = np.prev;
-
-			auto sp = this->base[new_cell].prev;
+			this->remove(idx);
 
 			// Relink
-			this->base[sp].next = idx;
-			this->base[idx] = CellNode(new_cell, sp);
-			this->base[new_cell].prev = idx;
-			
+			auto sp = this->base[new_cell].next;
+			this->base[sp].prev = idx;
+			this->base[idx] = CellNode(sp, new_cell);
+			this->base[new_cell].next = idx;
 		}
 
 		return new_cell;
 	}
 
+	void remove(CellNode::Index idx) {
+		// Unlink
+		auto np = this->base[idx];
+		assert(this->base[np.prev].next == idx);
+		assert(this->base[np.next].prev == idx);
+		this->base[np.prev].next = np.next;
+		this->base[np.next].prev = np.prev;
+	}
+
 	AreaRange area(i32 x1, i32 y1, i32 x2, i32 y2) {
 		AreaRange ar;
 
-		u32 cx1 = u32(x1 >> CellShift);
-		u32 cy1 = u32(y1 >> CellShift) << GridShift;
-		u32 cx2 = u32(x2 >> CellShift);
-		u32 cy2 = u32(y2 >> CellShift) << GridShift;
+		u32 cx1 = (u32(x1) >> CellShift);
+		u32 cy1 = (u32(y1) >> CellShift) << GridShift;
+		u32 cx2 = (u32(x2) >> CellShift);
+		u32 cy2 = (u32(y2) >> CellShift) << GridShift;
 
 		auto first = mask_neg(cx1 + cy1);
 
 		ar.n = first;
 		ar.base = base;
-		ar.pitch_minus_w = CellNode::Index(GridWidth + cx1 - cx2 - 1);
 
-		ar.xy_h_end = mask_neg(cx2 + cy1);
-		ar.xy_v_end = mask_neg(cx2 + cy2);
+		ar.pitch_minus_w = i32(GridWidth + cx1 - cx2 - 1);
+		ar.xy_h_end = (cx2 + 1) & CellMask;
+		ar.xy_v_end = mask_neg(cx1 + cy2 + GridWidth);
 
 		return ar;
 	}
 
 	void swap_remove(CellNode::Index idx, CellNode::Index last_idx) {
 
-		{
-			auto np = this->base[idx];
-			assert(this->base[np.prev].next == idx);
-			assert(this->base[np.next].prev == idx);
-			this->base[np.prev].next = np.next;
-			this->base[np.next].prev = np.prev;
-		}
+		this->remove(idx);
 
-		// There are two options, either we do the self-link of [idx], or we do the (last_idx != idx) check.
+		// There are two options. Either we do the self-link of [idx], or we do the (last_idx != idx) check.
 		// The (last_idx != idx) branch should be well-predicted.
-#if 1
+#if 0
 		this->base[idx].next = idx;
 		this->base[idx].prev = idx;
 
@@ -169,14 +181,18 @@ struct Cellphase {
 #endif
 			// Fix up neighbours of moved node
 			auto last = this->base[last_idx];
-			this->base[idx] = last;
+			if (last.next == last_idx) {
+			//if (false) {
+				this->base[idx] = CellNode(idx, idx);
+			} else {
+				this->base[idx] = last;
+			}
 
 			assert(this->base[last.prev].next == last_idx);
 			assert(this->base[last.next].prev == last_idx);
 			this->base[last.prev].next = idx;
 			this->base[last.next].prev = idx;
 		}
-
 
 #if !defined(NDEBUG) && 0
 		for (u32 i = 0; i < GridSize; ++i) {

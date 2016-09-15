@@ -7,7 +7,11 @@
 
 namespace liero {
 
-bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src);
+bool load_from_exe(
+	ss::Builder& tcdata,
+	tl::Palette& pal,
+	tl::Source src,
+	u8 (&used_sounds)[256]);
 
 void load_from_gfx(
 	tl::ArchiveBuilder& archive,
@@ -20,7 +24,8 @@ void load_from_sfx(
 	tl::ArchiveBuilder& archive,
 	tl::TreeRef sounds_dir,
 	tl::StreamRef stream,
-	tl::Source src);
+	tl::Source src,
+	u8 (&used_sounds)[256]);
 
 }
 

@@ -56,9 +56,14 @@ static int common_setup_gl(CommonWindow* self) {
 	glClearColor(0.f, 0.f, 0.f, 0.0f);
 	glClearDepth(0.0f);
 	
+#if !BONK_USE_GL2
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glEnable(GL_BLEND);
+	glDisable(GL_BLEND);
+#endif
 	glDisable(GL_DEPTH_TEST);
+
+	//glEnable(GL_MULTISAMPLE_ARB);
+	//glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
 
 #if BONK_USE_GL2
 	static char const defaultVsSrc[] = {
@@ -73,8 +78,7 @@ attribute vec4 color;
 varying vec2 fragTexcoord;
 varying vec4 fragColor;
 
-void main()
-{
+void main() {
 	gl_Position = vec4((transform * position) + translation, 0.0, 1.0);
 	fragTexcoord = texcoord;
 	fragColor = color;
@@ -88,11 +92,22 @@ uniform sampler2D texture;
 varying vec2 fragTexcoord;
 varying vec4 fragColor;
 
-void main()
-{
-	gl_FragColor = vec4((texture2D(texture, fragTexcoord) * fragColor).rgb, 1);
+void main() {
+	vec4 m = texture2D(texture, fragTexcoord);
+
+	gl_FragColor = vec4((m * fragColor).rgb, 1);
 })="
 	};
+
+	// vec4 m = texture2D(texture, fragTexcoord);
+
+	/*
+	vec4 a = texture2D(texture, fragTexcoord + vec2(504.0 / 512.0 / 1024.0 / 4.0, 350.0 / 512.0 / 768.0 / 2.0));
+	vec4 b = texture2D(texture, fragTexcoord + vec2(-504.0 / 512.0 / 1024.0 / 2.0, 350.0 / 512.0 / 768.0 / 4.0));
+	vec4 c = texture2D(texture, fragTexcoord + vec2(-504.0 / 512.0 / 1024.0 / 4.0, -350.0 / 512.0 / 768.0 / 2.0));
+	vec4 d = texture2D(texture, fragTexcoord + vec2(504.0 / 512.0 / 1024.0 / 2.0, -350.0 / 512.0 / 768.0 / 4.0));
+	vec4 m = mix(mix(a, b, 0.5), mix(c, d, 0.5), 0.5);
+	*/
 
 	check_gl();
 	

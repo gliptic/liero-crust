@@ -17,8 +17,12 @@ void fire(WeaponType const& self, State& state, TransientState& transient_state,
 
 inline u32 computed_loading_time(WeaponType const& self) {
 	// TODO: Compute based on settings
-	return self.loading_time() / 2;
+	return self.loading_time() * 0; // TEMP: 0% reloading time
 }
+
+struct LargeSpriteRow {
+	u16 bit0, bit1;
+};
 
 struct ModRef {
 	TcData const* tcdata;
@@ -29,7 +33,9 @@ struct ModRef {
 	u8 const* materials;
 
 	tl::ImageSlice large_sprites, small_sprites, small_font_sprites;
-	tl::ImageSlice worm_sprites[2];
+	tl::ImageSlice worm_sprites[2], muzzle_fire_sprites[2];
+
+	tl::VecSlice<LargeSpriteRow> large_sprites_bits;
 
 	tl::VecSlice<tl::Vec<i16>> sounds;
 
@@ -70,8 +76,11 @@ struct Mod {
 		ret.small_font_sprites = this->small_font_sprites.slice();
 		ret.worm_sprites[0] = this->worm_sprites[0].slice();
 		ret.worm_sprites[1] = this->worm_sprites[1].slice();
+		ret.muzzle_fire_sprites[0] = this->muzzle_fire_sprites[0].slice();
+		ret.muzzle_fire_sprites[1] = this->muzzle_fire_sprites[1].slice();
 		ret.materials = this->tcdata->materials().begin();
 
+		ret.large_sprites_bits = this->large_sprites_bits.slice();
 		ret.sounds = this->sounds.slice();
 		ret.pal = this->pal;
 		return ret;
@@ -84,7 +93,9 @@ struct Mod {
 	LevelEffect const* level_effects;
 
 	tl::Image large_sprites, small_sprites, small_font_sprites;
-	tl::Image worm_sprites[2];
+	tl::Image worm_sprites[2], muzzle_fire_sprites[2];
+
+	tl::Vec<LargeSpriteRow> large_sprites_bits;
 
 	tl::Vec<tl::Vec<i16>> sounds;
 	tl::Palette pal;

@@ -35,7 +35,7 @@ static u8 count_pixels(State& state, tl::VectorI2 pos, Direction dir) {
 		i32 y = dir == DirDown ? pos.y - 4 : pos.y + 4;
 
 		for (i32 x = pos.x - 1; x <= pos.x + 1; ++x) {
-			if (!state.level.mat_wrap(tl::VectorI2(x, y)).background()) {
+			if (!state.level.mat_wrap_back(tl::VectorI2(x, y))) {
 				++count;
 			}
 		}
@@ -43,7 +43,7 @@ static u8 count_pixels(State& state, tl::VectorI2 pos, Direction dir) {
 		i32 x = dir == DirRight ? pos.x - 1 : pos.x + 1;
 
 		for (i32 y = pos.y - 3; y <= pos.y + 3; ++y) {
-			if (!state.level.mat_wrap(tl::VectorI2(x, y)).background()) {
+			if (!state.level.mat_wrap_back(tl::VectorI2(x, y))) {
 				++count;
 			}
 		}
@@ -54,7 +54,6 @@ static u8 count_pixels(State& state, tl::VectorI2 pos, Direction dir) {
 
 inline PixelCount count_worm_pixels(Worm& worm, State& state) {
 
-	//ModRef& mod = state.mod;
 	auto next = worm.pos + worm.vel;
 	auto inext = next.cast<i32>();
 
@@ -67,12 +66,12 @@ inline PixelCount count_worm_pixels(Worm& worm, State& state) {
 
 	if (inext.x < 4)
 		pixel_counts[DirRight] += 20;
-	else if (inext.x > (i32)state.level.materials.width() - 5)
+	else if (inext.x > (i32)state.level.graphics.width() - 5)
 		pixel_counts[DirLeft] += 20;
 
 	if (inext.y < 5)
 		pixel_counts[DirDown] += 20;
-	else if (inext.y > (i32)state.level.materials.height() - 6)
+	else if (inext.y > (i32)state.level.graphics.height() - 6)
 		pixel_counts[DirUp] += 20;
 
 	// Up/down pushing
@@ -159,7 +158,7 @@ inline void update_actions(Worm& worm, u32 worm_idx, State& state, WormInput inp
 		if (worm.prev_no_jump_or_no_change() && input.rope()) {
 			worm.ninjarope.st = Ninjarope::Floating;
 
-			transient_state.play_sound(mod, 5, transient_state); // TODO: 5 should be stored in TC
+			transient_state.play_sound(mod, mod.tcdata->throw_sound(), transient_state); // TODO: 5 should be stored in TC
 
 			worm.ninjarope.pos = worm.pos;
 			worm.ninjarope.vel = sincos(worm.abs_aiming_angle()) * mod.tcdata->nr_throw_vel();
@@ -195,8 +194,8 @@ inline void update_actions(Worm& worm, u32 worm_idx, State& state, WormInput inp
 			auto dig_pos = worm.pos + step;
 
 			// TODO: TC should have dig effect constant
-			draw_level_effect(state, dig_pos.cast<i32>(), 7);
-			draw_level_effect(state, (dig_pos + step).cast<i32>(), 7);
+			draw_level_effect(state, dig_pos.cast<i32>(), 7, transient_state.graphics);
+			draw_level_effect(state, (dig_pos + step).cast<i32>(), 7, transient_state.graphics);
 		}
 
 		// !Jump & !Change -> Jump & !Change
@@ -447,18 +446,14 @@ void Ninjarope::update(Worm& owner, State& state) {
 
 		Material m(Material::Rock); // Treat borders as rock
 
-		if (state.level.is_inside(ipos)) {
-			m = state.level.unsafe_mat(ipos);
-		}
-
-		if (m.dirt_rock()) {
+		if (state.level.mat_dirt_rock(ipos)) {
 
 			if (this->st != Ninjarope::Attached) {
 
 				this->st = Ninjarope::Attached;
 				this->length = mod.tcdata->nr_attach_length();
 
-				if (m.any_dirt()) {
+				if (state.level.mat_dirt(ipos)) {
 					// TODO: Throw up some dirt. Try to use bobjects
 #if 0
 					PalIdx pix = game.level.pixel(ipos);

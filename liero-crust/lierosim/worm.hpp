@@ -89,6 +89,7 @@ struct WormInput {
 		Mask = 3
 	};
 
+	/*
 	enum struct ChangeDir : u8 {
 		None = 0 << 2,
 		Left = 1 << 2,
@@ -96,9 +97,13 @@ struct WormInput {
 
 		Mask = 3 << 2
 	};
+	*/
 
 	WormInput(u8 v_init = 0) : v(v_init) {
 		assert(v < 6 * 4 * 4);
+	}
+
+	WormInput(u8 act, u8 move, u8 aim) : v(act | move | aim) {
 	}
 
 	static WormInput from_keys(ControlState state) {
@@ -106,11 +111,11 @@ struct WormInput {
 			| (state[WcDown] ? (u8)Aim::Down : 0);
 
 		if (state[WcChange]) {
-			ChangeDir dir = ChangeDir::None;
+			Move dir = Move::None;
 			if (state[WcLeft] && !state[WcRight]) {
-				dir = ChangeDir::Left;
+				dir = Move::Left;
 			} else if (!state[WcLeft] && state[WcRight]) {
-				dir = ChangeDir::Right;
+				dir = Move::Right;
 			}
 
 			if (state[WcJump]) {
@@ -132,11 +137,11 @@ struct WormInput {
 		}
 	}
 
-	static WormInput change(ChangeDir dir, Aim aim) {
+	static WormInput change(Move dir, Aim aim) {
 		return WormInput((u8)Action::Change | (u8)dir | (u8)aim);
 	}
 
-	static WormInput ninjarope(ChangeDir dir, Aim aim) {
+	static WormInput ninjarope(Move dir, Aim aim) {
 		return WormInput((u8)Action::Ninjarope | (u8)dir | (u8)aim);
 	}
 
@@ -225,6 +230,7 @@ struct Worm {
 
 	Worm() :
 		aiming_angle(0), aiming_angle_vel(0), current_weapon(0), leave_shell_time(0),
+		health(0),
 		muzzle_fire(0), bits0(PrevNoLeft | PrevNoRight | PrevNoJump) {
 	}
 
@@ -234,6 +240,7 @@ struct Worm {
 
 	WormWeapon weapons[SelectableWeapons]; // TODO: Adjustable?
 	u32 current_weapon;
+	i32 health;
 	u32 leave_shell_time;
 
 	u32 muzzle_fire; // GFX
@@ -284,17 +291,24 @@ struct Worm {
 		return direction() == 0 ? aiming_angle : Fixed(64) - aiming_angle;
 	}
 
-	u32 current_frame(u32 current_time, WormTransientState const& transient_state) const {
-
+	u32 angle_frame() const {
 		i32 x = -(i32)this->aiming_angle + 32 - 12;
 
 		x >>= 3;
 		if (x < 0) x = 0;
 		else if (x > 6) x = 6;
 
-		u32 angle_frame = (u32)x;
+		return (u32)x;
+	}
+
+	u32 current_frame(u32 current_time, WormTransientState const& transient_state) const {
+
 		u32 anim_frame = transient_state.animate() ? (current_time & 31) >> 3 : 0;
-		return angle_frame + worm_anim_tab[anim_frame];
+		return angle_frame() + worm_anim_tab[anim_frame];
+	}
+
+	void do_damage(i32 amount) {
+		health -= amount;
 	}
 
 	void update(State& state, TransientState& state_input, u32 index);

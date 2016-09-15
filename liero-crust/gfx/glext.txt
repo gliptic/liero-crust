@@ -3,6 +3,7 @@ wglChoosePixelFormatARB
 wglGetPixelFormatAttribivARB
 WGL_ARB_multisample
 glActiveTexture
+GL_MULTISAMPLE_ARB
 
 wglSwapIntervalEXT
 

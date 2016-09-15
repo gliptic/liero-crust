@@ -50,10 +50,13 @@ int main(int argc, char const* argv[]) {
 	auto main_str = ar.add_stream();
 
 	tl::Palette pal;
+	u8 used_sounds[256] = {0};
+
+	used_sounds[1 + 5] = 1;
 
 	{
 		ss::Builder tcdata;
-		liero::load_from_exe(tcdata, pal, std::move(exe_src));
+		liero::load_from_exe(tcdata, pal, std::move(exe_src), used_sounds);
 
 		auto buf = tcdata.to_vec();
 		ar.add_entry_to_dir(ar.root(),
@@ -70,7 +73,7 @@ int main(int argc, char const* argv[]) {
 	{
 		auto sounds_dir = ar.add_dir(String("sounds"_S));
 		auto snd_node = in_node / "LIERO.SND"_S;
-		liero::load_from_sfx(ar, sounds_dir.contents.tree, main_str, snd_node.try_get_source());
+		liero::load_from_sfx(ar, sounds_dir.contents.tree, main_str, snd_node.try_get_source(), used_sounds);
 		ar.add_entry_to_dir(ar.root(), move(sounds_dir));
 	}
 

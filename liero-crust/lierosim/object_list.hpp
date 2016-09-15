@@ -39,15 +39,33 @@ struct FixedObjectList {
 	T* get_free_object() {
 		assert(count < Limit);
 		T* ptr = &arr[count++];
+		//new (ptr, tl::non_null()) T();
 		return ptr;
 	}
-	
+
 	T* new_object_reuse() {
 		T* ret;
-		if (count == Limit)
-			ret = &arr[Limit - 1];
-		else
+		if (count == Limit) {
+			u32 replace_idx = Limit - 1;
+			ret = &arr[replace_idx];
+		} else {
 			ret = get_free_object();
+		}
+
+		return ret;
+	}
+	
+	template<typename DestroyFunc>
+	T* new_object_reuse(DestroyFunc destroy_func) {
+		T* ret;
+		if (count == Limit) {
+			//u32 replace_idx = rand() % Limit; // TEMP!
+			u32 replace_idx = Limit - 1; // TEMP!
+			ret = &arr[replace_idx];
+			destroy_func(ret, replace_idx);
+		} else {
+			ret = get_free_object();
+		}
 
 		return ret;
 	}

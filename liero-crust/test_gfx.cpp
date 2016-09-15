@@ -14,6 +14,7 @@
 
 #include "lierosim/state.hpp"
 #include "liero/viewport.hpp"
+#include "ai.hpp"
 
 void mixer_fill(sfx::Stream& str, u32 /*start*/, u32 frames) {
 	sfx::Mixer* mixer = (sfx::Mixer *)str.ud;
@@ -22,6 +23,8 @@ void mixer_fill(sfx::Stream& str, u32 /*start*/, u32 frames) {
 }
 
 void mixer_play_sound(liero::ModRef& mod, i16 sound_index, liero::TransientState& transient_state) {
+
+	return; // TEMP
 
 	if (sound_index < 0)
 		return;
@@ -32,13 +35,17 @@ void mixer_play_sound(liero::ModRef& mod, i16 sound_index, liero::TransientState
 
 namespace liero {
 void do_ai(State& state, Worm& worm, u32 worm_index, WormTransientState& transient_state);
+
+extern u32 draw_calls, draw_calls_with_effect;
 }
 
 void test_gfx() {
 
 	int scrw = 1024, scrh = 768;
+	//int scrw = 504 * 2, scrh = 350 * 2;
 
 	gfx::CommonWindow win;
+	win.fsaa = 0;
 	win.set_mode(scrw, scrh, 0);
 	win.set_visible(1);
 
@@ -186,11 +193,11 @@ void main()
 	
 	memset(img.data(), 0, img.size());
 
-	wglSwapIntervalEXT(1);
+	wglSwapIntervalEXT(0);
 
 	gfx::GeomBuffer buf;
 
-	auto root = tl::FsNode(tl::FsNode::from_path("TC/lierov133winxp"_S));
+	auto root = tl::FsNode(tl::FsNode::from_path("TC/lierov133"_S));
 
 	liero::Mod mod(root);
 	liero::State state(mod.ref());
@@ -216,7 +223,7 @@ void main()
 		for (u32 i = 0; i < liero::Worm::SelectableWeapons; ++i) {
 			w->weapons[i].ty_idx = i;
 		}
-		w->pos = liero::Vector2(140, 70);
+		w->pos = liero::Vector2(180, 70);
 		w->spawn(state);
 	}
 
@@ -238,15 +245,22 @@ void main()
 
 	u32 col_tests = 0, col2_tests = 0, col_mask_tests = 0;
 
-	while (true) {
+	liero::Ai ai(mod.ref());
+
+	u64 total_ai_time = 0;
+
+	while (state.current_time < 60*60) {
 		win.clear();
+
+		if (!state.level.validate_mat()) {
+			printf("Invalid material bitmap!\n");
+		}
 
 		liero::TransientState transient_state(state.worms.size(), mixer_play_sound, &mixer);
 
 		{
 			// Process
 			
-			//auto& c = transient_state.worm_state[0].controls;
 			liero::ControlState c;
 			c.set(liero::WcLeft, win.button_state[kbLeft] != 0);
 			c.set(liero::WcRight, win.button_state[kbRight] != 0);
@@ -257,11 +271,15 @@ void main()
 			c.set(liero::WcChange, win.button_state[kbA] != 0);
 			transient_state.worm_state[0].input = liero::WormInput::from_keys(c);
 
-			liero::do_ai(state, state.worms.of_index(1), 1, transient_state.worm_state[1]);
+			//liero::do_ai(state, state.worms.of_index(1), 1, transient_state.worm_state[1]);
+			TL_TIME(ai_time, {
+				ai.do_ai(state, state.worms.of_index(1), 1, transient_state.worm_state[1]);
+			});
+
+			total_ai_time += ai_time;
 
 			if (win.button_state[kbC] != 0) {
 				if (!prev_c) {
-					printf("Copy: %d\n", (int)has_other_state);
 					if (has_other_state) {
 						state.copy_from(other_state, true);
 						has_other_state = false;
@@ -279,11 +297,18 @@ void main()
 			state.update(transient_state);
 
 			if ((state.current_time % 60) == 0) {
+#if 0
 				col_tests += transient_state.col_tests;
 				col2_tests += transient_state.col2_tests;
 				col_mask_tests += transient_state.col_mask_tests;
 				printf("%d/%d/%d\n", col_tests, col2_tests, col_mask_tests);
+#endif
+
+#if 0
+				printf("%d vs %d\n", state.worms.of_index(0).health, state.worms.of_index(1).health);
+#endif
 			}
+
 		}
 
 		auto render = [&] {
@@ -364,4 +389,7 @@ void main()
 
 		} while (!win.end_drawing());
 	}
+
+	printf("total AI time: %f ms\ndraw effects: %d / %d\n", f64(total_ai_time) / 10000.0, liero::draw_calls_with_effect, liero::draw_calls);
+	printf("%08x\n", state.rand.s[0] ^ state.worms.of_index(0).pos.x.raw());
 }

@@ -74,6 +74,12 @@ void State::update(TransientState& transient_state) {
 	}
 
 	++this->current_time;
+
+#if 0
+	if (!level.validate_mat()) {
+		printf("Invalid material bitmap in State::update!\n");
+	}
+#endif
 }
 
 }

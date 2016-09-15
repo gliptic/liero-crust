@@ -24,6 +24,8 @@
 #pragma comment(lib, "kernel32.lib")
 #pragma comment(lib, "gdi32.lib")
 
+#define GFX_SUPPORT_FSAA 1
+
 namespace gfx {
 
 #define TICKS_FROM_MS(ms) ((ms) * 10000)
@@ -124,7 +126,7 @@ static void on_unfocus(CommonWindow& self) {
 	}
 }
 
-static LRESULT CALLBACK windowProc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam) {
+static LRESULT CALLBACK window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam) {
 	LONG_PTR lptr = GetWindowLongPtr(wnd, GWLP_USERDATA);
 
 	if (lptr) {
@@ -232,7 +234,7 @@ static LPCTSTR window_class() {
 	memset(&wc, 0, sizeof(wc));
 	wc.lpszClassName = "m";
 	wc.style = CS_OWNDC;
-	wc.lpfnWndProc = windowProc;
+	wc.lpfnWndProc = window_proc;
 	//wc.cbClsExtra = 0;
 	//wc.cbWndExtra = 0;
 	wc.hInstance = GetModuleHandle(0);
@@ -572,7 +574,7 @@ static int create_window(CommonWindow* self, int dummy, int fullscreen) {
 			0
 		};
 
-		CHECKB(wglChoosePixelFormatARB(hdc, iattr, NULL, 256, formats, &count));
+		CHECKB(wglChoosePixelFormatARB(hdc, iattr, NULL, dummy ? 256 : 1, formats, &count));
 
 		if(dummy) {
 			int query = WGL_SAMPLES_ARB;
@@ -732,10 +734,7 @@ int CommonWindow::end_drawing() {
 	}
 #endif
 
-	TL_TIME(lswap_delay, {
-		glFinish();
-		SwapBuffers((HDC)this->hdc);
-	});
+	SwapBuffers((HDC)this->hdc);
 	
 #if GFX_PREDICT_VSYNC
 	this->prev_swap_end = this->swap_end;

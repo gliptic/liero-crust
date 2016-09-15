@@ -19,6 +19,11 @@ void draw_large_sprite(ModRef& mod, tl::ImageSlice const& clipped, u32 frame, tl
 	tl::BlitContext::one_source(clipped, sprite, ipos.x, ipos.y).blit(0, tl::ImageSlice::BlitTransparent);
 }
 
+i32 muzzle_fire_offset[7][2] =
+{
+	{3, 1}, {4, 0}, {4, -2}, {4, -4}, {3, -5}, {2, -6}, {0, -6}
+};
+
 void Viewport::draw(State& state, DrawTarget& target, TransientState const& transient_state) {
 
 	auto clipped = target.image.crop(this->screen_pos);
@@ -104,12 +109,31 @@ void Viewport::draw(State& state, DrawTarget& target, TransientState const& tran
 				draw_large_sprite(state.mod, clipped, 84, anchor_pos - tl::VectorI2(1, 1));
 			}
 
+			WeaponType const& ty = state.mod.get_weapon_type(w->weapons[w->current_weapon].ty_idx);
+
+			if (ty.muzzle_fire() && w->muzzle_fire) {
+				auto ang_frame = w->angle_frame();
+				i32 sign_mask = -(i32)w->direction();
+
+				auto sprite = state.mod.muzzle_fire_sprites[w->direction()].crop_square_sprite_v(ang_frame);
+
+				muzzle_fire_blit(
+					tl::BlitContext::one_source(
+						clipped,
+						sprite,
+						(muzzle_fire_offset[ang_frame][0] ^ sign_mask) + ipos.x - 7,
+						muzzle_fire_offset[ang_frame][1] + ipos.y - 5),
+					state.mod.pal,
+					w->muzzle_fire / 2);
+			}
+
 			{
 				u32 worm_sprite = w->current_frame(state.current_time, worm_transient_state);
 				auto sprite = state.mod.worm_sprites[w->direction()].crop_square_sprite_v(worm_sprite);
 
 				worm_blit(
-					tl::BlitContext::one_source(clipped, sprite, ipos.x - 7 - w->direction(), ipos.y - 5));
+					tl::BlitContext::one_source(clipped, sprite, ipos.x - 7 - w->direction(), ipos.y - 5),
+					index == 0 ? tl::Color(104, 104, 252) : tl::Color(104, 252, 104));
 			}
 		}
 	}

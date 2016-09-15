@@ -4,16 +4,18 @@
 namespace liero {
 
 void create(SObjectType const& self, State& state, TransientState& transient_state, tl::VectorI2 pos) {
-	SObject* obj = state.sobjects.new_object_reuse();
-	obj->pos = tl::VectorI2(pos.x - 8, pos.y - 8);
-	obj->ty_idx = u32(&self - state.mod.sobject_types);
-	obj->time_to_die = state.current_time + self.anim_delay() * (self.num_frames() + 1);
 
-	// TODO: Damage and stuff
+	if (transient_state.graphics) {
+	
+		SObject* obj = state.sobjects.new_object_reuse();
+		obj->pos = tl::VectorI2(pos.x - 8, pos.y - 8);
+		obj->ty_idx = u32(&self - state.mod.sobject_types);
+		obj->time_to_die = state.current_time + self.anim_delay() * (self.num_frames() + 1);
 
-	if (self.start_sound() >= 0) {
-		i16 sound = i16(self.start_sound() + state.gfx_rand.get_i32(self.num_sounds()));
-		transient_state.play_sound(state.mod, sound, transient_state);
+		if (self.start_sound() >= 0) {
+			i16 sound = i16(self.start_sound() + state.gfx_rand.get_i32(self.num_sounds()));
+			transient_state.play_sound(state.mod, sound, transient_state);
+		}
 	}
 
 	Scalar worm_blow_away = self.worm_blow_away();
@@ -72,17 +74,18 @@ void create(SObjectType const& self, State& state, TransientState& transient_sta
 						w->vel.y += worm_blow_away * power.y * sign(delta.y);
 					}
 
-					i32 ldamage = (2 * self.damage()) / (power.x + power.y);
+					u32 ldamage = self.damage() * u32(power.x + power.y) / 2;
 					if (ldetect_range)
 						ldamage /= ldetect_range;
 
 					// TODO: Cause damage to worm
+					w->do_damage(ldamage);
 				}
 			}
 		}
 	}
 
-	draw_level_effect(state, pos, self.level_effect());
+	draw_level_effect(state, pos, self.level_effect(), transient_state.graphics);
 }
 
 

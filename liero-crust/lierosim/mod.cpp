@@ -35,10 +35,32 @@ Mod::Mod(tl::FsNode& root) {
 
 	worm_sprites[0] = tl::Image(16, 7 * 3 * 16, 4);
 	worm_sprites[1] = tl::Image(16, 7 * 3 * 16, 4);
+	muzzle_fire_sprites[0] = tl::Image(16, 7 * 16, 4);
+	muzzle_fire_sprites[1] = tl::Image(16, 7 * 16, 4);
 
 	auto worms = large_sprites.crop(tl::RectU(0, 16 * 16, 16, 16 * (16 + 7 * 3)));
 	worm_sprites[0].blit(worms);
 	worm_sprites[1].blit(worms, 0, 0, 0, tl::ImageSlice::Flip);
+
+	auto muzzle_fire = large_sprites.crop(tl::RectU(0, 16 * 9, 16, 16 * (9 + 7)));
+	muzzle_fire_sprites[0].blit(muzzle_fire);
+	muzzle_fire_sprites[1].blit(muzzle_fire, 0, 0, 0, tl::ImageSlice::Flip);
+
+	{
+		for (u32 y = 0; y < this->large_sprites.height(); ++y) {
+			LargeSpriteRow row = {0, 0};
+			for (u32 x = 0; x < 16; ++x) {
+				auto p = tl::Color(this->large_sprites.unsafe_pixel32(x, y));
+				bool bit0 = p.a() > 0;
+				bool bit1 = p.a() == 1 || p.a() == 2;
+
+				row.bit0 |= bit0 << x;
+				row.bit1 |= bit1 << x;
+			}
+
+			this->large_sprites_bits.push_back(row);
+		}
+	}
 
 	auto r = (root / "tc.dat"_S);
 
@@ -69,6 +91,11 @@ void fire(WeaponType const& self, State& state, TransientState& transient_state,
 
 	//auto& mod = state.mod;
 
+	if (owner >= 0) {
+		auto& worm = state.worms.of_index(owner);
+		worm.muzzle_fire = self.muzzle_fire();
+	}
+	
 	/*
 	if(w.leaveShells > 0)
 	{

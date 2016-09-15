@@ -27,17 +27,13 @@ bool BObject::update(State& state) {
 
 		ModRef& mod = state.mod;
 
-		auto m = state.level.unsafe_mat(ipos);
-
-		if (m.background()) {
-			this->vel.y += mod.tcdata->bobj_gravity();
-		}
-
-		if (m.dirt_rock()) {
+		if (state.level.mat_dirt_rock(ipos)) {
 			state.level.graphics.unsafe_pixel32(ipos.x, ipos.y) = this->color;
 
 			return false;
 		}
+
+		this->vel.y += mod.tcdata->bobj_gravity();
 
 		return true;
 	}

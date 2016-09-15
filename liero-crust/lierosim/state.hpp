@@ -31,6 +31,7 @@ struct TransientState {
 	TransientState(usize worm_count, PlaySoundFunc play_sound_init, void* sound_user_data_init)
 		: play_sound(play_sound_init)
 		, sound_user_data(sound_user_data_init)
+		, graphics(true)
 #if PROFILE
 		, col_mask_tests(0), col_tests(0), col2_tests(0)
 #endif
@@ -68,6 +69,7 @@ struct TransientState {
 
 	PlaySoundFunc play_sound;
 	void* sound_user_data;
+	bool graphics;
 };
 
 struct State {
@@ -95,11 +97,11 @@ struct State {
 		this->nobject_broadphase.copy_from(other.nobject_broadphase, nobjects.size());
 		this->rand = other.rand;
 		this->current_time = other.current_time;
+		this->gfx_rand = other.gfx_rand; // Might as well copy this always because it's cheap
 
 		if (copy_graphics) {
 			this->sobjects = other.sobjects;
 			this->bobjects = other.bobjects;
-			this->gfx_rand = other.gfx_rand;
 		} else {
 			this->sobjects.clear();
 			this->bobjects.clear();
@@ -110,6 +112,7 @@ struct State {
 		: mod(mod)
 		, current_time(0)
 		, nobject_broadphase(NObjectLimit)
+		, rand(0xaaaaaa, 0xbbbbbb)
 		, gfx_rand(0xf0f0f0, 0x777777) {
 	}
 };

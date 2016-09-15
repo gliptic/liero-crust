@@ -166,7 +166,7 @@ typedef struct _glewStringEntry_ {
 	int index;
 } _glewStringEntry;
 
-static int _glewAvailable[5];
+static int _glewAvailable[6];
 
 static GLuint strhash(const GLubyte* str) {
 	GLuint acc = 1;
@@ -239,11 +239,11 @@ static void _glewMarkAvailable(GLubyte const* p) {
 	}
 }
 
-char const* _glewUsed = "  WGL_ARB_multisample WGL_ARB_pixel_format WGL_EXT_swap_control";
+char const* _glewUsed = "  GL_ARB_multisample WGL_ARB_multisample WGL_ARB_pixel_format WGL_EXT_swap_control";
 void (*_glewFuncTable[30])();
 
-static GLubyte _glewFuncUsedPerExt[5] = {
-	1,26,0,2,1
+static GLubyte _glewFuncUsedPerExt[6] = {
+	1,26,0,0,2,1
 };
 
 static char const* __glewFuncUsedNames = "glActiveTexture\0glAttachShader\0glBindAttribLocation\0glCompileShader\0glCreateProgram\0glCreateShader\0glDeleteProgram\0glDeleteShader\0glDetachShader\0glDisableVertexAttribArray\0glEnableVertexAttribArray\0glGetProgramiv\0glGetProgramInfoLog\0glGetShaderiv\0glGetShaderInfoLog\0glShaderSource\0glGetUniformLocation\0glLinkProgram\0glUseProgram\0glUniform1f\0glUniform1i\0glUniform2f\0glUniformMatrix2fv\0glValidateProgram\0glVertexAttrib2f\0glVertexAttrib4f\0glVertexAttribPointer\0wglChoosePixelFormatARB\0wglGetPixelFormatAttribivARB\0wglSwapIntervalEXT\0";
@@ -311,7 +311,7 @@ if (v >= 0x20) _glewAvailable[1] = 1;
 		int func_index = 0;
 		int r = 1, k = 0;
 
-		for(ext_index = 0; ext_index < 5; ++ext_index) {
+		for(ext_index = 0; ext_index < 6; ++ext_index) {
 			int available = _glewAvailable[ext_index];
 #ifdef _WIN32
 			if (cur_func[0] == 'w' && wgl_crippled)

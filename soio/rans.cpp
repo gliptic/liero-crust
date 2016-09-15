@@ -48,7 +48,7 @@ struct ModelBits {
 			// mcm = j - (1 << rate) + (j > sym ? step : 0)
 			// cm = cm + (mcm - cm) >> rate
 
-			u16 mcm = (j > sym ? 0x7fff - 0xf : 0) + j;
+			u16 mcm = u16((j > sym ? 0x7fff - 0xf : 0) + j);
 			
 			// 1, 1+step, 2+step, 3+step, 2^n-1+step
 			

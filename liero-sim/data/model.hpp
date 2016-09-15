@@ -62,6 +62,7 @@ struct alignas(8) WeaponType : ss::Struct {
 	bool play_reload_sound() const { return (this->_field<u8, 38>() & 1) != 0; }
 	f64 recoil() const { return this->_field<f64, 56>(); }
 	i16 fire_sound() const { return this->_field<i16, 64>(); }
+	u8 muzzle_fire() const { return this->_field<u8, 39>(); }
 
 	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<WeaponTypeReader> const& src) {
 		TL_UNUSED(expander); TL_UNUSED(src);
@@ -126,6 +127,7 @@ struct WeaponTypeBuilder : ss::Ref<WeaponTypeReader> {
 		this->_field<u64, 56>() = s ^ 0;
 	}
 	void fire_sound(i16 v) { this->_field<i16, 64>() = v ^ 0; }
+	void muzzle_fire(u8 v) { this->_field<u8, 39>() = v ^ 0; }
 
 };
 
@@ -233,6 +235,7 @@ struct alignas(8) NObjectType : ss::Struct {
 	bool worm_coldet() const { return (this->_field<u8, 11>() & 64) != 0; }
 	u32 worm_col_remove_prob() const { return this->_field<u32, 152>(); }
 	bool worm_col_expl() const { return (this->_field<u8, 11>() & 128) != 0; }
+	u32 worm_col_blood() const { return this->_field<u32, 156>(); }
 
 	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<NObjectTypeReader> const& src) {
 		TL_UNUSED(expander); TL_UNUSED(src);
@@ -354,6 +357,7 @@ struct NObjectTypeBuilder : ss::Ref<NObjectTypeReader> {
 	void worm_coldet(bool v) { this->_field<u8, 11>() = (this->_field<u8, 11>() & 0xbf) | ((v ^ 0) << 6); }
 	void worm_col_remove_prob(u32 v) { this->_field<u32, 152>() = v ^ 0; }
 	void worm_col_expl(bool v) { this->_field<u8, 11>() = (this->_field<u8, 11>() & 0x7f) | ((v ^ 0) << 7); }
+	void worm_col_blood(u32 v) { this->_field<u32, 156>() = v ^ 0; }
 
 };
 
@@ -533,6 +537,7 @@ struct alignas(8) TcData : ss::Struct {
 	i16 rem_exp_object() const { return this->_field<i16, 240>(); }
 	tl::VecSlice<ss::StringOffset const> sound_names() const { return this->_field<ss::ArrayOffset<ss::StringOffset>, 248>().get(); }
 	tl::VecSlice<u8 const> materials() const { return this->_field<ss::ArrayOffset<u8>, 256>().get(); }
+	u8 throw_sound() const { return this->_field<u8, 242>(); }
 
 	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<TcDataReader> const& src) {
 		TL_UNUSED(expander); TL_UNUSED(src);
@@ -681,6 +686,7 @@ struct TcDataBuilder : ss::Ref<TcDataReader> {
 	void rem_exp_object(i16 v) { this->_field<i16, 240>() = v ^ 0; }
 	void sound_names(ss::ArrayRef<ss::StringOffset> v) { return this->_field_ref<ss::ArrayOffset<ss::StringOffset>, 248>().set(v); }
 	void materials(ss::ArrayRef<u8> v) { return this->_field_ref<ss::ArrayOffset<u8>, 256>().set(v); }
+	void throw_sound(u8 v) { this->_field<u8, 242>() = v ^ 0; }
 
 };
 

@@ -5,14 +5,25 @@
 namespace liero {
 
 void create(NObjectType const& self, State& state, Scalar angle, Vector2 pos, Vector2 vel, i16 owner, tl::Color override_color) {
-	auto* obj = state.nobjects.new_object_reuse();
-	obj->ty_idx = u32(&self - state.mod.nobject_types);
+	auto* obj = state.nobjects.new_object_reuse([&](NObject*, u32 index) {
+		state.nobject_broadphase.remove(narrow<CellNode::Index>(index));
+	});
+
+	obj->ty_idx = tl::narrow<u16>(&self - state.mod.nobject_types);
 	obj->pos = pos;
 	obj->vel = vel;
 
 	// TODO: nobjects created with create2 have their velocity applied once immediately
 
-	obj->cell = state.nobject_broadphase.insert(narrow<CellNode::Index>(state.nobjects.index_of(obj)), pos.cast<i32>());
+	i16 obj_index = narrow<CellNode::Index>(state.nobjects.index_of(obj));
+
+	if (true || self.affect_by_sobj()) {
+		obj->cell = state.nobject_broadphase.insert(obj_index, pos.cast<i32>());
+	} else {
+		state.nobject_broadphase.insert_outside_grid(obj_index);
+		obj->cell = obj_index;
+	}
+
 	obj->owner = owner;
 
 	obj->time_to_die = state.current_time + self.time_to_live() - state.rand.get_i32(self.time_to_live_v());
@@ -85,7 +96,7 @@ void NObject::explode_obj(NObjectType const& ty, Vector2 pos, Vector2 vel, i16 o
 		}
 	}
 
-	draw_level_effect(state, pos.cast<i32>(), ty.level_effect());
+	draw_level_effect(state, pos.cast<i32>(), ty.level_effect(), transient_state.graphics);
 }
 
 bool update(NObject& self, State& state, NObjectList::Range& range, TransientState& transient_state) {
@@ -133,13 +144,13 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 		}
 
 		if (ty.bounce() != Ratio()) { // TODO: Not sure this will work for real nobjects
-			if (!level.is_inside(inexthoz) || level.unsafe_mat(inexthoz).dirt_rock()) {
+			if (level.mat_dirt_rock(inexthoz)) {
 				lvel.x *= ty.bounce();
 				lvel.y *= ty.friction();
 				bounced = true;
 			}
 
-			if (!level.is_inside(inextver) || level.unsafe_mat(inextver).dirt_rock()) {
+			if (level.mat_dirt_rock(inextver)) {
 				lvel.x *= ty.friction();
 				lvel.y *= ty.bounce();
 				bounced = true;
@@ -147,7 +158,9 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 		}
 
 		// Blood trail for nobject
-		if (ty.blood_trail_interval() && (state.current_time % ty.blood_trail_interval()) == 0) {
+		if (transient_state.graphics
+		 && ty.blood_trail_interval()
+		 && (state.current_time % ty.blood_trail_interval()) == 0) {
 			BObject::create(state, lpos, lvel / 4);
 		}
 
@@ -202,19 +215,19 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 
 		bool sobj_trail;
 
-		if (!level.is_inside(inextpos) || level.unsafe_mat(inextpos).dirt_rock()) {
+		if (level.mat_dirt_rock(inextpos)) {
 			if (ty.expl_ground()) {
 
 				if (self.cur_frame >= 0 && ty.draw_on_level()) {
 					// TODO: Make sure (ty.start_frame() + self.cur_frame) isn't out of range
 					auto sprite = state.mod.small_sprites.crop_square_sprite_v(ty.start_frame() + self.cur_frame);
 
-					tl::ImageSlice targets[2] = { state.level.graphics.slice(), state.level.materials.slice() };
+					tl::ImageSlice targets[1] = { state.level.graphics.slice() };
 					tl::ImageSlice sources[1] = { sprite };
 
-					tl::BasicBlitContext<2, 1> ctx(targets, sources, ipos.x - 3, ipos.y - 3);
+					tl::BasicBlitContext<1, 1, true> ctx(targets, sources, ipos.x - 3, ipos.y - 3);
 
-					draw_sprite_on_level(ctx);
+					draw_sprite_on_level(ctx, state.level.mat_iter());
 				}
 
 				obj_state = NObject::Exploded;
@@ -276,9 +289,14 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 
 						// TODO:
 						w->vel += lvel * ty.blowaway();
-						// game.doDamage(worm, w.hitDamage, ownerIdx);
+						w->do_damage(ty.hit_damage());
 
-						// TODO: Blood
+						u32 blood_amount = ty.worm_col_blood();
+						for (u32 i = 0; i < blood_amount; ++i) {
+							auto angle = Fixed::from_raw(state.rand.next() & ((128 << 16) - 1));
+							auto part_vel = sincos(angle); // TODO: Correct blood velocity
+							create(state.mod.get_nobject_type(40 + 6), state, angle, lpos, part_vel + lvel / 3, self.owner);
+						}
 
 						// TODO: Play hurt sound if hit_damage > 0 etc.
 						
@@ -310,7 +328,8 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 		self.pos = lpos;
 		self.vel = lvel;
 
-		self.cell = state.nobject_broadphase.update(narrow<CellNode::Index>(state.nobjects.index_of(&self)), ipos, self.cell);
+		if (self.cell < 0)
+			self.cell = state.nobject_broadphase.update(narrow<CellNode::Index>(state.nobjects.index_of(&self)), ipos, self.cell);
 
 		return true;
 	} else {

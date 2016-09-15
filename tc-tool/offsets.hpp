@@ -83,7 +83,7 @@
 	_(i16, gravity) \
 	_(u8, shadow) \
 	_(u8, laser_sight) \
-	_(i8, launch_sound) \
+	_(u8, launch_sound) \
 	_(u8, loop_sound) \
 	_(u8, explo_sound) \
 	_(i16, speed) \

@@ -230,6 +230,8 @@
     <ClInclude Include="sfx\mixer.hpp">
       <Filter>sfx</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="ai.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="build.lua" />
@@ -244,5 +246,11 @@
     <Text Include="gfx\_build\ideas.txt">
       <Filter>gfx\_build</Filter>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="liero-crust.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon1.ico" />
   </ItemGroup>
 </Project>
