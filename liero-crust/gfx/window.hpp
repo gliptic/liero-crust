@@ -6,6 +6,7 @@
 #include <tl/cstdint.h>
 #include <tl/vec.hpp>
 #include "buttons.hpp"
+#include "texture.hpp"
 #if BONK_USE_GL2
 #include "shader.hpp"
 #endif
@@ -68,6 +69,7 @@ struct CommonWindow {
 
 #if BONK_USE_GL2
 	DefaultProgram textured;
+	Texture white_texture;
 #endif
 
 #if TL_WINDOWS

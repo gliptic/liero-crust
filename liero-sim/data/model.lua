@@ -868,7 +868,8 @@ local function generate(header_path, source_path)
 		{'splinter_type', 2, t.U16},
 		{'splinter_scatter', 3, t.ScatterType, t.ScatterType.ScNormal},
 		{'splinter_distribution', 4, t.F64},
-		{'splinter_speed', 5, t.F64},
+		{'splinter_speed', 46, t.F64},
+		{'splinter_speed_v', 5, t.F64},
 		{'splinter_color', 32, t.Color},
 		
 		{'time_to_live', 6, t.U32},
@@ -913,10 +914,11 @@ local function generate(header_path, source_path)
 		{'nobj_trail_scatter', 28, t.ScatterType, t.ScatterType.ScNormal},
 		{'nobj_trail_vel_ratio', 29, t.F64, Ratio(1, 3)},
 		{'nobj_trail_speed', 30, t.F64},
+		{'nobj_trail_interval_inv', 45, t.U32, 0},
 		
 		{'physics_speed', 31, t.U8, 1})
 
-		-- 44
+		-- 46
 
 	ctx:Struct(t.SObjectType,
 		{'anim_delay', 0, t.U32},

@@ -20,7 +20,8 @@ Level::Level(tl::Source& src, tl::Palette& pal, ModRef& mod) {
 			usize i = y*504 + x;
 			u8 m = mod.materials[index_bitmap[i]];
 
-			usize o = y * this->materials_full_pitch + x / 8;
+			usize o = y * this->materials_pitch + x / 8;
+
 			this->materials_bitmap_dirt[o] = this->materials_bitmap_dirt[o] | (Material(m).any_dirt() << (x % 8));
 			this->materials_bitmap_back[o] = this->materials_bitmap_back[o] | (Material(m).background() << (x % 8));
 			this->materials_bitmap_dirt_rock[o] = this->materials_bitmap_dirt_rock[o] | (Material(m).dirt_rock() << (x % 8));
@@ -37,13 +38,27 @@ bool Level::validate_mat() {
 
 void draw_level_effect(tl::VectorI2 pos, Level& level, tl::VecSlice<LargeSpriteRow> mframe, bool draw_on_background);
 
-void draw_level_effect(State& state, tl::VectorI2 pos, i16 level_effect, bool graphics) {
+void draw_level_effect(State& state, tl::VectorI2 pos, i16 level_effect, bool graphics, TransientState& transient_state) {
 
 	if (level_effect >= 0) {
+
+		LevelEffectRecord le;
+		le.pos = pos;
+		le.level_effect = level_effect;
+		
+		transient_state.level_effect_queue.push_back(le);
+	}
+}
+
+void TransientState::apply_queues(State& state) {
+	for (auto& le : this->level_effect_queue) {
+	
+		auto pos = le.pos;
+		auto level_effect = le.level_effect;
+
 		auto& effect = state.mod.get_level_effect(u32(level_effect));
 
 		auto mframe = state.mod.large_sprites.crop_square_sprite_v(effect.mframe());
-
 		if (graphics) {
 			u32 tframe_idx = effect.sframe();
 			auto graphics_slice = state.level.graphics.slice().crop_bottom(1);
@@ -64,11 +79,23 @@ void draw_level_effect(State& state, tl::VectorI2 pos, i16 level_effect, bool gr
 			draw_level_effect(pos - tl::VectorI2(7, 7), state.level, mframe_slice, effect.draw_back());
 		}
 	}
+
+#if !UPDATE_POS_IMMEDIATE
+	for (u32 i = 0; i < state.nobjects.count; ++i) {
+		auto new_pos = this->next_nobj_pos[i].pos;
+		auto& self = state.nobjects.of_index(i);
+		self.pos = new_pos;
+		if (self.cell < 0) {
+			auto ipos = new_pos.cast<i32>();
+			self.cell = state.nobject_broadphase.update(narrow<CellNode::Index>(state.nobjects.index_of(&self)), ipos, self.cell);
+		}
+	}
+#endif
 }
 
 void draw_level_effect(tl::VectorI2 pos, Level& level, tl::VecSlice<LargeSpriteRow> mframe, bool draw_on_background) {
-	if (pos.y <= -16 || pos.y >= level.graphics.height() - 1
-	 || pos.x <= -16 || pos.x >= level.graphics.width())
+	if (pos.y <= -16 || pos.y >= (i32)(level.graphics.height() - 1)
+	 || pos.x <= -16 || pos.x >= (i32)level.graphics.width())
 		return;
 
 	if (pos.y < 0) { mframe.unsafe_cut_front(-pos.y); pos.y = 0; }
@@ -86,9 +113,9 @@ void draw_level_effect(tl::VectorI2 pos, Level& level, tl::VecSlice<LargeSpriteR
 			u32 bit0 = u32(row.bit0) << xoffs;
 			u32 bit1 = u32(row.bit1) << xoffs;
 
-			u32 dirt_write = to_dirt & (~bit0 | bit1);
+			u32 dirt_write = to_dirt & ~bit1;
 			u32 back_write = to_back | (to_dirt & bit0);
-			u32 dirt_rock_write = to_dirt_rock ^ (to_dirt & ~dirt_write);
+			u32 dirt_rock_write = to_dirt_rock ^ (to_dirt & bit1);
 
 			mat_iter.write_dirt_16(pos.x, dirt_write);
 			mat_iter.write_back_16(pos.x, back_write);
@@ -106,7 +133,7 @@ void draw_level_effect(tl::VectorI2 pos, Level& level, tl::VecSlice<LargeSpriteR
 			u32 bit1 = u32(row.bit1) << xoffs;
 
 			u32 dirt_write = to_dirt | (to_back & bit0);
-			u32 back_write = to_back & (~bit0 | bit1);
+			u32 back_write = to_back & ~bit1;
 			u32 dirt_rock_write = to_dirt_rock | dirt_write;
 
 			mat_iter.write_dirt_16(pos.x, dirt_write);
@@ -199,8 +226,6 @@ void draw_level_effect(tl::BasicBlitContext<1, 1, true> ctx, MaterialIterator ma
 		}
 	}
 }
-
-u32 draw_calls = 0, draw_calls_with_effect = 0;
 
 void draw_sprite_on_level(tl::BasicBlitContext<1, 1, true> ctx, MaterialIterator mat_iter) {
 

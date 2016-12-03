@@ -51,9 +51,12 @@ Mod::Mod(tl::FsNode& root) {
 			LargeSpriteRow row = {0, 0};
 			for (u32 x = 0; x < 16; ++x) {
 				auto p = tl::Color(this->large_sprites.unsafe_pixel32(x, y));
-				bool bit0 = p.a() > 0;
-				bool bit1 = p.a() == 1 || p.a() == 2;
+				bool draw = p.a() > 0;
+				bool half = p.a() == 1 || p.a() == 2;
 
+				bool bit0 = draw;
+				bool bit1 = !(!draw || half);
+								
 				row.bit0 |= bit0 << x;
 				row.bit1 |= bit1 << x;
 			}
@@ -95,9 +98,11 @@ void fire(WeaponType const& self, State& state, TransientState& transient_state,
 		auto& worm = state.worms.of_index(owner);
 		worm.muzzle_fire = self.muzzle_fire();
 	}
+
+
 	
 	/*
-	if(w.leaveShells > 0)
+	if(w.leaveShells > 0) <--
 	{
 		if(game.rand(w.leaveShells) == 0)
 		{
@@ -121,6 +126,7 @@ void fire(WeaponType const& self, State& state, TransientState& transient_state,
 	}
 	*/
 
+	// TODO: Looping?
 	transient_state.play_sound(state.mod, self.fire_sound(), transient_state);
 
 	auto dir = sincos(angle);
@@ -140,7 +146,7 @@ void fire(WeaponType const& self, State& state, TransientState& transient_state,
 			part_vel += rand_max_vector2(state.rand, self.distribution());
 		}
 
-		create(ty, state, angle, pos, part_vel, owner);
+		create(ty, state, angle, pos, part_vel, transient_state, owner);
 	}
 }
 

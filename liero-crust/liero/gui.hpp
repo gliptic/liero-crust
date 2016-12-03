@@ -1,6 +1,7 @@
 #include <tl/std.h>
 #include <tl/string.hpp>
 #include <tl/vec.hpp>
+#include "../gfx/geom_buffer.hpp"
 
 namespace gui {
 
@@ -15,6 +16,7 @@ struct Size {
 
 struct WindowDesc {
 	isize size;
+	u32 type;
 };
 
 struct ButtonDesc : WindowDesc {
@@ -67,12 +69,15 @@ struct Context {
 		u8* desc = buf.unsafe_alloc(sizeof(ButtonDesc));
 		isize offs = desc - buf.begin();
 
-
+		ButtonDesc* button_desc = (ButtonDesc *)desc;
+		button_desc->size = sizeof(ButtonDesc);
+		button_desc->type = 0;
+		button_desc->win_size = size;
 
 		return Button<Context>(*this);
 	}
 
-
+	void render(gfx::GeomBuffer& geom);
 };
 
 struct LieroGui {

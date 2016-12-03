@@ -180,14 +180,14 @@ struct WeaponTypeListBuilder : ss::Ref<WeaponTypeListReader> {
 };
 
 struct alignas(8) NObjectTypeReader : ss::Struct {
-	u8 data[160];
+	u8 data[176];
 
 };
 
 struct alignas(8) NObjectType : ss::Struct {
-	static u8 _defaults[160];
+	static u8 _defaults[176];
 
-	u8 data[160];
+	u8 data[176];
 
 	NObjectType() { memcpy(data, _defaults, sizeof(_defaults)); }
 
@@ -196,7 +196,7 @@ struct alignas(8) NObjectType : ss::Struct {
 	u16 splinter_type() const { return this->_field<u16, 8>(); }
 	ScatterType splinter_scatter() const { return this->_field<ScatterType, 10>(); }
 	f64 splinter_distribution() const { return this->_field<f64, 16>(); }
-	f64 splinter_speed() const { return this->_field<f64, 24>(); }
+	f64 splinter_speed_v() const { return this->_field<f64, 24>(); }
 	u32 time_to_live() const { return this->_field<u32, 12>(); }
 	i32 time_to_live_v() const { return this->_field<i32, 32>(); }
 	u16 sobj_trail_type() const { return this->_field<u16, 36>(); }
@@ -236,6 +236,8 @@ struct alignas(8) NObjectType : ss::Struct {
 	u32 worm_col_remove_prob() const { return this->_field<u32, 152>(); }
 	bool worm_col_expl() const { return (this->_field<u8, 11>() & 128) != 0; }
 	u32 worm_col_blood() const { return this->_field<u32, 156>(); }
+	u32 nobj_trail_interval_inv() const { return this->_field<u32, 160>(); }
+	f64 splinter_speed() const { return this->_field<f64, 168>(); }
 
 	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<NObjectTypeReader> const& src) {
 		TL_UNUSED(expander); TL_UNUSED(src);
@@ -249,7 +251,7 @@ struct alignas(8) NObjectType : ss::Struct {
 		u64 *p = (u64 *)dest.ptr;
 		u64 const *s = (u64 const*)srcp;
 		u64 const *d = (u64 const*)NObjectType::_defaults;
-		for (u32 i = 0; i < 20; ++i) {
+		for (u32 i = 0; i < 22; ++i) {
 			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
 		}
 	}
@@ -274,7 +276,7 @@ struct NObjectTypeBuilder : ss::Ref<NObjectTypeReader> {
 		this->_field<u64, 16>() = s ^ 0;
 	}
 
-	void splinter_speed(f64 v) {
+	void splinter_speed_v(f64 v) {
 		u64 s;
 		memcpy(&s, &v, sizeof(v));
 		this->_field<u64, 24>() = s ^ 0;
@@ -358,6 +360,13 @@ struct NObjectTypeBuilder : ss::Ref<NObjectTypeReader> {
 	void worm_col_remove_prob(u32 v) { this->_field<u32, 152>() = v ^ 0; }
 	void worm_col_expl(bool v) { this->_field<u8, 11>() = (this->_field<u8, 11>() & 0x7f) | ((v ^ 0) << 7); }
 	void worm_col_blood(u32 v) { this->_field<u32, 156>() = v ^ 0; }
+	void nobj_trail_interval_inv(u32 v) { this->_field<u32, 160>() = v ^ 0; }
+
+	void splinter_speed(f64 v) {
+		u64 s;
+		memcpy(&s, &v, sizeof(v));
+		this->_field<u64, 168>() = s ^ 0;
+	}
 
 };
 

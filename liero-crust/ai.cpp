@@ -30,12 +30,11 @@ struct MutationParams {
 	}
 };
 
-static i32 evaluate(State& spare, State& state, tl::LcgPair& rand, Plan& plan, u32 worm_index, MutationParams params) {
+static i32 evaluate(State& spare, TransientState& transient_state, State& state, tl::LcgPair& rand, Plan& plan, u32 worm_index, MutationParams params) {
 	spare.copy_from(state, false);
 
 	for (usize i = 0; i < plan.size(); ++i) {
-		TransientState transient_state(state.worms.size(), dummy_play_sound, 0);
-
+		
 		if (i >= params.start && i < params.end) {
 			WormInput wi;
 
@@ -69,7 +68,7 @@ static i32 evaluate(State& spare, State& state, tl::LcgPair& rand, Plan& plan, u
 
 				bool aim_up = move_right ^ (aim_diff > Scalar());
 
-				if (state.gfx_rand.next() < 0xffffffff / 120) {
+				if (rand.next() < 0xffffffff / 120) {
 					wi = WormInput::change(WormInput::Move::Left, aim_up ? WormInput::Aim::Up : WormInput::Aim::Down);
 				} else {
 					wi = WormInput::combo(false, fire,
@@ -81,7 +80,8 @@ static i32 evaluate(State& spare, State& state, tl::LcgPair& rand, Plan& plan, u
 			plan.of_index(i) = wi;
 		}
 
-		transient_state.graphics = false;
+		transient_state.init(state.worms.size(), dummy_play_sound, 0);
+		transient_state.graphics = true;
 		transient_state.worm_state[worm_index].input = plan.of_index(i);
 		spare.update(transient_state);
 	}
@@ -92,8 +92,6 @@ static i32 evaluate(State& spare, State& state, tl::LcgPair& rand, Plan& plan, u
 		Worm& worm = spare.worms.of_index(worm_index);
 
 		f64 distance = tl::length(target.pos.cast<f64>() - worm.pos.cast<f64>()) - 20;
-
-
 
 		score = worm.health - target.health - (i32)abs(distance / 2.0);
 	}
@@ -143,7 +141,7 @@ void Ai::do_ai(State& state, Worm& worm, u32 worm_index, WormTransientState& tra
 
 			bool aim_up = move_right ^ (aim_diff > Scalar());
 
-			if (state.gfx_rand.next() < 0xffffffff / 120) {
+			if (rand.next() < 0xffffffff / 120) {
 				wi = WormInput::change(WormInput::Move::Left, aim_up ? WormInput::Aim::Up : WormInput::Aim::Down);
 			} else {
 				wi = WormInput::combo(false, fire,
@@ -157,12 +155,12 @@ void Ai::do_ai(State& state, Worm& worm, u32 worm_index, WormTransientState& tra
 	}
 #endif
 
-	i32 candidate_score = evaluate(this->spare, state, this->rand, candidate, worm_index, MutationParams(b, e));
+	i32 candidate_score = evaluate(this->spare, this->spare_transient_state, state, this->rand, candidate, worm_index, MutationParams(b, e));
 
 	if (cur_plan_score_valid_for > 0) {
 		--cur_plan_score_valid_for;
 	} else {
-		cur_plan_score = evaluate(this->spare, state, this->rand, cur_plan, worm_index, MutationParams());
+		cur_plan_score = evaluate(this->spare, this->spare_transient_state, state, this->rand, cur_plan, worm_index, MutationParams());
 		cur_plan_score_valid_for = 2;
 	}
 

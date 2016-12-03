@@ -6,6 +6,9 @@
 
 #include "fixed.hpp"
 
+#define UPDATE_POS_IMMEDIATE 1
+#define QUEUE_REMOVE_NOBJS 0
+
 namespace liero {
 
 typedef f64 Ratio;
@@ -16,16 +19,17 @@ inline Scalar operator"" _lf(unsigned long long v) {
 	return Fixed::from_raw(i32(v));
 }
 
-// TODO: Integer-based sincos
 inline Vector2 sincos(Scalar a) {
-#if 0
-	double f = (a.raw() & ((1 << (16 + 7)) - 1)) * ((1.0 / 65536.0) * tl::pi2 / 128.0);
-	auto v = tl::sincos(f);
-	return v.cast<Scalar>();
-#else
 	auto v = tl::sincos_fixed2(a.raw());
 	return Vector2(Fixed::from_raw(v.x), Fixed::from_raw(v.y));
-#endif
+}
+
+inline tl::VectorD2 sincos_f64(Scalar a) {
+	return tl::sincos_f64(a.raw());
+}
+
+inline Vector2 vector2(tl::VectorD2 v) {
+	return Vector2(Scalar::from_raw((i32)v.x), Scalar::from_raw((i32)v.y));
 }
 
 inline Scalar fabs(Scalar v) { return Fixed::from_raw(abs(v.raw())); }

@@ -194,8 +194,8 @@ inline void update_actions(Worm& worm, u32 worm_idx, State& state, WormInput inp
 			auto dig_pos = worm.pos + step;
 
 			// TODO: TC should have dig effect constant
-			draw_level_effect(state, dig_pos.cast<i32>(), 7, transient_state.graphics);
-			draw_level_effect(state, (dig_pos + step).cast<i32>(), 7, transient_state.graphics);
+			draw_level_effect(state, dig_pos.cast<i32>(), 7, transient_state.graphics, transient_state);
+			draw_level_effect(state, (dig_pos + step).cast<i32>(), 7, transient_state.graphics, transient_state);
 		}
 
 		// !Jump & !Change -> Jump & !Change
@@ -214,11 +214,10 @@ inline void update_actions(Worm& worm, u32 worm_idx, State& state, WormInput inp
 			WeaponType const& w = mod.get_weapon_type(ww.ty_idx);
 			--ww.ammo;
 			ww.delay_left = w.delay();
-			// TODO: worm.muzzle_fire = w.muzzle_fire;
 
 			fire(w, state, transient_state, worm.abs_aiming_angle(), worm.vel, worm.pos - Vector2(0, 1), tl::narrow<i16>(worm_idx));
 
-			worm.vel += sincos(worm.abs_aiming_angle()) * w.recoil();
+			worm.vel += vector2(sincos_f64(worm.abs_aiming_angle()) * w.recoil());
 		}
 
 		// TODO: if(weapons[currentWeapon].type->loopSound) game.soundPlayer->stop(&weapons[currentWeapon]);
@@ -267,7 +266,7 @@ inline void update_physics(Worm& worm, State& state, PixelCount pixel_counts) {
 	f64 const bounce_factor = -1.0 / 3.0; // TDDO: Store
 
 	if (rh) {
-		if(absvel.x > mb) { // TODO: We wouldn't need the vel.x check if we knew that mbh/mbv were always at least liero_eps
+		if(absvel.x > mb) {
 #if 0 // TODO
 			if(common.H[HFallDamage])
 				health -= LC(FallDamageRight);
@@ -306,7 +305,7 @@ inline void update_physics(Worm& worm, State& state, PixelCount pixel_counts) {
 		worm.pos.y += worm.vel.y;
 }
 
-inline void update_weapons(Worm& worm, State& state) {
+inline void update_weapons(Worm& worm, State& state, TransientState& transient_state) {
 
 	for (u32 i = 0; i < Worm::SelectableWeapons; ++i) {
 		if (worm.weapons[i].delay_left) {
@@ -338,7 +337,7 @@ inline void update_weapons(Worm& worm, State& state) {
 		auto shell_vel = rand_max_vector2(state.rand, tl::VectorD2(10000.0 / 2147483648.0, 8000.0 / 2147483648.0));
 		shell_vel.y -= Scalar::from_raw(10000);
 
-		create(state.mod.get_nobject_type(40 + 7), state, Scalar(), worm.pos, shell_vel);
+		create(state.mod.get_nobject_type(40 + 7), state, Scalar(), worm.pos, shell_vel, transient_state);
 	}
 }
 
@@ -371,6 +370,119 @@ inline void update_steerables(Worm& worm, u32 worm_index, State& state, WormTran
 	transient_state.steerable_count = count;
 }
 
+} // namespace
+
+tl::VectorI2 find_spawn(Level& level, tl::LcgPair& rand) {
+	i32 selected_x = 0, selected_y = 0;
+
+	i32 const cell_width = 4;
+	i32 const cell_height = 4;
+	i32 const cells_per_word = 32 / cell_width;
+
+	{
+		auto iter = level.mat_iter();
+		i32 h = level.graphics.height();
+		i32 w = level.graphics.width();
+
+		i32 word_w = (w + 31) / 32;
+		i32 grid_w = word_w * cells_per_word;
+		i32 grid_h = (h + 3) / 4;
+	
+		tl::Vec<i32> row_last_filled(grid_w, -1);
+
+		u32 accumulated_weight = 0;
+
+		for (i32 grid_y = 0; grid_y < grid_h; ++grid_y) {
+			
+			for (i32 word_x = 0; word_x < word_w; ++word_x) {
+				u32 cell_noback = 0, cell_rock = 0;
+				for (i32 i = 0; i < cell_height; ++i) {
+					auto cur = iter.as_skipped_rows(i);
+					u32 noback = ~cur.read_back_word32(word_x);
+					u32 rock = cur.read_rock_word32(word_x);
+					
+					cell_noback |= noback;
+					cell_rock |= rock;
+				}
+
+				cell_noback |= cell_noback >> 1;
+				cell_noback |= cell_noback >> 2;
+				cell_rock |= cell_rock >> 1;
+				cell_rock |= cell_rock >> 2;
+
+				for (i32 i = 0; i < cells_per_word; ++i) {
+					bool noback = (cell_noback & (1 << (cell_width * i))) != 0;
+					bool rock = (cell_rock & (1 << (cell_width * i))) != 0;
+
+					if (noback) {
+						i32 x = word_x * cells_per_word + i;
+						i32 prev_filled = row_last_filled[x];
+						i32 weight = i32(grid_y) - prev_filled - 1;
+
+						if (weight >= 3) { // Require at least 3 * 4 pixels headroom
+							accumulated_weight += weight;
+							// rand [accumulated_weight + weight) < weight
+
+							if (rand.get_i32((i32)accumulated_weight) < weight) {
+								selected_x = x;
+								selected_y = grid_y;
+							}
+						}
+
+						row_last_filled[x] = grid_y;
+
+						// If square doesn't have any rock in it,
+						// try selecting it too (grid_y + 1).
+
+						if (!rock) {
+							accumulated_weight += 1;
+							if (rand.get_i32((i32)accumulated_weight) < 1) {
+								selected_x = x;
+								selected_y = grid_y + 1;
+							}
+						}
+					}
+				}
+			}
+
+			iter.skip_rows(cell_height);
+		}
+	}
+
+	{
+		i32 x_beg = i32(selected_x * cell_width);
+		i32 y_beg = i32(selected_y * cell_height);
+
+		auto iter = level.mat_iter();
+
+		u32 exact_x = 0, exact_y = 0;
+		u32 accumulated_weight = 0;
+
+		for (i32 x = x_beg; x < x_beg + cell_width; ++x) {
+			for (i32 y = y_beg; y < y_beg + cell_height; ++y) {
+
+				u32 any_rock = 0;
+
+				if ((iter.as_skipped_rows(y).read_back_16(x - 1) & 7) != 7) {
+					for (i32 i = 1; i < 8; ++i) {
+						auto cur = iter.as_skipped_rows(y - i);
+					
+						any_rock |= cur.read_rock_16(x - 1) & 7; // 111
+					}
+				}
+
+				if (!any_rock) {
+					accumulated_weight += 1;
+					if (rand.get_i32((i32)accumulated_weight) < 1) {
+						exact_x = x;
+						exact_y = y;
+					}
+				}
+			}
+		}
+
+		return tl::VectorI2(exact_x, exact_y - 4);
+	}
 }
 
 void Worm::reset_weapons(ModRef& mod) {
@@ -401,7 +513,7 @@ void Worm::update(State& state, TransientState& transient_state, u32 index) {
 
 		update_steerables(*this, index, state, worm_transient_state);
 		update_aiming(*this, state, worm_transient_state);
-		update_weapons(*this, state);
+		update_weapons(*this, state, transient_state);
 		update_actions(*this, index, state, worm_transient_state.input, pixel_counts, transient_state);
 		update_physics(*this, state, pixel_counts);
 		update_movements(*this, state, worm_transient_state);

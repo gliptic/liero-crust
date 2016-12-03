@@ -17,6 +17,13 @@ struct Texture {
 		other.id = 0;
 	}
 
+	Texture& operator=(Texture&& other) {
+		this->~Texture();
+		this->id = other.id;
+		other.id = 0;
+		return *this;
+	}
+
 	Texture(u32 width, u32 height, bool linear = false);
 	~Texture();
 
@@ -27,17 +34,7 @@ struct Texture {
 		glBindTexture(GL_TEXTURE_2D, this->id);
 	}
 
-	void upload_subimage(tl::ImageSlice const& slice, u32 x = 0, u32 y = 0) {
-		this->bind();
-
-		glPixelStorei(GL_UNPACK_ROW_LENGTH, slice.pitch / slice.bpp);
-
-		glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, slice.dim.x, slice.dim.y,
-			slice.bpp == 4 ? GL_RGBA : GL_RED,
-			GL_UNSIGNED_BYTE, slice.pixels);
-
-		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-	}
+	void upload_subimage(tl::ImageSlice const& slice, u32 x = 0, u32 y = 0);
 
 	GLuint id;
 };

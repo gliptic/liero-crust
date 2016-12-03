@@ -52,6 +52,7 @@ struct Plan {
 struct Ai {
 
 	State spare;
+	TransientState spare_transient_state;
 	Plan cur_plan;
 	tl::LcgPair rand;
 
@@ -61,7 +62,7 @@ struct Ai {
 	Ai(ModRef mod)
 		: spare(mod)
 		, cur_plan(120)
-		, rand(2, 2)
+		, rand(1, 1)
 		, cur_plan_score_valid_for(0) {
 	}
 

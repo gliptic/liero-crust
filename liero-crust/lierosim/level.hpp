@@ -11,21 +11,27 @@
 namespace liero {
 
 struct State;
+struct TransientState;
 struct ModRef;
 
 struct MaterialIterator {
 	u8* bitmap;
 	usize bitmap_pitch;
+	usize bitmap_size;
 
-	MaterialIterator(
-		u8* bitmap,
-		usize bitmap_pitch)
-			: bitmap(bitmap), bitmap_pitch(bitmap_pitch) {
+	MaterialIterator(u8* bitmap
+		, usize bitmap_pitch
+		, usize bitmap_size
+	)
+		: bitmap(bitmap)
+		, bitmap_pitch(bitmap_pitch)
+		, bitmap_size(bitmap_size)
+	{
 	}
 
 	u8* dirt_p() { return bitmap; }
-	u8* back_p() { return bitmap + bitmap_pitch; }
-	u8* dirt_rock_p() { return bitmap + 2 * bitmap_pitch; }
+	u8* back_p() { return bitmap + bitmap_size; }
+	u8* dirt_rock_p() { return bitmap + 2 * bitmap_size; }
 
 	u32 read_dirt_16(i32 x) {
 		return *(u32 const *)(dirt_p() + (x >> 3));
@@ -51,12 +57,36 @@ struct MaterialIterator {
 		*(u32 *)(dirt_rock_p() + (x >> 3)) = bits;
 	}
 
+	u32 read_back_word32(i32 word_x) {
+		return *((u32 const *)back_p() + word_x);
+	}
+
+	u32 read_dirt_word32(i32 word_x) {
+		return *((u32 const *)dirt_p() + word_x);
+	}
+
+	u32 read_dirt_rock_word32(i32 word_x) {
+		return *((u32 const *)dirt_rock_p() + word_x);
+	}
+
+	u32 read_rock_word32(i32 word_x) {
+		return read_dirt_rock_word32(word_x) & ~read_dirt_word32(word_x);
+	}
+
+	u32 read_rock_16(i32 x) {
+		return read_dirt_rock_16(x) & ~read_dirt_16(x);
+	}
+
 	void skip_rows(usize rows) {
-		bitmap += bitmap_pitch * rows * 3;
+		bitmap += bitmap_pitch * rows;
 	}
 
 	void next_row() {
-		bitmap += bitmap_pitch * 3;
+		bitmap += bitmap_pitch;
+	}
+
+	MaterialIterator as_skipped_rows(usize rows) {
+		return MaterialIterator(bitmap + bitmap_pitch * rows, bitmap_pitch, bitmap_size);
 	}
 
 	bool read_dirt(usize x) {
@@ -86,8 +116,8 @@ struct Level {
 	u8* materials_bitmap_dirt;
 	u8* materials_bitmap_back;
 	u8* materials_bitmap_dirt_rock;
-	usize materials_pitch;
-	usize materials_full_pitch;
+	usize materials_pitch, materials_pitch_words;
+	usize materials_bitmap_size;
 
 	Level(tl::Source& src, tl::Palette& pal, ModRef& mod);
 
@@ -108,19 +138,21 @@ struct Level {
 	static usize const mat_channels = 3;
 
 	void alloc_mat(usize w, usize h) {
-		usize w_bytes = 4 + (w + 31) / 8;
+		// TODO: If not interleaving materials, the left and right red-zone can share the same space
+		usize w_bytes = 4 + 4 * ((w + 31) / 32) + 4;
 		usize bitmap_size = w_bytes * h;
 		usize bitmap_total_size = bitmap_size * mat_channels;
 		u8* buf_ptr = (u8 *)malloc(bitmap_total_size);
 		memset(buf_ptr, 0, bitmap_total_size);
 		materials_bitmap = buf_ptr;
-		materials_bitmap_dirt = buf_ptr + 4; // Top-right
-		materials_bitmap_back = materials_bitmap_dirt + w_bytes;
-		materials_bitmap_dirt_rock = materials_bitmap_dirt + 2 * w_bytes;
-		materials_pitch = w_bytes;
-		materials_full_pitch = w_bytes * mat_channels;
 
-		assert(this->materials_full_pitch * this->graphics.height() == bitmap_total_size);
+		materials_bitmap_dirt = buf_ptr + 4; // Top-right
+		materials_bitmap_back = materials_bitmap_dirt + bitmap_size;
+		materials_bitmap_dirt_rock = materials_bitmap_dirt + 2 * bitmap_size;
+
+		materials_pitch = w_bytes;
+		materials_pitch_words = w_bytes / 4;
+		materials_bitmap_size = bitmap_size;
 	}
 
 	void copy_from(Level const& other, bool copy_graphics = false) {
@@ -134,35 +166,41 @@ struct Level {
 		if (!this->materials_bitmap) {
 			alloc_mat(graphics.width(), graphics.height());
 		}
-		memcpy(materials_bitmap, other.materials_bitmap, this->materials_full_pitch * this->graphics.height());
+
+		memcpy(materials_bitmap, other.materials_bitmap, this->materials_bitmap_size * mat_channels);
 	}
 
 	MaterialIterator mat_iter() {
-		return MaterialIterator(
-			materials_bitmap_dirt,
-			materials_pitch
+		return MaterialIterator(materials_bitmap_dirt
+			, materials_pitch
+			, materials_bitmap_size
 		);
+	}
+
+	static bool read_bit(u8 const* p, u32 n) {
+		// TODO: Handle platforms without masking shift
+		return (((u32 const*)p)[n >> 5] & (1 << n)) != 0;
 	}
 
 	bool mat_dirt_rock(tl::VectorI2 pos) const {
 		if (!this->is_inside(pos))
 			return true;
 
-		return bool((this->materials_bitmap_dirt_rock[(u32)pos.y * materials_full_pitch + ((u32)pos.x >> 3)] >> (pos.x & 7)) & 1);
+		return read_bit(this->materials_bitmap_dirt_rock + (u32)pos.y * materials_pitch, (u32)pos.x);
 	}
 
 	bool mat_dirt(tl::VectorI2 pos) const {
 		if (!this->is_inside(pos))
-			return true;
+			return false;
 
-		return bool((this->materials_bitmap_dirt[(u32)pos.y * materials_full_pitch + ((u32)pos.x >> 3)] >> (pos.x & 7)) & 1);
+		return read_bit(this->materials_bitmap_dirt + (u32)pos.y * materials_pitch, (u32)pos.x);
 	}
 
 	bool mat_wrap_back(tl::VectorI2 pos) const {
 		if (!this->is_inside(pos))
 			return false;
 
-		return bool((this->materials_bitmap_back[(u32)pos.y * materials_full_pitch + ((u32)pos.x >> 3)] >> (pos.x & 7)) & 1);
+		return read_bit(this->materials_bitmap_back + (u32)pos.y * materials_pitch, (u32)pos.x);
 	}
 
 	bool is_inside(tl::VectorI2 pos) const {
@@ -170,7 +208,7 @@ struct Level {
 	}
 };
 
-void draw_level_effect(State& state, tl::VectorI2 pos, i16 level_effect, bool graphics);
+void draw_level_effect(State& state, tl::VectorI2 pos, i16 level_effect, bool graphics, TransientState& transient_state);
 void draw_level_effect(tl::BasicBlitContext<1, 1, true> ctx, MaterialIterator mat_iter, u8 const* tframe, bool draw_on_background);
 
 void draw_sprite_on_level(tl::BasicBlitContext<1, 1, true> ctx, MaterialIterator mat_iter);

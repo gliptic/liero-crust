@@ -85,7 +85,7 @@ void create(SObjectType const& self, State& state, TransientState& transient_sta
 		}
 	}
 
-	draw_level_effect(state, pos, self.level_effect(), transient_state.graphics);
+	draw_level_effect(state, pos, self.level_effect(), transient_state.graphics, transient_state);
 }
 
 

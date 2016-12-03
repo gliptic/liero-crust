@@ -84,6 +84,9 @@
     </ClCompile>
     <ClCompile Include="runtime.cpp" />
     <ClCompile Include="ai.cpp" />
+    <ClCompile Include="lierosim\bonus.cpp">
+      <Filter>lierosim</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="gfx">
@@ -232,6 +235,9 @@
     </ClInclude>
     <ClInclude Include="resource.h" />
     <ClInclude Include="ai.hpp" />
+    <ClInclude Include="lierosim\bonus.hpp">
+      <Filter>lierosim</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="build.lua" />

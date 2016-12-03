@@ -8,10 +8,13 @@
 namespace liero {
 
 bool load_from_exe(
+	tl::ArchiveBuilder& archive,
 	ss::Builder& tcdata,
 	tl::Palette& pal,
 	tl::Source src,
-	u8 (&used_sounds)[256]);
+	u8 (&used_sounds)[256],
+	tl::StreamRef sprite_stream,
+	tl::TreeRef sprites_dir);
 
 void load_from_gfx(
 	tl::ArchiveBuilder& archive,

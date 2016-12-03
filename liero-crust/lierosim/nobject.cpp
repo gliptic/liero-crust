@@ -4,25 +4,16 @@
 
 namespace liero {
 
-void create(NObjectType const& self, State& state, Scalar angle, Vector2 pos, Vector2 vel, i16 owner, tl::Color override_color) {
-	auto* obj = state.nobjects.new_object_reuse([&](NObject*, u32 index) {
-		state.nobject_broadphase.remove(narrow<CellNode::Index>(index));
-	});
+void create(NObjectType const& self, State& state, Scalar angle, Vector2 pos, Vector2 vel, TransientState& transient_state, i16 owner, tl::Color override_color) {
+
+	auto* obj = state.nobjects.new_object_reuse_queue();
 
 	obj->ty_idx = tl::narrow<u16>(&self - state.mod.nobject_types);
 	obj->pos = pos;
 	obj->vel = vel;
+	obj->cell = 0;
 
 	// TODO: nobjects created with create2 have their velocity applied once immediately
-
-	i16 obj_index = narrow<CellNode::Index>(state.nobjects.index_of(obj));
-
-	if (true || self.affect_by_sobj()) {
-		obj->cell = state.nobject_broadphase.insert(obj_index, pos.cast<i32>());
-	} else {
-		state.nobject_broadphase.insert_outside_grid(obj_index);
-		obj->cell = obj_index;
-	}
 
 	obj->owner = owner;
 
@@ -82,9 +73,9 @@ void NObject::explode_obj(NObjectType const& ty, Vector2 pos, Vector2 vel, i16 o
 
 				angle = Fixed::from_raw(state.rand.next() & ((128 << 16) - 1));
 
-				Ratio speed = ty.splinter_speed(); // TODO: speed_v
+				Ratio speed = ty.splinter_speed() - state.rand.get_i32(ty.splinter_speed_v());
 
-				part_vel = sincos(angle) * speed;
+				part_vel = vector2(sincos_f64(angle) * speed);
 			}
 
 			if (ty.splinter_distribution() != Ratio()) {
@@ -92,11 +83,11 @@ void NObject::explode_obj(NObjectType const& ty, Vector2 pos, Vector2 vel, i16 o
 				part_vel += rand_max_vector2(state.rand, ty.splinter_distribution());
 			}
 
-			create(splinter_ty, state, angle, pos, part_vel, owner, ty.splinter_color());
+			create(splinter_ty, state, angle, pos, part_vel, transient_state, owner, ty.splinter_color());
 		}
 	}
 
-	draw_level_effect(state, pos.cast<i32>(), ty.level_effect(), transient_state.graphics);
+	draw_level_effect(state, pos.cast<i32>(), ty.level_effect(), transient_state.graphics, transient_state);
 }
 
 bool update(NObject& self, State& state, NObjectList::Range& range, TransientState& transient_state) {
@@ -115,14 +106,12 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 
 		lpos += lvel;
 
-		auto inextpos = (lpos + lvel).cast<i32>();
 		ipos = lpos.cast<i32>();
 		bool bounced = false;
 
+		tl::VectorD2 fvel(lvel.x.raw(), lvel.y.raw());
+
 		Level& level = state.level;
-		
-		tl::VectorI2 inexthoz(inextpos.x, ipos.y);
-		tl::VectorI2 inextver(ipos.x, inextpos.y);
 
 		// TODO: Convert lvel to VectorD2 during computation with acceleration/bounce/friction/drag/trail/collide
 
@@ -137,40 +126,51 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 				acc = ty.acceleration();
 			}
 
-			auto dir = sincos(Scalar((i32)self.cur_frame)) * acc;
+			auto dir = sincos_f64(Scalar((i32)self.cur_frame)) * acc;
+			fvel += dir;
 
-			lvel += dir;
 			// TODO: In-flight distribution
 		}
 
 		if (ty.bounce() != Ratio()) { // TODO: Not sure this will work for real nobjects
+			// TODO: This should probably use the modified fvel
+			tl::VectorI2 inextpos = (lpos + lvel).cast<i32>();
+			tl::VectorI2 inexthoz(inextpos.x, ipos.y);
+			tl::VectorI2 inextver(ipos.x, inextpos.y);
+
 			if (level.mat_dirt_rock(inexthoz)) {
-				lvel.x *= ty.bounce();
-				lvel.y *= ty.friction();
+				fvel.x *= ty.bounce();
+				fvel.y *= ty.friction();
 				bounced = true;
 			}
 
 			if (level.mat_dirt_rock(inextver)) {
-				lvel.x *= ty.friction();
-				lvel.y *= ty.bounce();
+				fvel.x *= ty.friction();
+				fvel.y *= ty.bounce();
 				bounced = true;
 			}
 		}
 
+		fvel *= ty.drag(); // Speed scaling for wobject
+		lvel = vector2(fvel);
+
 		// Blood trail for nobject
 		if (transient_state.graphics
 		 && ty.blood_trail_interval()
-		 && (state.current_time % ty.blood_trail_interval()) == 0) {
+		 && (transient_state.current_time % ty.blood_trail_interval()) == 0) {
 			BObject::create(state, lpos, lvel / 4);
 		}
 
-		lvel *= ty.drag(); // Speed scaling for wobject
-
 		// Nobject trail for wobject
-		if (ty.nobj_trail_interval() && (state.current_time % ty.nobj_trail_interval()) == 0) {
+		if (ty.nobj_trail_interval()
+#if 1
+		 && transient_state.is_current_time_modulo_zero(ty.nobj_trail_interval())) {
+#else
+		 && transient_state.current_time * ty.nobj_trail_interval_inv() < ty.nobj_trail_interval_inv()) {
+#endif
 			// TODO: Generalize these emitters?
 			Scalar angle = Scalar(0);
-			Vector2 part_vel = lvel * ty.nobj_trail_vel_ratio();
+			Vector2 part_vel = vector2(fvel * ty.nobj_trail_vel_ratio());
 
 			NObjectType const& trail_ty = state.mod.get_nobject_type(ty.nobj_trail_type());
 
@@ -180,14 +180,15 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 
 				Ratio speed = ty.nobj_trail_speed(); // TODO: speed_v
 
-				part_vel += sincos(angle) * speed;
+				part_vel += vector2(sincos_f64(angle) * speed);
 			}
 
-			create(trail_ty, state, angle, lpos, part_vel);
+			create(trail_ty, state, angle, lpos, part_vel, transient_state);
 		}
 
 		if (ty.collide_with_objects()) {
-			auto impulse = lvel * ty.blowaway();
+			auto impulse = vector2(fvel * ty.blowaway());
+
 			i32 detect_range = 2;
 
 			auto r = state.nobject_broadphase.area(ipos.x - detect_range, ipos.y - detect_range, ipos.x + detect_range, ipos.y + detect_range);
@@ -208,14 +209,11 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 			}
 		}
 
-		// lvel may have changed. Adjust inextpos
-		inextpos = (lpos + lvel).cast<i32>();
-
 		// TODO: Limit lpos if inewpos is outside the level
 
 		bool sobj_trail;
 
-		if (level.mat_dirt_rock(inextpos)) {
+		if (level.mat_dirt_rock((lpos + lvel).cast<i32>())) {
 			if (ty.expl_ground()) {
 
 				if (self.cur_frame >= 0 && ty.draw_on_level()) {
@@ -243,7 +241,7 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 			sobj_trail = !bounced || ty.sobj_trail_when_bounced();
 
 			if (ty.animation() != NObjectAnimation::Static
-				&& (state.current_time & 7) == 0) { // TODO: Animation interval
+				&& (transient_state.current_time & 7) == 0) { // TODO: Animation interval
 
 				if (ty.animation() == NObjectAnimation::OneWay || self.vel.x < Scalar()) {
 					if (self.cur_frame == 0) {
@@ -263,11 +261,11 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 
 		if (ty.sobj_trail_interval()
 		 && sobj_trail
-	     && (state.current_time % ty.sobj_trail_interval()) == 0) {
+	     && transient_state.is_current_time_modulo_zero(ty.sobj_trail_interval())) {
 			create(state.mod.get_sobject_type(ty.sobj_trail_type()), state, transient_state, ipos);
 		}
 
-		if (state.current_time == self.time_to_die) {
+		if (transient_state.current_time == self.time_to_die) {
 			obj_state = NObject::Exploded;
 			break; // TODO: Doing break here means we don't do worm coldet. Original would do worm coldet for wobjects, but not for nobjects.
 		}
@@ -282,6 +280,7 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 
 				for (Worm* w; (w = wr.next()) != 0; ) {
 					auto wpos = w->pos.cast<i32>();
+
 					if (wpos.x - 2 < ipos.x + (i32)ty.detect_distance() // TODO: detect_distance() should probably be i32
 					 && wpos.x + 2 > ipos.x - (i32)ty.detect_distance()
 					 && wpos.y - 4 < ipos.y + (i32)ty.detect_distance()
@@ -295,7 +294,7 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 						for (u32 i = 0; i < blood_amount; ++i) {
 							auto angle = Fixed::from_raw(state.rand.next() & ((128 << 16) - 1));
 							auto part_vel = sincos(angle); // TODO: Correct blood velocity
-							create(state.mod.get_nobject_type(40 + 6), state, angle, lpos, part_vel + lvel / 3, self.owner);
+							create(state.mod.get_nobject_type(40 + 6), state, angle, lpos, part_vel + lvel / 3, transient_state, self.owner);
 						}
 
 						// TODO: Play hurt sound if hit_damage > 0 etc.
@@ -325,17 +324,35 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 	} while (iteration < max_iteration);
 
 	if (obj_state == NObject::Alive) {
-		self.pos = lpos;
 		self.vel = lvel;
 
-		if (self.cell < 0)
-			self.cell = state.nobject_broadphase.update(narrow<CellNode::Index>(state.nobjects.index_of(&self)), ipos, self.cell);
+#if UPDATE_POS_IMMEDIATE
+#if !IMPLICIT_NOBJ_CELL
+		self.pos = lpos;
+		self.cell = state.nobject_broadphase.update(narrow<CellNode::Index>(state.nobjects.index_of(&self)), lpos, self.cell);
+#else
+		state.nobject_broadphase.update(narrow<CellNode::Index>(state.nobjects.index_of(&self)), ipos, self.pos);
+		self.pos = lpos;
+#endif
+#else
+		auto idx = narrow<CellNode::Index>(state.nobjects.index_of(&self));
+		transient_state.next_nobj_pos[idx].pos = lpos;
+		//transient_state.next_nobj_pos[idx].cur_cell = self.cell;
+#endif
 
 		return true;
 	} else {
 		auto owner = self.owner;
+#if QUEUE_REMOVE_NOBJS
+		CellNode::Index idx = (CellNode::Index)state.nobjects.index_of(&self);
+		state.nobject_broadphase.remove(idx);
+		//transient_state.nobj_remove_queue.push_back(idx);
+		*transient_state.nobj_remove_queue_ptr++ = idx;
+		self.cell = 0;
+#else
 		state.nobject_broadphase.swap_remove(CellNode::Index(state.nobjects.index_of(&self)), CellNode::Index(state.nobjects.size() - 1));
 		state.nobjects.free(range);
+#endif
 
 		if (obj_state == NObject::Exploded) {
 			NObject::explode_obj(ty, lpos, lvel, owner, state, transient_state);

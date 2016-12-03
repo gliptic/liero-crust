@@ -120,6 +120,10 @@ void main() {
 		self->height
 	);
 
+	self->white_texture = Texture(1, 1);
+	u8 white[] = {0xff, 0xff, 0xff, 0xff};
+	self->white_texture.upload_subimage(tl::ImageSlice(white, 1, 1, 4, 4));
+
 #else
 	glOrtho(0.0, self->width, self->height, 0.0, -1.0, 1.0);
 #endif

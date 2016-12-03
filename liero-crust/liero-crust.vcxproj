@@ -209,6 +209,7 @@
     <ClCompile Include="hyp\parser.cpp" />
     <ClCompile Include="hyp\string_set.cpp" />
     <ClCompile Include="lierosim\bobject.cpp" />
+    <ClCompile Include="lierosim\bonus.cpp" />
     <ClCompile Include="lierosim\level.cpp" />
     <ClCompile Include="lierosim\mod.cpp" />
     <ClCompile Include="lierosim\nobject.cpp" />
@@ -303,6 +304,7 @@
     <ClInclude Include="hyp\parser.hpp" />
     <ClInclude Include="hyp\string_set.hpp" />
     <ClInclude Include="lierosim\bobject.hpp" />
+    <ClInclude Include="lierosim\bonus.hpp" />
     <ClInclude Include="lierosim\cellphase.hpp" />
     <ClInclude Include="lierosim\level.hpp" />
     <ClInclude Include="lierosim\mod.hpp" />

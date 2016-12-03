@@ -95,13 +95,17 @@ struct GeomBuffer {
 		*this->cur_vert++ = v.y;
 	}
 
-	void tex_rect(float x1, float y1, float x2, float y2, float tx1, float ty1, float tx2, float ty2, int texture) {
-		assert(this->geom_mode == gb_quad);
-
+	void set_texture(int texture) {
 		if (this->last_texture != texture) {
 			this->clear();
 			this->last_texture = texture;
 		}
+	}
+
+	void tex_rect(float x1, float y1, float x2, float y2, float tx1, float ty1, float tx2, float ty2, int texture) {
+		assert(this->geom_mode == gb_quad);
+
+		set_texture(texture);
 
 		check_vertices(4);
 		vertex_color(4);
@@ -115,14 +119,8 @@ struct GeomBuffer {
 		unsafe_texcoord(tx2, ty2);
 		unsafe_texcoord(tx1, ty2);
 	}
-	
-private:
-	void check_vertices(usize num) {
-		if ((this->cur_vert - this->vertices) + num > vertex_buffer_size * 2) {
-			flush();
-		}
-	}
 
+	// TODO: This shouldn't be exposed
 	void vertex_color(usize num) {
 		for (int i = 0; i < num; ++i) {
 			*this->cur_col++ = col[0];
@@ -131,6 +129,15 @@ private:
 			*this->cur_col++ = col[3];
 		}
 	}
+	
+private:
+	void check_vertices(usize num) {
+		if ((this->cur_vert - this->vertices) + num > vertex_buffer_size * 2) {
+			flush();
+		}
+	}
+
+	
 };
 
 }

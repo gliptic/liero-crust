@@ -54,9 +54,11 @@ int main(int argc, char const* argv[]) {
 
 	used_sounds[1 + 5] = 1;
 
+	auto sprites_dir = ar.add_dir(String("sprites"_S));
+
 	{
 		ss::Builder tcdata;
-		liero::load_from_exe(tcdata, pal, std::move(exe_src), used_sounds);
+		liero::load_from_exe(ar, tcdata, pal, std::move(exe_src), used_sounds, main_str, sprites_dir.contents.tree);
 
 		auto buf = tcdata.to_vec();
 		ar.add_entry_to_dir(ar.root(),
@@ -64,10 +66,8 @@ int main(int argc, char const* argv[]) {
 	}
 
 	{
-		auto sprites_dir = ar.add_dir(String("sprites"_S));
 		auto chr_node = in_node / "LIERO.CHR"_S;
 		liero::load_from_gfx(ar, sprites_dir.contents.tree, main_str, pal, chr_node.try_get_source());
-		ar.add_entry_to_dir(ar.root(), move(sprites_dir));
 	}
 
 	{
@@ -76,6 +76,8 @@ int main(int argc, char const* argv[]) {
 		liero::load_from_sfx(ar, sounds_dir.contents.tree, main_str, snd_node.try_get_source(), used_sounds);
 		ar.add_entry_to_dir(ar.root(), move(sounds_dir));
 	}
+
+	ar.add_entry_to_dir(ar.root(), move(sprites_dir));
 
 	auto sink = out_node.try_get_sink();
 

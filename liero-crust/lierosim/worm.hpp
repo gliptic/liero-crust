@@ -4,6 +4,7 @@
 #include <liero-sim/config.hpp>
 #include <tl/vector.hpp>
 #include <tl/approxmath/am.hpp>
+#include <tl/rand.hpp>
 
 namespace liero {
 
@@ -13,6 +14,7 @@ struct Mod;
 struct ModRef;
 struct TransientState;
 struct Worm;
+struct Level;
 
 enum WormControl {
 	WcLeft = 0, WcRight,
@@ -245,9 +247,6 @@ struct Worm {
 
 	u32 muzzle_fire; // GFX
 
-	// TODO: Direction is one bit. We can store it as a flag
-	//i8 direction; // 1 = right, -1 = left
-
 	u8 bits0;
 
 	enum {
@@ -315,6 +314,8 @@ struct Worm {
 	void reset_weapons(ModRef& mod);
 	void spawn(State& state);
 };
+
+tl::VectorI2 find_spawn(Level& level, tl::LcgPair& rand);
 
 }
 

@@ -29,6 +29,10 @@ Ratio ratio_for_bi_rand(i32 max) {
 	return Ratio(max) * (1.0 / 2147483648.0);
 }
 
+Ratio ratio_for_rand(i32 max) {
+	return Ratio(max) * (1.0 / 4294967296.0);
+}
+
 #define DEF_CONSTANT_8_DESC(name, offs, conv) offs,
 #define DEF_CONSTANT_16_DESC(name, offs, conv) offs,
 #define DEF_CONSTANT_24_DESC(name, offs1, offs2, conv) { offs1, offs2 },
@@ -79,7 +83,42 @@ static char const* sound_names[] = {
 	"movedown.wav", "select.wav", "boing.wav", "burner.wav"
 };
 
-bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src, u8 (&used_sounds)[256]) {
+static tl::Image load_font_from_exe(tl::VecSlice<u8 const> src, u32 width, u32 height) {
+	u32 count = 250;
+	tl::Image img(width, height * count, 1);
+
+	assert(src.size() >= sprites_size);
+
+	src.unsafe_cut_front(0x1C825);
+
+	u8 const* srcp = src.begin();
+
+	for (u32 i = 0; i < count; ++i) {
+
+		u8 const* ptr = srcp + i*64 + 1;
+		u8 char_width = tl::min(ptr[63], u8(7));
+
+		for (u32 y = 0; y < height; ++y) {
+			for (u32 x = 0; x < width; ++x) {
+				img.unsafe_pixel8(x, y + i * height) = ptr[y * 8 + x] ? 1 : 0;
+			}
+		}
+
+		img.unsafe_pixel8(char_width, i * height) = 2;
+	}
+
+	return move(img);
+}
+
+bool load_from_exe(
+	tl::ArchiveBuilder& archive,
+	ss::Builder& tcdata,
+	tl::Palette& pal,
+	tl::Source src,
+	u8 (&used_sounds)[256],
+	tl::StreamRef sprite_stream,
+	tl::TreeRef sprites_dir) {
+
 	auto window = src.window(135000);
 
 	if (window.empty()) {
@@ -306,6 +345,10 @@ bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src, u8 (&u
 			auto nobj_trail_type = i32(w_part_trail_type[i]) - 1;
 			if (nobj_trail_type >= 0) {
 				nt.nobj_trail_interval(w_part_trail_delay[i]);
+
+				u32 inv = u32(0x100000000ull / w_part_trail_delay[i]);
+				nt.nobj_trail_interval_inv(inv);
+
 				nt.nobj_trail_scatter(ScatterType(w_part_trail_scatter[i])); // TODO: Validate
 				nt.nobj_trail_type(u16(nobj_trail_type + weapon_count)); // TODO: Validate
 
@@ -322,6 +365,7 @@ bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src, u8 (&u
 				nt.splinter_type(u16(nobj_splinter_type + weapon_count));
 				nt.splinter_scatter(ScatterType(w_splinter_scatter[i])); // TODO: Validate
 				nt.splinter_speed(ratio_from_speed(n_speed[nobj_splinter_type]));
+				nt.splinter_speed_v(ratio_for_rand(n_speed_v[nobj_splinter_type]));
 
 				// TODO: Two different splinter colors
 				if (w_splinter_colour[i])
@@ -391,6 +435,7 @@ bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src, u8 (&u
 				nt.splinter_type(u16(nobj_splinter_type + weapon_count));
 				nt.splinter_scatter(ScatterType::ScAngular);
 				nt.splinter_speed(ratio_from_speed(n_speed[nobj_splinter_type]));
+				nt.splinter_speed_v(ratio_for_rand(n_speed_v[nobj_splinter_type]));
 
 				// TODO: Two different splinter colors
 				if (n_splinter_colour[i])
@@ -480,6 +525,15 @@ bool load_from_exe(ss::Builder& tcdata, tl::Palette& pal, tl::Source src, u8 (&u
 					(Material::Background & background) |
 					(Material::WormM & wormm));
 			}
+		}
+
+		{
+			auto font = load_font_from_exe(window, 8, 8);
+
+			tl::SinkVector vec;
+			tl::write_tga(vec, font.slice(), pal);
+			auto file = archive.add_file(tl::String("font.tga"_S), sprite_stream, vec.unwrap_vec().slice_const());
+			archive.add_entry_to_dir(sprites_dir, move(file));
 		}
 
 		tc.nr_initial_length(ratio(c_nr_initial_length, 1 << c_nr_force_len_shl));
