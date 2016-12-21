@@ -521,32 +521,32 @@ struct alignas(8) TcData : ss::Struct {
 	u32 worm_min_spawn_dist_last() const { return this->_field<u32, 144>(); }
 	u32 worm_min_spawn_dist_enemy() const { return this->_field<u32, 148>(); }
 	f64 aim_fric_mult() const { return this->_field<f64, 152>(); }
-	Scalar bonus_bounce_mult() const { return this->_field<Scalar, 160>(); }
-	u32 bonus_flicker_time() const { return this->_field<u32, 164>(); }
-	Scalar bonus_explode_risk() const { return this->_field<Scalar, 168>(); }
-	u32 bonus_health_var() const { return this->_field<u32, 172>(); }
-	u32 bonus_min_health() const { return this->_field<u32, 176>(); }
-	Scalar bonus_drop_chance() const { return this->_field<Scalar, 180>(); }
-	u32 aim_max_right() const { return this->_field<u32, 184>(); }
-	u32 aim_min_right() const { return this->_field<u32, 188>(); }
-	u32 aim_max_left() const { return this->_field<u32, 192>(); }
-	u32 aim_min_left() const { return this->_field<u32, 196>(); }
+	f64 bonus_bounce_mult() const { return this->_field<f64, 160>(); }
+	u32 bonus_flicker_time() const { return this->_field<u32, 168>(); }
+	Scalar bonus_explode_risk() const { return this->_field<Scalar, 172>(); }
+	u32 bonus_health_var() const { return this->_field<u32, 176>(); }
+	u32 bonus_min_health() const { return this->_field<u32, 180>(); }
+	Scalar bonus_drop_chance() const { return this->_field<Scalar, 184>(); }
+	u32 aim_max_right() const { return this->_field<u32, 188>(); }
+	u32 aim_min_right() const { return this->_field<u32, 192>(); }
+	u32 aim_max_left() const { return this->_field<u32, 196>(); }
+	u32 aim_min_left() const { return this->_field<u32, 200>(); }
 	u8 first_blood_colour() const { return this->_field<u8, 98>(); }
 	u8 num_blood_colours() const { return this->_field<u8, 99>(); }
-	Scalar bobj_gravity() const { return this->_field<Scalar, 200>(); }
-	u32 blood_step_up() const { return this->_field<u32, 204>(); }
-	u32 blood_step_down() const { return this->_field<u32, 208>(); }
-	u32 blood_limit() const { return this->_field<u32, 212>(); }
-	u32 fall_damage_right() const { return this->_field<u32, 216>(); }
-	u32 fall_damage_left() const { return this->_field<u32, 220>(); }
-	u32 fall_damage_down() const { return this->_field<u32, 224>(); }
-	u32 fall_damage_up() const { return this->_field<u32, 228>(); }
-	u32 worm_float_level() const { return this->_field<u32, 232>(); }
-	Scalar worm_float_power() const { return this->_field<Scalar, 236>(); }
-	i16 rem_exp_object() const { return this->_field<i16, 240>(); }
+	Scalar bobj_gravity() const { return this->_field<Scalar, 204>(); }
+	u32 blood_step_up() const { return this->_field<u32, 208>(); }
+	u32 blood_step_down() const { return this->_field<u32, 212>(); }
+	u32 blood_limit() const { return this->_field<u32, 216>(); }
+	u32 fall_damage_right() const { return this->_field<u32, 220>(); }
+	u32 fall_damage_left() const { return this->_field<u32, 224>(); }
+	u32 fall_damage_down() const { return this->_field<u32, 228>(); }
+	u32 fall_damage_up() const { return this->_field<u32, 232>(); }
+	u32 worm_float_level() const { return this->_field<u32, 236>(); }
+	Scalar worm_float_power() const { return this->_field<Scalar, 240>(); }
+	i16 rem_exp_object() const { return this->_field<i16, 244>(); }
 	tl::VecSlice<ss::StringOffset const> sound_names() const { return this->_field<ss::ArrayOffset<ss::StringOffset>, 248>().get(); }
 	tl::VecSlice<u8 const> materials() const { return this->_field<ss::ArrayOffset<u8>, 256>().get(); }
-	u8 throw_sound() const { return this->_field<u8, 242>(); }
+	u8 throw_sound() const { return this->_field<u8, 246>(); }
 
 	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<TcDataReader> const& src) {
 		TL_UNUSED(expander); TL_UNUSED(src);
@@ -670,32 +670,37 @@ struct TcDataBuilder : ss::Ref<TcDataReader> {
 		memcpy(&s, &v, sizeof(v));
 		this->_field<u64, 152>() = s ^ 4605651073980432384;
 	}
-	void bonus_bounce_mult(Scalar v) { this->_field<i32, 160>() = (v.raw()) ^ 0; }
-	void bonus_flicker_time(u32 v) { this->_field<u32, 164>() = v ^ 0; }
-	void bonus_explode_risk(Scalar v) { this->_field<i32, 168>() = (v.raw()) ^ 0; }
-	void bonus_health_var(u32 v) { this->_field<u32, 172>() = v ^ 0; }
-	void bonus_min_health(u32 v) { this->_field<u32, 176>() = v ^ 0; }
-	void bonus_drop_chance(Scalar v) { this->_field<i32, 180>() = (v.raw()) ^ 0; }
-	void aim_max_right(u32 v) { this->_field<u32, 184>() = v ^ 116; }
-	void aim_min_right(u32 v) { this->_field<u32, 188>() = v ^ 64; }
-	void aim_max_left(u32 v) { this->_field<u32, 192>() = v ^ 12; }
-	void aim_min_left(u32 v) { this->_field<u32, 196>() = v ^ 64; }
+
+	void bonus_bounce_mult(f64 v) {
+		u64 s;
+		memcpy(&s, &v, sizeof(v));
+		this->_field<u64, 160>() = s ^ 0;
+	}
+	void bonus_flicker_time(u32 v) { this->_field<u32, 168>() = v ^ 0; }
+	void bonus_explode_risk(Scalar v) { this->_field<i32, 172>() = (v.raw()) ^ 0; }
+	void bonus_health_var(u32 v) { this->_field<u32, 176>() = v ^ 0; }
+	void bonus_min_health(u32 v) { this->_field<u32, 180>() = v ^ 0; }
+	void bonus_drop_chance(Scalar v) { this->_field<i32, 184>() = (v.raw()) ^ 0; }
+	void aim_max_right(u32 v) { this->_field<u32, 188>() = v ^ 116; }
+	void aim_min_right(u32 v) { this->_field<u32, 192>() = v ^ 64; }
+	void aim_max_left(u32 v) { this->_field<u32, 196>() = v ^ 12; }
+	void aim_min_left(u32 v) { this->_field<u32, 200>() = v ^ 64; }
 	void first_blood_colour(u8 v) { this->_field<u8, 98>() = v ^ 80; }
 	void num_blood_colours(u8 v) { this->_field<u8, 99>() = v ^ 2; }
-	void bobj_gravity(Scalar v) { this->_field<i32, 200>() = (v.raw()) ^ 1000; }
-	void blood_step_up(u32 v) { this->_field<u32, 204>() = v ^ 0; }
-	void blood_step_down(u32 v) { this->_field<u32, 208>() = v ^ 0; }
-	void blood_limit(u32 v) { this->_field<u32, 212>() = v ^ 0; }
-	void fall_damage_right(u32 v) { this->_field<u32, 216>() = v ^ 0; }
-	void fall_damage_left(u32 v) { this->_field<u32, 220>() = v ^ 0; }
-	void fall_damage_down(u32 v) { this->_field<u32, 224>() = v ^ 0; }
-	void fall_damage_up(u32 v) { this->_field<u32, 228>() = v ^ 0; }
-	void worm_float_level(u32 v) { this->_field<u32, 232>() = v ^ 0; }
-	void worm_float_power(Scalar v) { this->_field<i32, 236>() = (v.raw()) ^ 0; }
-	void rem_exp_object(i16 v) { this->_field<i16, 240>() = v ^ 0; }
+	void bobj_gravity(Scalar v) { this->_field<i32, 204>() = (v.raw()) ^ 1000; }
+	void blood_step_up(u32 v) { this->_field<u32, 208>() = v ^ 0; }
+	void blood_step_down(u32 v) { this->_field<u32, 212>() = v ^ 0; }
+	void blood_limit(u32 v) { this->_field<u32, 216>() = v ^ 0; }
+	void fall_damage_right(u32 v) { this->_field<u32, 220>() = v ^ 0; }
+	void fall_damage_left(u32 v) { this->_field<u32, 224>() = v ^ 0; }
+	void fall_damage_down(u32 v) { this->_field<u32, 228>() = v ^ 0; }
+	void fall_damage_up(u32 v) { this->_field<u32, 232>() = v ^ 0; }
+	void worm_float_level(u32 v) { this->_field<u32, 236>() = v ^ 0; }
+	void worm_float_power(Scalar v) { this->_field<i32, 240>() = (v.raw()) ^ 0; }
+	void rem_exp_object(i16 v) { this->_field<i16, 244>() = v ^ 0; }
 	void sound_names(ss::ArrayRef<ss::StringOffset> v) { return this->_field_ref<ss::ArrayOffset<ss::StringOffset>, 248>().set(v); }
 	void materials(ss::ArrayRef<u8> v) { return this->_field_ref<ss::ArrayOffset<u8>, 256>().set(v); }
-	void throw_sound(u8 v) { this->_field<u8, 242>() = v ^ 0; }
+	void throw_sound(u8 v) { this->_field<u8, 246>() = v ^ 0; }
 
 };
 

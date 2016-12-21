@@ -973,7 +973,7 @@ local function generate(header_path, source_path)
 		{'worm_fric_mult', 33, t.F64, RatioFromFixed(58327)},
 		{'worm_min_spawn_dist_last', 35, t.U32},
 		{'worm_min_spawn_dist_enemy', 36, t.U32},
-		{'bonus_bounce_mult', 42, t.Scalar},
+		{'bonus_bounce_mult', 42, t.F64},
 		{'bonus_flicker_time', 44, t.U32},
 		{'bonus_explode_risk', 45, t.Scalar},
 		{'bonus_health_var', 46, t.U32},

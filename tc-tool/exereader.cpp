@@ -567,6 +567,8 @@ bool load_from_exe(
 		tc.aim_min_right(c_aim_min_right);
 		tc.aim_fric_mult(ratio(c_aim_fric_mult, c_aim_fric_div));
 
+		tc.bonus_bounce_mult(ratio(c_bonus_bounce_mul, c_bonus_bounce_div));
+
 		tc.throw_sound(sound_index[c_throw_sound]);
 
 		tc.nobjects(nt_arr.done());

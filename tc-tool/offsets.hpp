@@ -42,8 +42,8 @@
 	/* _(nr_force_shl_y, 0xa8da, i16) */ \
 	/* _(nr_force_div_y, 0xa8e4, i16) */ \
 	_(nr_force_len_shl, 0xa91e, i16) \
-	/* _(bonus_bounce_mul, 0x731f, i16) */ \
-	/* _(bonus_bounce_div, 0x7329, i16) */ \
+	_(bonus_bounce_mul, 0x731f, i16) \
+	_(bonus_bounce_div, 0x7329, i16) \
 	/* _(bonus_flicker_time, 0x87b8, i16) */ \
 	/* _(bonus_drop_chance, 0xbeca, i16) */ \
 	/* _(splinter_larpa_vel_div, 0x677d, i16) */ \
