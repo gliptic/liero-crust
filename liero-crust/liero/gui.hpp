@@ -19,13 +19,30 @@ struct WindowDesc {
 	u32 type;
 };
 
+struct FrameDesc : WindowDesc {
+	usize children[];
+};
+
 struct ButtonDesc : WindowDesc {
 	Size win_size;
 };
 
+template<typename T>
+struct Ref {
+	T* p;
+	usize offset;
+
+	T* operator->() {
+		return p;
+	}
+};
+
 template<typename Context>
 struct Control {
-	Control(Context& ctx_init) : ctx(ctx_init) {
+	template<typename T>
+	Control(Context& ctx_init, Ref<T> ref)
+		: ctx(ctx_init)
+		, desc_offset(ref.offset) {
 	}
 
 	Context& ctx;
@@ -42,9 +59,11 @@ struct Button : Control<Context> {
 
 template<typename Context>
 struct Frame : Control<Context> {
+	/*
 	Frame(Context& ctx_init)
 		: Control<Context>(ctx_init) {
-	}
+	}*/
+	using Control<Context>::Control;
 
 	template<typename Contents>
 	void with(Contents contents) {
@@ -56,7 +75,22 @@ struct Frame : Control<Context> {
 
 struct Context {
 	tl::BufferMixed buf;
+	tl::Vec<usize> children;
 
+	template<typename T>
+	Ref<T> alloc(usize extra_size = 0) {
+		usize size = sizeof(T) + extra_size;
+		u8* desc = buf.unsafe_alloc(size);
+		usize offs = usize(desc - buf.begin());
+
+		Ref<T> ref;
+		ref.offset = offs;
+		ref.p = (T *)desc;
+		ref.p->size = size;
+		return ref;
+	}
+
+	/*
 	Button<Context> button() {
 		return Button<Context>(*this);
 	}
@@ -64,27 +98,44 @@ struct Context {
 	Frame<Context> frame() {
 		return Frame<Context>(*this);
 	}
+	*/
+
+	template<typename F>
+	Frame<Context> frame(F f) {
+		usize size_old = children.size();
+		f();
+		usize size_new = children.size();
+		usize children_size = (size_new - size_old) * sizeof(usize);
+		auto frame_desc = this->alloc<FrameDesc>(children_size);
+		frame_desc->type = 1;
+		memcpy(frame_desc->children, children.begin(), children_size);
+		children.unsafe_set_size(size_old);
+
+		this->children.push_back(frame_desc.offset);
+		return Frame<Context>(*this, frame_desc);
+	}
 
 	Button<Context> button2(Size size = Size()) {
-		u8* desc = buf.unsafe_alloc(sizeof(ButtonDesc));
-		isize offs = desc - buf.begin();
-
-		ButtonDesc* button_desc = (ButtonDesc *)desc;
-		button_desc->size = sizeof(ButtonDesc);
+		auto button_desc = this->alloc<ButtonDesc>();
 		button_desc->type = 0;
 		button_desc->win_size = size;
 
-		return Button<Context>(*this);
+		this->children.push_back(button_desc.offset);
+		return Button<Context>(*this, button_desc);
 	}
 
 	void render(gfx::GeomBuffer& geom);
+	void render2(gfx::GeomBuffer& geom);
 };
 
 struct LieroGui {
 
 	template<typename Context>
 	void run(Context& ctx) {
-		ctx.button2(Size(10, 10));
+		ctx.frame([&] {
+			ctx.button2(Size(10, 10));
+			ctx.button2(Size(10, 10));
+		});
 	}
 };
 

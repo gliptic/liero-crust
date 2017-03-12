@@ -87,7 +87,7 @@ static tl::Image load_font_from_exe(tl::VecSlice<u8 const> src, u32 width, u32 h
 	u32 count = 250;
 	tl::Image img(width, height * count, 1);
 
-	assert(src.size() >= sprites_size);
+	//assert(src.size() >= sprites_size);
 
 	src.unsafe_cut_front(0x1C825);
 
@@ -568,6 +568,8 @@ bool load_from_exe(
 		tc.aim_fric_mult(ratio(c_aim_fric_mult, c_aim_fric_div));
 
 		tc.bonus_bounce_mult(ratio(c_bonus_bounce_mul, c_bonus_bounce_div));
+		tc.bonus_drop_chance(ratio_for_rand(c_bonus_drop_chance));
+		tc.bonus_gravity(c_bonus_gravity);
 
 		tc.throw_sound(sound_index[c_throw_sound]);
 
@@ -578,6 +580,15 @@ bool load_from_exe(
 
 		tc.sound_names(snd_arr.done());
 		tc.materials(materials_arr.done());
+
+		tc.bonus_sobj()[0] = c_bonus_sobj_0 - 1;
+		tc.bonus_sobj()[1] = c_bonus_sobj_1 - 1;
+		tc.bonus_rand_timer_min()[0] = c_bonus_rand_timer_min_0;
+		tc.bonus_rand_timer_min()[1] = c_bonus_rand_timer_min_1;
+		tc.bonus_rand_timer_var()[0] = c_bonus_rand_timer_var_0;
+		tc.bonus_rand_timer_var()[1] = c_bonus_rand_timer_var_1;
+		tc.bonus_frames()[0] = c_bonus_frame_0;
+		tc.bonus_frames()[1] = c_bonus_frame_1;
 
 		root.set(tc.done());
 	}

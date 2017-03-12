@@ -30,6 +30,17 @@ void Viewport::draw(State& state, DrawTarget& target, TransientState const& tran
 
 	clipped.blit(state.level.graphics.slice(), &target.pal, this->offset.x, this->offset.y);
 
+	// Draw bonuses
+	{
+		auto r = state.bonuses.all();
+
+		for (Bonus* b; (b = r.next()) != 0; ) {
+			auto ipos = b->pos.cast<i32>() + this->offset;
+			auto f = state.mod.tcdata->bonus_frames()[b->frame];
+			draw_small_sprite(state.mod, clipped, f, ipos);
+		}
+	}
+
 	// Draw sobjects
 	{
 		auto r = state.sobjects.all();

@@ -334,10 +334,11 @@ inline void update_weapons(Worm& worm, State& state, TransientState& transient_s
 	}
 
 	if (worm.leave_shell_time == state.current_time) {
+		// TODO: Store constants in TC
 		auto shell_vel = rand_max_vector2(state.rand, tl::VectorD2(10000.0 / 2147483648.0, 8000.0 / 2147483648.0));
 		shell_vel.y -= Scalar::from_raw(10000);
 
-		create(state.mod.get_nobject_type(40 + 7), state, Scalar(), worm.pos, shell_vel, transient_state);
+		create(state.mod.get_nobject_type(40 + 7), state, Scalar(), worm.pos, shell_vel);
 	}
 }
 
@@ -371,6 +372,20 @@ inline void update_steerables(Worm& worm, u32 worm_index, State& state, WormTran
 }
 
 } // namespace
+
+#if 0
+typedef tl::BasicRect<u16> SpawnLevel;
+static usize const spawn_levels = 18; // ceil(log2(504 * 350))
+
+tl::VectorI2 find_spawn_2(Level& level, tl::LcgPair& rand) {
+	SpawnLevel stack[spawn_levels];
+	usize cur_level = 0;
+
+	SpawnLevel cur_rect(0, 0, level.graphics.width(), level.graphics.height());
+
+	//while (cur_rect)
+}
+#endif
 
 tl::VectorI2 find_spawn(Level& level, tl::LcgPair& rand) {
 	i32 selected_x = 0, selected_y = 0;

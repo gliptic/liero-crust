@@ -37,6 +37,7 @@ void create(SObjectType const& self, State& state, TransientState& transient_sta
 					&& ipos.x > pos.x - i32(ldetect_range)
 					&& ipos.y < pos.y + i32(ldetect_range)
 					&& ipos.y > pos.y - i32(ldetect_range)) {
+
 					auto delta = ipos - pos;
 					auto power = tl::VectorI2(ldetect_range - abs(delta.x), ldetect_range - abs(delta.y));
 

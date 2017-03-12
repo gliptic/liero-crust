@@ -26,6 +26,12 @@ struct FixedObjectListBase {
 		return Limit - 1;
 	}
 
+	usize next_free_overwrite_index() {
+		auto index = tl::min(count, usize(Limit) - 1);
+		this->count = index + 1;
+		return index;
+	}
+
 	void clear() {
 		this->count = 0;
 	}
@@ -105,15 +111,7 @@ struct FixedObjectList : FixedObjectListBase<Limit, QueueNew> {
 	}
 
 	T* new_object_reuse() {
-		T* ret;
-		if (is_full()) {
-			u32 replace_idx = Limit - 1;
-			ret = &arr[replace_idx];
-		} else {
-			ret = get_free_object();
-		}
-
-		return ret;
+		return &arr[this->next_free_overwrite_index()];
 	}
 	
 	template<typename DestroyFunc>
@@ -185,6 +183,8 @@ struct FixedObjectList : FixedObjectListBase<Limit, QueueNew> {
 	// Only valid if QueueNew == true
 	template<typename DestroyFunc>
 	tl::VecSlice<T> flush_new_queue(DestroyFunc destroy_func) {
+		static_assert(QueueNew, "Must have queue enabled to use it");
+
 		if (this->new_count > Limit) {
 #if 1
 			if (this->count == Limit) {

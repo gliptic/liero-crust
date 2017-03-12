@@ -483,14 +483,14 @@ struct LevelEffectBuilder : ss::Ref<LevelEffectReader> {
 };
 
 struct alignas(8) TcDataReader : ss::Struct {
-	u8 data[264];
+	u8 data[288];
 
 };
 
 struct alignas(8) TcData : ss::Struct {
-	static u8 _defaults[264];
+	static u8 _defaults[288];
 
-	u8 data[264];
+	u8 data[288];
 
 	TcData() { memcpy(data, _defaults, sizeof(_defaults)); }
 
@@ -526,27 +526,35 @@ struct alignas(8) TcData : ss::Struct {
 	Scalar bonus_explode_risk() const { return this->_field<Scalar, 172>(); }
 	u32 bonus_health_var() const { return this->_field<u32, 176>(); }
 	u32 bonus_min_health() const { return this->_field<u32, 180>(); }
-	Scalar bonus_drop_chance() const { return this->_field<Scalar, 184>(); }
-	u32 aim_max_right() const { return this->_field<u32, 188>(); }
-	u32 aim_min_right() const { return this->_field<u32, 192>(); }
-	u32 aim_max_left() const { return this->_field<u32, 196>(); }
-	u32 aim_min_left() const { return this->_field<u32, 200>(); }
+	f64 bonus_drop_chance() const { return this->_field<f64, 184>(); }
+	u32 aim_max_right() const { return this->_field<u32, 192>(); }
+	u32 aim_min_right() const { return this->_field<u32, 196>(); }
+	u32 aim_max_left() const { return this->_field<u32, 200>(); }
+	u32 aim_min_left() const { return this->_field<u32, 204>(); }
 	u8 first_blood_colour() const { return this->_field<u8, 98>(); }
 	u8 num_blood_colours() const { return this->_field<u8, 99>(); }
-	Scalar bobj_gravity() const { return this->_field<Scalar, 204>(); }
-	u32 blood_step_up() const { return this->_field<u32, 208>(); }
-	u32 blood_step_down() const { return this->_field<u32, 212>(); }
-	u32 blood_limit() const { return this->_field<u32, 216>(); }
-	u32 fall_damage_right() const { return this->_field<u32, 220>(); }
-	u32 fall_damage_left() const { return this->_field<u32, 224>(); }
-	u32 fall_damage_down() const { return this->_field<u32, 228>(); }
-	u32 fall_damage_up() const { return this->_field<u32, 232>(); }
-	u32 worm_float_level() const { return this->_field<u32, 236>(); }
-	Scalar worm_float_power() const { return this->_field<Scalar, 240>(); }
-	i16 rem_exp_object() const { return this->_field<i16, 244>(); }
-	tl::VecSlice<ss::StringOffset const> sound_names() const { return this->_field<ss::ArrayOffset<ss::StringOffset>, 248>().get(); }
+	Scalar bobj_gravity() const { return this->_field<Scalar, 208>(); }
+	u32 blood_step_up() const { return this->_field<u32, 212>(); }
+	u32 blood_step_down() const { return this->_field<u32, 216>(); }
+	u32 blood_limit() const { return this->_field<u32, 220>(); }
+	u32 fall_damage_right() const { return this->_field<u32, 224>(); }
+	u32 fall_damage_left() const { return this->_field<u32, 228>(); }
+	u32 fall_damage_down() const { return this->_field<u32, 232>(); }
+	u32 fall_damage_up() const { return this->_field<u32, 236>(); }
+	u32 worm_float_level() const { return this->_field<u32, 240>(); }
+	Scalar worm_float_power() const { return this->_field<Scalar, 244>(); }
+	i16 rem_exp_object() const { return this->_field<i16, 248>(); }
 	tl::VecSlice<u8 const> materials() const { return this->_field<ss::ArrayOffset<u8>, 256>().get(); }
-	u8 throw_sound() const { return this->_field<u8, 246>(); }
+	tl::VecSlice<ss::StringOffset const> sound_names() const { return this->_field<ss::ArrayOffset<ss::StringOffset>, 264>().get(); }
+	u8 throw_sound() const { return this->_field<u8, 250>(); }	typedef u16 bonus_sobjVal[2];
+	bonus_sobjVal const& bonus_sobj() const { return this->_field<bonus_sobjVal const, 252>(); }
+	typedef u16 bonus_rand_timer_minVal[2];
+	bonus_rand_timer_minVal const& bonus_rand_timer_min() const { return this->_field<bonus_rand_timer_minVal const, 272>(); }
+	typedef u16 bonus_rand_timer_varVal[2];
+	bonus_rand_timer_varVal const& bonus_rand_timer_var() const { return this->_field<bonus_rand_timer_varVal const, 276>(); }
+	typedef u16 bonus_framesVal[2];
+	bonus_framesVal const& bonus_frames() const { return this->_field<bonus_framesVal const, 280>(); }
+
 
 	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<TcDataReader> const& src) {
 		TL_UNUSED(expander); TL_UNUSED(src);
@@ -555,8 +563,8 @@ struct alignas(8) TcData : ss::Struct {
 		cur_size = expander.array_calc_size<SObjectType, ss::StructOffset<SObjectTypeReader>>(cur_size, srcp->_field<ss::Offset, 8>());
 		cur_size = expander.array_calc_size<WeaponType, ss::StructOffset<WeaponTypeReader>>(cur_size, srcp->_field<ss::Offset, 16>());
 		cur_size = expander.array_calc_size<LevelEffect, ss::StructOffset<LevelEffectReader>>(cur_size, srcp->_field<ss::Offset, 24>());
-		cur_size = expander.array_calc_size<ss::StringOffset, ss::StringOffset>(cur_size, srcp->_field<ss::Offset, 248>());
 		cur_size = expander.array_calc_size_plain<u8, u8>(cur_size, srcp->_field<ss::Offset, 256>());
+		cur_size = expander.array_calc_size<ss::StringOffset, ss::StringOffset>(cur_size, srcp->_field<ss::Offset, 264>());
 		return cur_size;
 	}
 
@@ -567,21 +575,21 @@ struct alignas(8) TcData : ss::Struct {
 		u64 *p = (u64 *)dest.ptr;
 		u64 const *s = (u64 const*)srcp;
 		u64 const *d = (u64 const*)TcData::_defaults;
-		for (u32 i = 0; i < 33; ++i) {
+		for (u32 i = 0; i < 36; ++i) {
 			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
 		}
 		auto nobjects_copy = expander.expand_array_raw<NObjectType, ss::StructOffset<NObjectTypeReader>>(srcp->_field<ss::Offset, 0>());
 		auto sobjects_copy = expander.expand_array_raw<SObjectType, ss::StructOffset<SObjectTypeReader>>(srcp->_field<ss::Offset, 8>());
 		auto weapons_copy = expander.expand_array_raw<WeaponType, ss::StructOffset<WeaponTypeReader>>(srcp->_field<ss::Offset, 16>());
 		auto level_effects_copy = expander.expand_array_raw<LevelEffect, ss::StructOffset<LevelEffectReader>>(srcp->_field<ss::Offset, 24>());
-		auto sound_names_copy = expander.expand_array_raw<ss::StringOffset, ss::StringOffset>(srcp->_field<ss::Offset, 248>());
 		auto materials_copy = expander.expand_array_raw_plain<u8, u8>(srcp->_field<ss::Offset, 256>());
+		auto sound_names_copy = expander.expand_array_raw<ss::StringOffset, ss::StringOffset>(srcp->_field<ss::Offset, 264>());
 		dest._field_ref<ss::ArrayOffset<NObjectType>, 0>().set(nobjects_copy);
 		dest._field_ref<ss::ArrayOffset<SObjectType>, 8>().set(sobjects_copy);
 		dest._field_ref<ss::ArrayOffset<WeaponType>, 16>().set(weapons_copy);
 		dest._field_ref<ss::ArrayOffset<LevelEffect>, 24>().set(level_effects_copy);
-		dest._field_ref<ss::ArrayOffset<ss::StringOffset>, 248>().set(sound_names_copy);
 		dest._field_ref<ss::ArrayOffset<u8>, 256>().set(materials_copy);
+		dest._field_ref<ss::ArrayOffset<ss::StringOffset>, 264>().set(sound_names_copy);
 	}
 
 };
@@ -680,27 +688,40 @@ struct TcDataBuilder : ss::Ref<TcDataReader> {
 	void bonus_explode_risk(Scalar v) { this->_field<i32, 172>() = (v.raw()) ^ 0; }
 	void bonus_health_var(u32 v) { this->_field<u32, 176>() = v ^ 0; }
 	void bonus_min_health(u32 v) { this->_field<u32, 180>() = v ^ 0; }
-	void bonus_drop_chance(Scalar v) { this->_field<i32, 184>() = (v.raw()) ^ 0; }
-	void aim_max_right(u32 v) { this->_field<u32, 188>() = v ^ 116; }
-	void aim_min_right(u32 v) { this->_field<u32, 192>() = v ^ 64; }
-	void aim_max_left(u32 v) { this->_field<u32, 196>() = v ^ 12; }
-	void aim_min_left(u32 v) { this->_field<u32, 200>() = v ^ 64; }
+
+	void bonus_drop_chance(f64 v) {
+		u64 s;
+		memcpy(&s, &v, sizeof(v));
+		this->_field<u64, 184>() = s ^ 0;
+	}
+	void aim_max_right(u32 v) { this->_field<u32, 192>() = v ^ 116; }
+	void aim_min_right(u32 v) { this->_field<u32, 196>() = v ^ 64; }
+	void aim_max_left(u32 v) { this->_field<u32, 200>() = v ^ 12; }
+	void aim_min_left(u32 v) { this->_field<u32, 204>() = v ^ 64; }
 	void first_blood_colour(u8 v) { this->_field<u8, 98>() = v ^ 80; }
 	void num_blood_colours(u8 v) { this->_field<u8, 99>() = v ^ 2; }
-	void bobj_gravity(Scalar v) { this->_field<i32, 204>() = (v.raw()) ^ 1000; }
-	void blood_step_up(u32 v) { this->_field<u32, 208>() = v ^ 0; }
-	void blood_step_down(u32 v) { this->_field<u32, 212>() = v ^ 0; }
-	void blood_limit(u32 v) { this->_field<u32, 216>() = v ^ 0; }
-	void fall_damage_right(u32 v) { this->_field<u32, 220>() = v ^ 0; }
-	void fall_damage_left(u32 v) { this->_field<u32, 224>() = v ^ 0; }
-	void fall_damage_down(u32 v) { this->_field<u32, 228>() = v ^ 0; }
-	void fall_damage_up(u32 v) { this->_field<u32, 232>() = v ^ 0; }
-	void worm_float_level(u32 v) { this->_field<u32, 236>() = v ^ 0; }
-	void worm_float_power(Scalar v) { this->_field<i32, 240>() = (v.raw()) ^ 0; }
-	void rem_exp_object(i16 v) { this->_field<i16, 244>() = v ^ 0; }
-	void sound_names(ss::ArrayRef<ss::StringOffset> v) { return this->_field_ref<ss::ArrayOffset<ss::StringOffset>, 248>().set(v); }
+	void bobj_gravity(Scalar v) { this->_field<i32, 208>() = (v.raw()) ^ 1000; }
+	void blood_step_up(u32 v) { this->_field<u32, 212>() = v ^ 0; }
+	void blood_step_down(u32 v) { this->_field<u32, 216>() = v ^ 0; }
+	void blood_limit(u32 v) { this->_field<u32, 220>() = v ^ 0; }
+	void fall_damage_right(u32 v) { this->_field<u32, 224>() = v ^ 0; }
+	void fall_damage_left(u32 v) { this->_field<u32, 228>() = v ^ 0; }
+	void fall_damage_down(u32 v) { this->_field<u32, 232>() = v ^ 0; }
+	void fall_damage_up(u32 v) { this->_field<u32, 236>() = v ^ 0; }
+	void worm_float_level(u32 v) { this->_field<u32, 240>() = v ^ 0; }
+	void worm_float_power(Scalar v) { this->_field<i32, 244>() = (v.raw()) ^ 0; }
+	void rem_exp_object(i16 v) { this->_field<i16, 248>() = v ^ 0; }
 	void materials(ss::ArrayRef<u8> v) { return this->_field_ref<ss::ArrayOffset<u8>, 256>().set(v); }
-	void throw_sound(u8 v) { this->_field<u8, 246>() = v ^ 0; }
+	void sound_names(ss::ArrayRef<ss::StringOffset> v) { return this->_field_ref<ss::ArrayOffset<ss::StringOffset>, 264>().set(v); }
+	void throw_sound(u8 v) { this->_field<u8, 250>() = v ^ 0; }
+	typedef u16 bonus_sobjVal[2];
+	bonus_sobjVal& bonus_sobj() { return this->_field<bonus_sobjVal, 252>(); }
+	typedef u16 bonus_rand_timer_minVal[2];
+	bonus_rand_timer_minVal& bonus_rand_timer_min() { return this->_field<bonus_rand_timer_minVal, 272>(); }
+	typedef u16 bonus_rand_timer_varVal[2];
+	bonus_rand_timer_varVal& bonus_rand_timer_var() { return this->_field<bonus_rand_timer_varVal, 276>(); }
+	typedef u16 bonus_framesVal[2];
+	bonus_framesVal& bonus_frames() { return this->_field<bonus_framesVal, 280>(); }
 
 };
 

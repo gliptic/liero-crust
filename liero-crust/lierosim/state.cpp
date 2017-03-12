@@ -4,6 +4,25 @@
 
 namespace liero {
 
+#if 1
+void spawn_bonus(State& state) {
+	if (state.bonuses.is_full())
+		return;
+
+	auto* bonus = state.bonuses.new_object();
+
+	auto ipos = state.rand.get_vectori2(state.level.graphics.dimensions().cast<i32>());
+
+	u32 frame = state.rand.get_i32(2);
+
+	bonus->pos = ipos.cast<Scalar>();
+	bonus->frame = frame;
+	bonus->vel_y = Scalar();
+	bonus->timer = state.mod.tcdata->bonus_rand_timer_min()[frame] + state.rand.get_i32(i32(state.mod.tcdata->bonus_rand_timer_var()[frame]));
+	bonus->weapon = 0;
+}
+#endif
+
 void State::update(TransientState& transient_state) {
 
 	// Prepare transient state
@@ -37,7 +56,7 @@ void State::update(TransientState& transient_state) {
 	{
 		// This is here to include objects created outside update. It should only
 		// be necessary for testing purposes.
-		auto new_nobjs = this->nobjects.flush_new_queue([&](NObject* nobj, u32 index) {
+		auto new_nobjs = this->nobjects.flush_new_queue([&](NObject*, u32 index) {
 			//if (nobj->cell < 0) // TEMP DISABLE
 			this->nobject_broadphase.remove(narrow<CellNode::Index>(index));
 		});
@@ -57,6 +76,20 @@ void State::update(TransientState& transient_state) {
 #endif
 
 	// Updates
+
+	{
+		auto r = this->bonuses.all();
+
+		for (Bonus* s; (s = r.next()) != 0; ) {
+			if (!liero::update(*this, *s, transient_state)) {
+				this->bonuses.free(r);
+			}
+		}
+
+		if (this->rand.get_i32(this->mod.tcdata->bonus_drop_chance()) == 0) {
+			spawn_bonus(*this);
+		}
+	}
 
 	{
 		auto r = this->sobjects.all();
@@ -103,7 +136,7 @@ void State::update(TransientState& transient_state) {
 	}
 
 	{
-		auto new_nobjs = this->nobjects.flush_new_queue([&](NObject* nobj, u32 index) {
+		auto new_nobjs = this->nobjects.flush_new_queue([&](NObject*, u32 index) {
 			//if (nobj->cell < 0) // TEMP DISABLE
 			this->nobject_broadphase.remove(narrow<CellNode::Index>(index));
 		});

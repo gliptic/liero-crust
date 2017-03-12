@@ -146,7 +146,7 @@ void fire(WeaponType const& self, State& state, TransientState& transient_state,
 			part_vel += rand_max_vector2(state.rand, self.distribution());
 		}
 
-		create(ty, state, angle, pos, part_vel, transient_state, owner);
+		create(ty, state, angle, pos, part_vel, owner);
 	}
 }
 

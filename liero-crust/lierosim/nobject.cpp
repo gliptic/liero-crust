@@ -4,16 +4,19 @@
 
 namespace liero {
 
-void create(NObjectType const& self, State& state, Scalar angle, Vector2 pos, Vector2 vel, TransientState& transient_state, i16 owner, tl::Color override_color) {
+void create(NObjectType const& self, State& state, Scalar angle, Vector2 pos, Vector2 vel, i16 owner, tl::Color override_color, bool skip_frame_1) {
 
 	auto* obj = state.nobjects.new_object_reuse_queue();
+
+	// nobjects created with create2 have their velocity applied once immediately
+	if (skip_frame_1) {
+		pos += vel;
+	}
 
 	obj->ty_idx = tl::narrow<u16>(&self - state.mod.nobject_types);
 	obj->pos = pos;
 	obj->vel = vel;
 	obj->cell = 0;
-
-	// TODO: nobjects created with create2 have their velocity applied once immediately
 
 	obj->owner = owner;
 
@@ -83,7 +86,7 @@ void NObject::explode_obj(NObjectType const& ty, Vector2 pos, Vector2 vel, i16 o
 				part_vel += rand_max_vector2(state.rand, ty.splinter_distribution());
 			}
 
-			create(splinter_ty, state, angle, pos, part_vel, transient_state, owner, ty.splinter_color());
+			create(splinter_ty, state, angle, pos, part_vel, owner, ty.splinter_color());
 		}
 	}
 
@@ -183,7 +186,7 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 				part_vel += vector2(sincos_f64(angle) * speed);
 			}
 
-			create(trail_ty, state, angle, lpos, part_vel, transient_state);
+			create(trail_ty, state, angle, lpos, part_vel);
 		}
 
 		if (ty.collide_with_objects()) {
@@ -294,7 +297,7 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 						for (u32 i = 0; i < blood_amount; ++i) {
 							auto angle = Fixed::from_raw(state.rand.next() & ((128 << 16) - 1));
 							auto part_vel = sincos(angle); // TODO: Correct blood velocity
-							create(state.mod.get_nobject_type(40 + 6), state, angle, lpos, part_vel + lvel / 3, transient_state, self.owner);
+							create(state.mod.get_nobject_type(40 + 6), state, angle, lpos, part_vel + lvel / 3, self.owner);
 						}
 
 						// TODO: Play hurt sound if hit_damage > 0 etc.

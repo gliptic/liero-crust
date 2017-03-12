@@ -25,7 +25,7 @@ void mixer_fill(sfx::Stream& str, u32 /*start*/, u32 frames) {
 
 void mixer_play_sound(liero::ModRef& mod, i16 sound_index, liero::TransientState& transient_state) {
 
-	return; // TEMP
+	//return; // TEMP
 
 	if (sound_index < 0)
 		return;
@@ -38,10 +38,10 @@ namespace liero {
 void do_ai(State& state, Worm& worm, u32 worm_index, WormTransientState& transient_state);
 }
 
-bool vsync = false;
+bool vsync = true;
 u32 repeat = 1;
 bool graphics = true;
-#define RUN_AI 1
+#define RUN_AI 0
 
 void test_gfx() {
 
@@ -364,7 +364,7 @@ void main()
 			{
 				gui::LieroGui gui;
 				gui.run(gui_ctx);
-				gui_ctx.render(buf);
+				gui_ctx.render2(buf);
 				gui_ctx.buf.clear();
 			}
 		};

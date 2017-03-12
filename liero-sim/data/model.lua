@@ -978,7 +978,7 @@ local function generate(header_path, source_path)
 		{'bonus_explode_risk', 45, t.Scalar},
 		{'bonus_health_var', 46, t.U32},
 		{'bonus_min_health', 47, t.U32},
-		{'bonus_drop_chance', 52, t.Scalar},
+		{'bonus_drop_chance', 52, t.F64},
 		{'first_blood_colour', 58, t.U8, 80},
 		{'num_blood_colours', 59, t.U8, 2},
 		{'bobj_gravity', 60, t.Scalar, 1000},
@@ -993,7 +993,11 @@ local function generate(header_path, source_path)
 		{'worm_float_power', 71, t.Scalar},
 		{'rem_exp_object', 72, t.I16},
 		{'materials', 73, ctx:Array(t.U8, 256)},
-		{'throw_sound', 74, t.U8})
+		{'throw_sound', 74, t.U8},
+		{'bonus_sobj', 75, ctx:StaticArray(t.U16, 2)},
+		{'bonus_rand_timer_min', 76, ctx:StaticArray(t.U16, 2)},
+		{'bonus_rand_timer_var', 77, ctx:StaticArray(t.U16, 2)},
+		{'bonus_frames', 78, ctx:StaticArray(t.U16, 2)})
 
 	ctx:Struct(t.PlayerControls,
 		{'up', 0, t.U16},

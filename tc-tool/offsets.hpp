@@ -45,10 +45,14 @@
 	_(bonus_bounce_mul, 0x731f, i16) \
 	_(bonus_bounce_div, 0x7329, i16) \
 	/* _(bonus_flicker_time, 0x87b8, i16) */ \
-	/* _(bonus_drop_chance, 0xbeca, i16) */ \
+	_(bonus_drop_chance, 0xbeca, i16) \
 	/* _(splinter_larpa_vel_div, 0x677d, i16) */ \
 	/* _(splinter_crackler_vel_div, 0x67d0, i16) */ \
-	/* _(worm_float_level, 0x29D3, i16) */
+	/* _(worm_float_level, 0x29D3, i16) */ \
+	_(bonus_rand_timer_min_0, 0x1c1e2, u16) \
+	_(bonus_rand_timer_min_1, 0x1c1e4, u16) \
+	_(bonus_rand_timer_var_0, 0x1c1e6, u16) \
+	_(bonus_rand_timer_var_1, 0x1c1e8, u16)
 
 #define CONSTANTS_8(_) \
 	_(aim_max_right, 0x3030, u8) \
@@ -66,6 +70,10 @@
 	/* _(rem_exp_object, 0x8f8b, u8) */ \
 	_(nr_pull_vel, 0x31d0, i8) \
 	_(nr_release_vel, 0x31f0, i8) \
+	_(bonus_sobj_0, 0x1c1e0, u8) \
+	_(bonus_sobj_1, 0x1c1e1, u8) \
+	_(bonus_frame_0, 0x1c1de, u8) \
+	_(bonus_frame_1, 0x1c1df, u8)
 /*
 	_(fall_damage_right, 0x3a0e, i8) \
 	_(fall_damage_left, 0x3a8b, i8) \
@@ -184,3 +192,4 @@
 	_(u8, rframe)
 
 #endif // OFFSETS_HPP
+

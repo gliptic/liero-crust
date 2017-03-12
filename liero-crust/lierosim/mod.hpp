@@ -17,7 +17,8 @@ void fire(WeaponType const& self, State& state, TransientState& transient_state,
 
 inline u32 computed_loading_time(WeaponType const& self) {
 	// TODO: Compute based on settings
-	return self.loading_time() * 0; // TEMP: 0% reloading time
+	//return self.loading_time() * 0; // TEMP: 0% reloading time
+	return self.loading_time() / 2; // TEMP: 50% reloading time
 }
 
 struct LargeSpriteRow {
