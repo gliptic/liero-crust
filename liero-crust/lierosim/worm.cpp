@@ -158,7 +158,7 @@ inline void update_actions(Worm& worm, u32 worm_idx, State& state, WormInput inp
 		if (worm.prev_no_jump_or_no_change() && input.rope()) {
 			worm.ninjarope.st = Ninjarope::Floating;
 
-			transient_state.play_sound(mod, mod.tcdata->throw_sound(), transient_state); // TODO: 5 should be stored in TC
+			transient_state.play_sound(mod, mod.tcdata->throw_sound(), transient_state);
 
 			worm.ninjarope.pos = worm.pos;
 			worm.ninjarope.vel = sincos(worm.abs_aiming_angle()) * mod.tcdata->nr_throw_vel();
@@ -326,6 +326,7 @@ inline void update_weapons(Worm& worm, State& state, TransientState& transient_s
 		--ww.loading_left;
 		if (ww.loading_left == 0 && ty.play_reload_sound()) {
 			// game.soundPlayer->play(24); TODO
+			transient_state.play_sound(state.mod, state.mod.tcdata->reload_sound(), transient_state);
 		}
 	}
 
@@ -549,20 +550,26 @@ void Ninjarope::update(Worm& owner, State& state) {
 		
 		auto ipos = this->pos.cast<i32>();
 		
-#if 0 // TODO
-		anchor = 0;
-		for(std::size_t i = 0; i < game.worms.size(); ++i)
+		Worm* anchor = 0;
 		{
-			Worm& w = *game.worms[i];
-			
-			if(&w != &owner
-			&& checkForSpecWormHit(game, ipos.x, ipos.y, 1, w))
-			{
-				anchor = &w;
-				break;
+			auto r = state.worms.all();
+
+			for (Worm* w; (w = r.next()) != 0; ) {
+				auto wpos = w->pos.cast<i32>();
+				i32 dist = 1;
+
+				// TODO: This is the same as coldet with particles. Should it be different? Combine them if not.
+				if (w != &owner
+					&& wpos.x - 2 < ipos.x + dist
+					&& wpos.x + 2 > ipos.x - dist
+					&& wpos.y - 4 < ipos.y + dist
+					&& wpos.y + 4 > ipos.y - dist) {
+
+					anchor = w;
+				}
+
 			}
 		}
-#endif
 		
 		auto diff = this->pos - owner.pos;
 
@@ -600,30 +607,28 @@ void Ninjarope::update(Worm& owner, State& state) {
 
 				this->vel.zero();
 			}
-#if 0 // TODO
 		} else if (anchor) {
-			if(!attached)
+			if (this->st != Ninjarope::Attached)
 			{
-				length = LC(NRAttachLength); // TODO: Should this value be separate from the non-worm attaching?
-				attached = true;
+				this->st = Ninjarope::Attached;
+				this->length = mod.tcdata->nr_attach_length(); // TODO: Should this value be separate from the non-worm attaching?
 			}
 			
-			if(curLen > length)
-			{
-				anchor->vel -= force / curLen;
+			if (cur_len > this->length) {
+				// cur_len can't be 0
+				anchor->vel -= force / cur_len;
 			}
 			
-			vel = anchor->vel;
-			pos = anchor->pos;
-#endif
+			this->vel = anchor->vel;
+			this->pos = anchor->pos;
 		} else {
 			this->st = Ninjarope::Floating;
 		}
 		
 		if (this->st == Ninjarope::Attached) {
-			// cur_len can't be 0
 
 			if (cur_len > this->length) {
+				// cur_len can't be 0
 				owner.vel += force / cur_len;
 			}
 
@@ -631,6 +636,7 @@ void Ninjarope::update(Worm& owner, State& state) {
 			this->vel.y += mod.tcdata->ninjarope_gravity();
 
 			if (cur_len > this->length) {
+				// cur_len can't be 0
 				this->vel -= force / cur_len;
 			}
 		}

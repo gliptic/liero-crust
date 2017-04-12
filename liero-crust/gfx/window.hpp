@@ -69,6 +69,7 @@ struct CommonWindow {
 
 #if BONK_USE_GL2
 	DefaultProgram textured;
+	DefaultProgram textured_blended;
 	Texture white_texture;
 #endif
 

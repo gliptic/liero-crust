@@ -76,7 +76,7 @@ void NObject::explode_obj(NObjectType const& ty, Vector2 pos, Vector2 vel, i16 o
 
 				angle = Fixed::from_raw(state.rand.next() & ((128 << 16) - 1));
 
-				Ratio speed = ty.splinter_speed() - state.rand.get_i32(ty.splinter_speed_v());
+				Ratio speed = ty.splinter_speed() + state.rand.get_f64(ty.splinter_speed_v());
 
 				part_vel = vector2(sincos_f64(angle) * speed);
 			}

@@ -56,9 +56,11 @@ static int common_setup_gl(CommonWindow* self) {
 	glClearColor(0.f, 0.f, 0.f, 0.0f);
 	glClearDepth(0.0f);
 	
-#if !BONK_USE_GL2
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+#if !BONK_USE_GL2
 	glDisable(GL_BLEND);
+#else
+	glEnable(GL_BLEND);
 #endif
 	glDisable(GL_DEPTH_TEST);
 
@@ -99,6 +101,20 @@ void main() {
 })="
 	};
 
+	static char const defaultBlendedFsSrc[] = {
+		R"=(#version 110
+
+uniform sampler2D texture;
+varying vec2 fragTexcoord;
+varying vec4 fragColor;
+
+void main() {
+	vec4 m = texture2D(texture, fragTexcoord);
+
+	gl_FragColor = (m * fragColor);
+})="
+	};
+
 	// vec4 m = texture2D(texture, fragTexcoord);
 
 	/*
@@ -116,6 +132,13 @@ void main() {
 	self->textured.init(
 		Shader(Shader::Vertex, defaultVsSrc),
 		Shader(Shader::Fragment, defaultFsSrc),
+		self->width,
+		self->height
+	);
+
+	self->textured_blended.init(
+		Shader(Shader::Vertex, defaultVsSrc),
+		Shader(Shader::Fragment, defaultBlendedFsSrc),
 		self->width,
 		self->height
 	);

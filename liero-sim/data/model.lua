@@ -997,7 +997,8 @@ local function generate(header_path, source_path)
 		{'bonus_sobj', 75, ctx:StaticArray(t.U16, 2)},
 		{'bonus_rand_timer_min', 76, ctx:StaticArray(t.U16, 2)},
 		{'bonus_rand_timer_var', 77, ctx:StaticArray(t.U16, 2)},
-		{'bonus_frames', 78, ctx:StaticArray(t.U16, 2)})
+		{'bonus_frames', 78, ctx:StaticArray(t.U16, 2)},
+		{'reload_sound', 79, t.U8})
 
 	ctx:Struct(t.PlayerControls,
 		{'up', 0, t.U16},

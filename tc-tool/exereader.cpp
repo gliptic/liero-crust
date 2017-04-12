@@ -33,6 +33,10 @@ Ratio ratio_for_rand(i32 max) {
 	return Ratio(max) * (1.0 / 4294967296.0);
 }
 
+Ratio ratio_for_rand_ratio(Ratio max) {
+	return max * (1.0 / 4294967296.0);
+}
+
 #define DEF_CONSTANT_8_DESC(name, offs, conv) offs,
 #define DEF_CONSTANT_16_DESC(name, offs, conv) offs,
 #define DEF_CONSTANT_24_DESC(name, offs1, offs2, conv) { offs1, offs2 },
@@ -100,11 +104,12 @@ static tl::Image load_font_from_exe(tl::VecSlice<u8 const> src, u32 width, u32 h
 
 		for (u32 y = 0; y < height; ++y) {
 			for (u32 x = 0; x < width; ++x) {
-				img.unsafe_pixel8(x, y + i * height) = ptr[y * 8 + x] ? 1 : 0;
+				u32 idx = y * 8 + x;
+				img.unsafe_pixel8(x, y + i * height) = idx != 63 && ptr[idx] ? 255 : 0;
 			}
 		}
 
-		img.unsafe_pixel8(char_width, i * height) = 2;
+		img.unsafe_pixel8(char_width, i * height) = 1;
 	}
 
 	return move(img);
@@ -203,12 +208,14 @@ bool load_from_exe(
 	}
 
 	u8 c_throw_sound = 1 + 5; // TODO: Read from EXE?
+	u8 c_reload_sound = 1 + 24;
 
 	i8 sound_index[256] = {-1};
 	u32 sound_count = 0;
 
 	{
 		used_sounds[c_throw_sound] = 1;
+		used_sounds[c_reload_sound] = 1;
 
 		for (u32 i = 0; i < weapon_count; ++i) {
 			used_sounds[w_launch_sound[i]] = 1;
@@ -364,8 +371,10 @@ bool load_from_exe(
 				nt.splinter_distribution(ratio_for_bi_rand(n_distribution[nobj_splinter_type]));
 				nt.splinter_type(u16(nobj_splinter_type + weapon_count));
 				nt.splinter_scatter(ScatterType(w_splinter_scatter[i])); // TODO: Validate
-				nt.splinter_speed(ratio_from_speed(n_speed[nobj_splinter_type]));
-				nt.splinter_speed_v(ratio_for_rand(n_speed_v[nobj_splinter_type]));
+				auto speed_v = ratio_from_speed(n_speed_v[nobj_splinter_type]);
+				auto speed = ratio_from_speed(n_speed[nobj_splinter_type]) - speed_v * 0.5;
+				nt.splinter_speed(speed);
+				nt.splinter_speed_v(ratio_for_rand_ratio(speed_v));
 
 				// TODO: Two different splinter colors
 				if (w_splinter_colour[i])
@@ -434,8 +443,12 @@ bool load_from_exe(
 				nt.splinter_distribution(ratio_for_bi_rand(n_distribution[nobj_splinter_type]));
 				nt.splinter_type(u16(nobj_splinter_type + weapon_count));
 				nt.splinter_scatter(ScatterType::ScAngular);
-				nt.splinter_speed(ratio_from_speed(n_speed[nobj_splinter_type]));
-				nt.splinter_speed_v(ratio_for_rand(n_speed_v[nobj_splinter_type]));
+
+				auto speed_v = ratio_from_speed(n_speed_v[nobj_splinter_type]);
+				auto speed = ratio_from_speed(n_speed[nobj_splinter_type]) - speed_v * 0.5;
+
+				nt.splinter_speed(speed);
+				nt.splinter_speed_v(ratio_for_rand(speed_v));
 
 				// TODO: Two different splinter colors
 				if (n_splinter_colour[i])
@@ -530,9 +543,17 @@ bool load_from_exe(
 		{
 			auto font = load_font_from_exe(window, 8, 8);
 
-			tl::SinkVector vec;
-			tl::write_tga(vec, font.slice(), pal);
-			auto file = archive.add_file(tl::String("font.tga"_S), sprite_stream, vec.unwrap_vec().slice_const());
+			tl::SinkVector vecSink;
+			tl::write_tga(vecSink, font.slice(), pal);
+
+			auto vec = vecSink.unwrap_vec();
+
+			{
+				auto sink = tl::Sink::from_file("font_test.tga");
+				sink.put(vec.slice_const());
+			}
+
+			auto file = archive.add_file(tl::String("font.tga"_S), sprite_stream, vec.slice_const());
 			archive.add_entry_to_dir(sprites_dir, move(file));
 		}
 
@@ -572,6 +593,7 @@ bool load_from_exe(
 		tc.bonus_gravity(c_bonus_gravity);
 
 		tc.throw_sound(sound_index[c_throw_sound]);
+		tc.reload_sound(sound_index[c_reload_sound]);
 
 		tc.nobjects(nt_arr.done());
 		tc.sobjects(st_arr.done());

@@ -52,8 +52,6 @@ int main(int argc, char const* argv[]) {
 	tl::Palette pal;
 	u8 used_sounds[256] = {0};
 
-	used_sounds[1 + 5] = 1;
-
 	auto sprites_dir = ar.add_dir(String("sprites"_S));
 
 	{

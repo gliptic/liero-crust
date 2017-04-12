@@ -93,7 +93,7 @@ struct Mod {
 	SObjectType const* sobject_types;
 	LevelEffect const* level_effects;
 
-	tl::Image large_sprites, small_sprites, small_font_sprites;
+	tl::Image large_sprites, small_sprites, small_font_sprites, font_sprites;
 	tl::Image worm_sprites[2], muzzle_fire_sprites[2];
 
 	tl::Vec<LargeSpriteRow> large_sprites_bits;

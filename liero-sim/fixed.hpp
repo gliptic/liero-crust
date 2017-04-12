@@ -122,6 +122,8 @@ private:
 };
 
 #undef BINOP_FF
+#undef CMPOP_FF
+#undef BINSETOP_FF
 
 }
 

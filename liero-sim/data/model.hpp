@@ -555,6 +555,7 @@ struct alignas(8) TcData : ss::Struct {
 	typedef u16 bonus_framesVal[2];
 	bonus_framesVal const& bonus_frames() const { return this->_field<bonus_framesVal const, 280>(); }
 
+	u8 reload_sound() const { return this->_field<u8, 251>(); }
 
 	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<TcDataReader> const& src) {
 		TL_UNUSED(expander); TL_UNUSED(src);
@@ -722,6 +723,7 @@ struct TcDataBuilder : ss::Ref<TcDataReader> {
 	bonus_rand_timer_varVal& bonus_rand_timer_var() { return this->_field<bonus_rand_timer_varVal, 276>(); }
 	typedef u16 bonus_framesVal[2];
 	bonus_framesVal& bonus_frames() { return this->_field<bonus_framesVal, 280>(); }
+	void reload_sound(u8 v) { this->_field<u8, 251>() = v ^ 0; }
 
 };
 

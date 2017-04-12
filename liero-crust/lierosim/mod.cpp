@@ -30,8 +30,13 @@ Mod::Mod(tl::FsNode& root) {
 	auto sound_dir = root / "sounds"_S;
 
 	this->large_sprites = read_full_tga((sprite_dir / "large.tga"_S).try_get_source(), &this->pal);
-	this->small_sprites = read_full_tga((sprite_dir / "small.tga"_S).try_get_source(), &this->pal);
-	this->small_font_sprites = read_full_tga((sprite_dir / "text.tga"_S).try_get_source(), &this->pal);
+	this->small_sprites = read_full_tga((sprite_dir / "small.tga"_S).try_get_source());
+	this->small_font_sprites = read_full_tga((sprite_dir / "text.tga"_S).try_get_source());
+	//this->font_sprites = read_full_tga((sprite_dir / "font.tga"_S).try_get_source(), &this->pal);
+
+	tl::Palette dummyPal;
+	tl::read_tga((sprite_dir / "font.tga"_S).try_get_source(), this->font_sprites, dummyPal);
+	
 
 	worm_sprites[0] = tl::Image(16, 7 * 3 * 16, 4);
 	worm_sprites[1] = tl::Image(16, 7 * 3 * 16, 4);

@@ -10,6 +10,7 @@
 #include <tl/vec.hpp>
 #include <tl/rand.h>
 #include <tl/io/stream.hpp>
+#include <tl/rectpack.hpp>
 #include <memory>
 
 #include "lierosim/state.hpp"
@@ -42,6 +43,127 @@ bool vsync = true;
 u32 repeat = 1;
 bool graphics = true;
 #define RUN_AI 0
+
+struct TiledTexture {
+	tl::RectPack packer;
+	gfx::Texture tex;
+	tl::Image image;
+	tl::RectU dirty_rect;
+
+	TiledTexture(u32 w, u32 h, bool linear)
+		: packer(tl::PackedRect(0, 0, w, h))
+		, tex(w, h, linear)
+		, image(w, h, 4) {
+	}
+
+	tl::PackedRect alloc(tl::VectorU2 dim, bool allow_rotate = false) {
+		return packer.try_fit(dim, allow_rotate);
+	}
+
+	tl::PackedRect alloc(tl::ImageSlice const& slice) {
+		auto r = this->alloc(slice.dim);
+		if (!r.empty()) {
+			image.blit(slice, 0, r.x1, r.y1);
+			dirty_rect |= r;
+		}
+		return r;
+	}
+
+	GLuint id() {
+		if (!dirty_rect.empty()) {
+			tex.upload_subimage(image.crop(dirty_rect), dirty_rect.x1, dirty_rect.y1);
+			dirty_rect = tl::RectU();
+		}
+		return tex.id;
+	}
+};
+
+struct SpriteAcc {
+	tl::PackedRect rect;
+	tl::Rc<tl::RcBox<TiledTexture>> tex;
+
+	SpriteAcc(tl::PackedRect rect, tl::Rc<tl::RcBox<TiledTexture>>&& tex)
+		: rect(rect), tex(move(tex)) {
+
+	}
+};
+
+struct SpriteSetAcc {
+	tl::Vec<tl::Rc<tl::RcBox<TiledTexture>>> textures;
+
+	SpriteSetAcc() = default;
+	SpriteSetAcc(SpriteSetAcc&&) = default;
+	SpriteSetAcc& operator=(SpriteSetAcc&&) = default;
+	~SpriteSetAcc() = default;
+
+	void extend() {
+		textures.push_back(tl::rc(tl::rc_box(TiledTexture(256, 256, false))));
+	}
+
+	SpriteAcc alloc(tl::ImageSlice const& slice) {
+		if (textures.empty()) {
+			extend();
+		}
+
+		auto& tex = textures.back();
+		auto r = tex->alloc(slice);
+		if (r.empty()) {
+			extend();
+			auto& tex2 = textures.back();
+			r = tex2->alloc(slice);
+			return SpriteAcc(r, tex2.clone());
+		} else {
+			return SpriteAcc(r, tex.clone());
+		}
+
+	}
+};
+
+#define TICKS_IN_SECOND (10000000)
+
+struct Sampler {
+	enum Type {
+		Clear,
+		BeforeDraw,
+		BeforeSwap,
+
+		Max
+	};
+
+	struct Sample {
+		u64 v[Max];
+	};
+
+	static int const MaxSamples = 256;
+
+	Sample samples[MaxSamples];
+	int count = 0;
+
+	void sample(Type type) {
+		samples[count & (MaxSamples - 1)].v[(int)type] = tl_get_ticks();
+	}
+
+	void done_frame() {
+		++count;
+
+		if ((count & (MaxSamples - 1)) == 0) {
+			u64 sums[Max] = {};
+
+			for (u32 i = 0; i < MaxSamples; ++i) {
+				sums[0] += samples[i].v[1] - samples[i].v[0];
+				sums[1] += samples[i].v[2] - samples[i].v[1];
+				if (i < MaxSamples - 1) {
+					sums[2] += samples[i + 1].v[0] - samples[i].v[2];
+				}
+			}
+
+			printf("%.4f %.4f %.4f\n",
+				(i64)sums[0] / (MaxSamples * (f64)TICKS_IN_SECOND),
+				(i64)sums[1] / (MaxSamples * (f64)TICKS_IN_SECOND),
+				(i64)sums[2] / ((MaxSamples - 1) * (f64)TICKS_IN_SECOND));
+		}
+	}
+};
 
 void test_gfx() {
 
@@ -205,6 +327,71 @@ void main()
 
 	liero::Mod mod(root);
 	liero::State state(mod.ref());
+	Sampler sampler;
+
+	// Font test
+#if !NOFONTTEST
+	TiledTexture fontTex(256, 256, false);
+	tl::PackedRect sixChar;
+
+	{
+		//tl::RectPack packer(tl::PackedRect(0, 0, 256, 256));
+
+		auto slice = mod.font_sprites.slice();
+		u32 count = slice.height() / 8;
+
+		for (u32 i = 0; i < count; ++i) {
+			u32 w, h = 8;
+			u32 y = i * 8;
+			for (w = 0; w < 8; ++w) {
+				if (slice.unsafe_pixel8(w, y) == 1) {
+					break;
+				}
+			}
+
+			tl::PackedRect r = fontTex.alloc(slice.crop(tl::RectU(0, y, w, y + h)));
+			/*
+			tl::PackedRect* r = packer.try_fit(tl::VectorU2(w, h), false);
+
+			fontImg.blit(slice.crop(tl::RectU(0, y, w, y + h)), 0, r->x1, r->y1);
+			*/
+			if (i == 52) {
+				sixChar = r;
+			}
+		}
+	}
+#else
+	gfx::Texture fontTex(256, 256, false);
+	tl::PackedRect sixChar;
+
+	{
+		tl::RectPack packer(tl::PackedRect(0, 0, 256, 256));
+
+		auto slice = mod.font_sprites.slice();
+		u32 count = slice.height() / 8;
+		tl::Image fontImg(256, 256, 4);
+
+		for (u32 i = 0; i < count; ++i) {
+			u32 w, h = 8;
+			u32 y = i * 8;
+			for (w = 0; w < 8; ++w) {
+				if (slice.unsafe_pixel8(w, y) == 1) {
+					break;
+				}
+			}
+
+			tl::PackedRect* r = packer.try_fit(tl::VectorU2(w, h), false);
+
+			fontImg.blit(slice.crop(tl::RectU(0, y, w, y + h)), 0, r->x1, r->y1);
+
+			if (i == 52) {
+				sixChar = *r;
+			}
+		}
+
+		fontTex.upload_subimage(fontImg.slice());
+	}
+#endif
 
 	{
 		auto src = (root / "2xkross2.lev"_S).try_get_source();
@@ -256,18 +443,17 @@ void main()
 	// GUI
 	gui::Context gui_ctx;
 
-	while (state.current_time < 60*60*repeat) {
-		win.clear();
-		
+	//while (state.current_time < 60*60*repeat) {
+	while (true) {
 		{
 			liero::ControlState c;
 			c.set(liero::WcLeft, win.button_state[kbLeft] != 0);
 			c.set(liero::WcRight, win.button_state[kbRight] != 0);
 			c.set(liero::WcUp, win.button_state[kbUp] != 0);
 			c.set(liero::WcDown, win.button_state[kbDown] != 0);
-			c.set(liero::WcFire, win.button_state[kbS] != 0);
-			c.set(liero::WcJump, win.button_state[kbR] != 0);
-			c.set(liero::WcChange, win.button_state[kbA] != 0);
+			c.set(liero::WcFire, win.button_state[kbT] != 0);
+			c.set(liero::WcJump, win.button_state[kbS] != 0);
+			c.set(liero::WcChange, win.button_state[kbD] != 0);
 
 			total_ai_time += tl::timer([&] {
 				for (u32 i = 0; i < repeat; ++i) {
@@ -294,7 +480,7 @@ void main()
 
 						transient_state.worm_state[1].input = in;
 					}
-#else
+#elif SPAM2
 					liero::fire(
 						state.mod.get_weapon_type(state.current_time % 40), state, transient_state,
 						liero::Scalar((i32)state.current_time * 100),
@@ -357,8 +543,27 @@ void main()
 			buf.quads();
 
 			buf.tex_rect(0.f, 0.f, (float)scrw, (float)scrh, 0.f, 0.f, canvasw / 512.f, canvash / 512.f, tex.id);
-
 			buf.clear();
+
+#if !NOFONTTEST
+			win.textured_blended.use();
+			buf.tex_rect(
+				50.f, 50.f,
+				50.f + sixChar.width() * 10, 50.f + sixChar.height() * 10,
+				sixChar.x1 / 256.f, sixChar.y1 / 256.f,
+				sixChar.x2 / 256.f, sixChar.y2 / 256.f,
+				fontTex.id());
+			buf.clear();
+#else
+			win.textured_blended.use();
+			buf.tex_rect(
+				50.f, 50.f,
+				50.f + sixChar.width() * 10, 50.f + sixChar.height() * 10,
+				sixChar.x1 / 256.f, sixChar.y1 / 256.f,
+				sixChar.x2 / 256.f, sixChar.y2 / 256.f,
+				fontTex.id);
+			buf.clear();
+#endif
 
 			// GUI
 			{
@@ -369,9 +574,12 @@ void main()
 			}
 		};
 
+		sampler.sample(Sampler::Clear);
+		win.clear();
+		sampler.sample(Sampler::BeforeDraw);
 #if GFX_PREDICT_VSYNC
 		u64 draw_delay = tl::timer(render);
-#else
+#else	
 		render();
 #endif
 
@@ -389,7 +597,7 @@ void main()
 		glEnable(GL_BLEND);
 #endif
 
-		do {
+		//do {
 			if (!win.update()) { return; }
 
 			for (auto& ev : win.events) {
@@ -402,7 +610,11 @@ void main()
 #endif
 			win.events.clear();
 
-		} while (!win.end_drawing());
+		//} while (!win.end_drawing());
+		sampler.sample(Sampler::BeforeSwap);
+		win.end_drawing();
+
+		sampler.done_frame();
 	}
 
 	printf("%08x\n", state.rand.s[0] ^ state.worms.of_index(0).pos.x.raw());

@@ -540,7 +540,9 @@ static int create_window(CommonWindow* self, int dummy, int fullscreen) {
 	if (dummy) {
 		pf = ChoosePixelFormat(hdc, &pfd);
 		CHECKB(pf);
-		dummyHrc = create_context(pf, hdc, &pfd);
+		printf("dummy: %u", tl::timer([&] {
+			dummyHrc = create_context(pf, hdc, &pfd);
+		}));
 		CHECKB(dummyHrc);
 
 		init_extensions();
@@ -664,7 +666,7 @@ int CommonWindow::set_mode(u32 width_new, u32 height_new, bool fullscreen_new) {
 	this->fullscreen = fullscreen_new;
 
 #if GFX_SUPPORT_FSAA
-	if(this->fsaa > 1) // Only construct dummy if we need to
+	if (this->fsaa > 1) // Only construct dummy if we need to
 		CHECKR(create_window(this, 1, fullscreen));
 #endif
 	CHECKR(create_window(this, 0, fullscreen));
