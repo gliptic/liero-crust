@@ -125,6 +125,7 @@ struct Sampler {
 	enum Type {
 		Clear,
 		BeforeDraw,
+		AfterFirstDraw,
 		BeforeSwap,
 
 		Max
@@ -137,10 +138,30 @@ struct Sampler {
 	static int const MaxSamples = 256;
 
 	Sample samples[MaxSamples];
+	u64 mins[Max];
 	int count = 0;
 
+	Sampler() {
+		memset(mins, 0, sizeof(mins));
+	}
+
 	void sample(Type type) {
-		samples[count & (MaxSamples - 1)].v[(int)type] = tl_get_ticks();
+		auto now = tl_get_ticks();
+		samples[count & (MaxSamples - 1)].v[(int)type] = now;
+
+		if (mins[type] >= TICKS_IN_SECOND / 60 / 2) {
+			u64 target = now + mins[type] * 7 / 8;
+			do {
+				Sleep(1);
+				now = tl_get_ticks();
+			} while (now < target);
+		}
+	}
+
+	void wait(Type type) {
+		auto cur_time = tl_get_ticks();
+
+
 	}
 
 	void done_frame() {
@@ -148,21 +169,44 @@ struct Sampler {
 
 		if ((count & (MaxSamples - 1)) == 0) {
 			u64 sums[Max] = {};
+			u64 m[Max] = {
+				0xffffffffffffffff,
+				0xffffffffffffffff, 
+				0xffffffffffffffff, 
+				0xffffffffffffffff
+			};
 
 			for (u32 i = 0; i < MaxSamples; ++i) {
-				sums[0] += samples[i].v[1] - samples[i].v[0];
-				sums[1] += samples[i].v[2] - samples[i].v[1];
+				u64 d0 = samples[i].v[1] - samples[i].v[0];
+				u64 d1 = samples[i].v[2] - samples[i].v[1];
+				u64 d2 = samples[i].v[3] - samples[i].v[2];
+				m[0] = tl::min(m[0], d0);
+				m[1] = tl::min(m[1], d1);
+				m[2] = tl::min(m[2], d2);
+				sums[0] += d0;
+				sums[1] += d1;
+				sums[2] += d2;
 				if (i < MaxSamples - 1) {
-					sums[2] += samples[i + 1].v[0] - samples[i].v[2];
+					u64 d3 = samples[i + 1].v[0] - samples[i].v[3];
+					sums[3] += d3;
+					m[3] = tl::min(m[3], d3);
 				}
 			}
 
-			printf("%.4f %.4f %.4f\n",
+			mins[0] = m[0];
+			mins[1] = m[1];
+			mins[2] = m[2];
+			mins[3] = m[3];
+
+			printf("%.4f %.4f %.4f %.4f\n",
 				(i64)sums[0] / (MaxSamples * (f64)TICKS_IN_SECOND),
 				(i64)sums[1] / (MaxSamples * (f64)TICKS_IN_SECOND),
-				(i64)sums[2] / ((MaxSamples - 1) * (f64)TICKS_IN_SECOND));
+				(i64)sums[2] / (MaxSamples * (f64)TICKS_IN_SECOND),
+				(i64)sums[3] / ((MaxSamples - 1) * (f64)TICKS_IN_SECOND));
 		}
 	}
+
+
 };
 
 void test_gfx() {
@@ -532,8 +576,9 @@ void main()
 #endif
 			}
 
+			sampler.sample(Sampler::BeforeDraw);
 			tex.upload_subimage(img.slice());
-
+			
 #if !BONK_USE_GL2
 			glDisable(GL_BLEND);
 #endif
@@ -544,6 +589,8 @@ void main()
 
 			buf.tex_rect(0.f, 0.f, (float)scrw, (float)scrh, 0.f, 0.f, canvasw / 512.f, canvash / 512.f, tex.id);
 			buf.clear();
+
+			sampler.sample(Sampler::AfterFirstDraw);
 
 #if !NOFONTTEST
 			win.textured_blended.use();
@@ -576,7 +623,6 @@ void main()
 
 		sampler.sample(Sampler::Clear);
 		win.clear();
-		sampler.sample(Sampler::BeforeDraw);
 #if GFX_PREDICT_VSYNC
 		u64 draw_delay = tl::timer(render);
 #else	
