@@ -24,7 +24,7 @@ void GeomBuffer::flush() {
 		glBindTexture(GL_TEXTURE_2D, this->last_texture);
 		glEnableVertexAttribArray(AttribTexCoord);
 	} else {
-		// TODO: White pixel texture
+		glBindTexture(GL_TEXTURE_2D, this->white_texture_id);
 		glVertexAttrib2f(AttribTexCoord, 0.f, 0.f);
 	}
 #else

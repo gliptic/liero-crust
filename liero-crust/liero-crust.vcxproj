@@ -230,9 +230,11 @@
     <ClCompile Include="sfx\mixer.cpp" />
     <ClCompile Include="sfx\sfx_win32.cpp" />
     <ClCompile Include="test_comp.cpp" />
+    <ClCompile Include="test_error.cpp" />
     <ClCompile Include="test_gfx.cpp" />
     <ClCompile Include="test_gui.cpp" />
     <ClCompile Include="test_io.cpp" />
+    <ClCompile Include="test_net.cpp" />
     <ClCompile Include="test_ser.cpp" />
     <ClCompile Include="test_sincos.cpp" />
   </ItemGroup>
@@ -259,6 +261,7 @@
     <ClInclude Include="gfx\GL\glew.h" />
     <ClInclude Include="gfx\GL\wglew.h" />
     <ClInclude Include="gfx\shader.hpp" />
+    <ClInclude Include="gfx\sprite_set.hpp" />
     <ClInclude Include="gfx\texture.hpp" />
     <ClInclude Include="gfx\window.hpp" />
     <ClInclude Include="gfx\window_common.hpp" />
@@ -313,6 +316,7 @@
     <ClInclude Include="lierosim\sobject.hpp" />
     <ClInclude Include="lierosim\state.hpp" />
     <ClInclude Include="lierosim\worm.hpp" />
+    <ClInclude Include="liero\font.hpp" />
     <ClInclude Include="liero\gui.hpp" />
     <ClInclude Include="liero\viewport.hpp" />
     <ClInclude Include="liero\blit.hpp" />

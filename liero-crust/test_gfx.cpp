@@ -5,16 +5,18 @@
 #include "gfx/GL/wglew.h"
 #include "sfx/sfx.hpp"
 #include "sfx/mixer.hpp"
+#include "gfx/sprite_set.hpp"
 #include "bmp.hpp"
 #include <tl/std.h>
 #include <tl/vec.hpp>
 #include <tl/rand.h>
 #include <tl/io/stream.hpp>
-#include <tl/rectpack.hpp>
+//#include <tl/rectpack.hpp>
 #include <memory>
 
 #include "lierosim/state.hpp"
 #include "liero/viewport.hpp"
+#include "liero/font.hpp"
 #include "ai.hpp"
 #include "liero/gui.hpp"
 
@@ -44,81 +46,6 @@ u32 repeat = 1;
 bool graphics = true;
 #define RUN_AI 0
 
-struct TiledTexture {
-	tl::RectPack packer;
-	gfx::Texture tex;
-	tl::Image image;
-	tl::RectU dirty_rect;
-
-	TiledTexture(u32 w, u32 h, bool linear)
-		: packer(tl::PackedRect(0, 0, w, h))
-		, tex(w, h, linear)
-		, image(w, h, 4) {
-	}
-
-	tl::PackedRect alloc(tl::VectorU2 dim, bool allow_rotate = false) {
-		return packer.try_fit(dim, allow_rotate);
-	}
-
-	tl::PackedRect alloc(tl::ImageSlice const& slice) {
-		auto r = this->alloc(slice.dim);
-		if (!r.empty()) {
-			image.blit(slice, 0, r.x1, r.y1);
-			dirty_rect |= r;
-		}
-		return r;
-	}
-
-	GLuint id() {
-		if (!dirty_rect.empty()) {
-			tex.upload_subimage(image.crop(dirty_rect), dirty_rect.x1, dirty_rect.y1);
-			dirty_rect = tl::RectU();
-		}
-		return tex.id;
-	}
-};
-
-struct SpriteAcc {
-	tl::PackedRect rect;
-	tl::Rc<tl::RcBox<TiledTexture>> tex;
-
-	SpriteAcc(tl::PackedRect rect, tl::Rc<tl::RcBox<TiledTexture>>&& tex)
-		: rect(rect), tex(move(tex)) {
-
-	}
-};
-
-struct SpriteSetAcc {
-	tl::Vec<tl::Rc<tl::RcBox<TiledTexture>>> textures;
-
-	SpriteSetAcc() = default;
-	SpriteSetAcc(SpriteSetAcc&&) = default;
-	SpriteSetAcc& operator=(SpriteSetAcc&&) = default;
-	~SpriteSetAcc() = default;
-
-	void extend() {
-		textures.push_back(tl::rc(tl::rc_box(TiledTexture(256, 256, false))));
-	}
-
-	SpriteAcc alloc(tl::ImageSlice const& slice) {
-		if (textures.empty()) {
-			extend();
-		}
-
-		auto& tex = textures.back();
-		auto r = tex->alloc(slice);
-		if (r.empty()) {
-			extend();
-			auto& tex2 = textures.back();
-			r = tex2->alloc(slice);
-			return SpriteAcc(r, tex2.clone());
-		} else {
-			return SpriteAcc(r, tex.clone());
-		}
-
-	}
-};
-
 #define TICKS_IN_SECOND (10000000)
 
 struct Sampler {
@@ -140,6 +67,7 @@ struct Sampler {
 	Sample samples[MaxSamples];
 	u64 mins[Max];
 	int count = 0;
+	int last_sleeps = 0;
 
 	Sampler() {
 		memset(mins, 0, sizeof(mins));
@@ -150,9 +78,13 @@ struct Sampler {
 		samples[count & (MaxSamples - 1)].v[(int)type] = now;
 
 		if (mins[type] >= TICKS_IN_SECOND / 60 / 2) {
-			u64 target = now + mins[type] * 7 / 8;
+			u64 target = now + mins[type] * 15 / 16;
+			last_sleeps = 0;
 			do {
-				Sleep(1);
+				DWORD sl = DWORD((target - now) / (TICKS_IN_SECOND / 1000));
+				if (sl < 1) sl = 1;
+				Sleep(sl);
+				last_sleeps += sl;
 				now = tl_get_ticks();
 			} while (now < target);
 		}
@@ -199,10 +131,16 @@ struct Sampler {
 			mins[3] = m[3];
 
 			printf("%.4f %.4f %.4f %.4f\n",
+				(i64)mins[0] / (f64)TICKS_IN_SECOND,
+				(i64)mins[1] / (f64)TICKS_IN_SECOND,
+				(i64)mins[2] / (f64)TICKS_IN_SECOND,
+				(i64)mins[3] / (f64)TICKS_IN_SECOND);
+			printf("%.4f %.4f %.4f %.4f %d\n",
 				(i64)sums[0] / (MaxSamples * (f64)TICKS_IN_SECOND),
 				(i64)sums[1] / (MaxSamples * (f64)TICKS_IN_SECOND),
 				(i64)sums[2] / (MaxSamples * (f64)TICKS_IN_SECOND),
-				(i64)sums[3] / ((MaxSamples - 1) * (f64)TICKS_IN_SECOND));
+				(i64)sums[3] / ((MaxSamples - 1) * (f64)TICKS_IN_SECOND),
+				last_sleeps);
 		}
 	}
 
@@ -365,7 +303,7 @@ void main()
 
 	wglSwapIntervalEXT((int)vsync);
 
-	gfx::GeomBuffer buf;
+	gfx::GeomBuffer buf(win.white_texture);
 
 	auto root = tl::FsNode(tl::FsNode::from_path("TC/lierov133"_S));
 
@@ -374,13 +312,11 @@ void main()
 	Sampler sampler;
 
 	// Font test
-#if !NOFONTTEST
-	TiledTexture fontTex(256, 256, false);
-	tl::PackedRect sixChar;
+#if 1
+	gfx::SpriteSetAcc spriteSet;
+	Font font;
 
 	{
-		//tl::RectPack packer(tl::PackedRect(0, 0, 256, 256));
-
 		auto slice = mod.font_sprites.slice();
 		u32 count = slice.height() / 8;
 
@@ -393,47 +329,8 @@ void main()
 				}
 			}
 
-			tl::PackedRect r = fontTex.alloc(slice.crop(tl::RectU(0, y, w, y + h)));
-			/*
-			tl::PackedRect* r = packer.try_fit(tl::VectorU2(w, h), false);
-
-			fontImg.blit(slice.crop(tl::RectU(0, y, w, y + h)), 0, r->x1, r->y1);
-			*/
-			if (i == 52) {
-				sixChar = r;
-			}
+			font.alloc_char(spriteSet, slice.crop(tl::RectU(0, y, w, y + h)));
 		}
-	}
-#else
-	gfx::Texture fontTex(256, 256, false);
-	tl::PackedRect sixChar;
-
-	{
-		tl::RectPack packer(tl::PackedRect(0, 0, 256, 256));
-
-		auto slice = mod.font_sprites.slice();
-		u32 count = slice.height() / 8;
-		tl::Image fontImg(256, 256, 4);
-
-		for (u32 i = 0; i < count; ++i) {
-			u32 w, h = 8;
-			u32 y = i * 8;
-			for (w = 0; w < 8; ++w) {
-				if (slice.unsafe_pixel8(w, y) == 1) {
-					break;
-				}
-			}
-
-			tl::PackedRect* r = packer.try_fit(tl::VectorU2(w, h), false);
-
-			fontImg.blit(slice.crop(tl::RectU(0, y, w, y + h)), 0, r->x1, r->y1);
-
-			if (i == 52) {
-				sixChar = *r;
-			}
-		}
-
-		fontTex.upload_subimage(fontImg.slice());
 	}
 #endif
 
@@ -485,7 +382,7 @@ void main()
 	tl::LcgPair test_rand(1, 1);
 	
 	// GUI
-	gui::Context gui_ctx;
+	gui::Context3 gui_ctx(font);
 
 	//while (state.current_time < 60*60*repeat) {
 	while (true) {
@@ -592,33 +489,19 @@ void main()
 
 			sampler.sample(Sampler::AfterFirstDraw);
 
-#if !NOFONTTEST
 			win.textured_blended.use();
-			buf.tex_rect(
-				50.f, 50.f,
-				50.f + sixChar.width() * 10, 50.f + sixChar.height() * 10,
-				sixChar.x1 / 256.f, sixChar.y1 / 256.f,
-				sixChar.x2 / 256.f, sixChar.y2 / 256.f,
-				fontTex.id());
-			buf.clear();
-#else
-			win.textured_blended.use();
-			buf.tex_rect(
-				50.f, 50.f,
-				50.f + sixChar.width() * 10, 50.f + sixChar.height() * 10,
-				sixChar.x1 / 256.f, sixChar.y1 / 256.f,
-				sixChar.x2 / 256.f, sixChar.y2 / 256.f,
-				fontTex.id);
-			buf.clear();
-#endif
 
 			// GUI
 			{
 				gui::LieroGui gui;
 				gui.run(gui_ctx);
 				gui_ctx.render2(buf);
-				gui_ctx.buf.clear();
+				
 			}
+			
+			//buf.color(1, 1, 1, 1);
+			//font.draw_text(buf, "/\\Test lol"_S, tl::VectorF2(50.f, 50.f), 5.f);
+			buf.clear();
 		};
 
 		sampler.sample(Sampler::Clear);

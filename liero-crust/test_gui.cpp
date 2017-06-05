@@ -6,6 +6,6 @@ void test_gui() {
 
 	LieroGui gui;
 
-	Context ctx;
-	gui.run(ctx);
+	//Context ctx;
+	//gui.run(ctx);
 }

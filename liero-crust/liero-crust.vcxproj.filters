@@ -87,6 +87,8 @@
     <ClCompile Include="lierosim\bonus.cpp">
       <Filter>lierosim</Filter>
     </ClCompile>
+    <ClCompile Include="test_net.cpp" />
+    <ClCompile Include="test_error.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="gfx">
@@ -237,6 +239,12 @@
     <ClInclude Include="ai.hpp" />
     <ClInclude Include="lierosim\bonus.hpp">
       <Filter>lierosim</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\sprite_set.hpp">
+      <Filter>gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="liero\font.hpp">
+      <Filter>liero</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

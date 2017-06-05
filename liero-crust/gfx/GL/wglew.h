@@ -14,6 +14,7 @@
 #  undef NOMINMAX
 #  define NOMINMAX 1
 #  include <windows.h>
+//#  include "tl/windows/miniwindows.h"
 #  undef WIN32_LEAN_AND_MEAN
 #endif
 

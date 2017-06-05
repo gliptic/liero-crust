@@ -2,6 +2,7 @@
 #define GEOM_BUFFER_HPP
 
 #include "tl/vector.hpp"
+#include "texture.hpp"
 #include <tl/std.h>
 
 namespace gfx {
@@ -16,11 +17,12 @@ struct GeomBuffer {
 
 	static int const vertex_buffer_size = 4096;
 
-	GeomBuffer()
+	GeomBuffer(Texture& white_texture)
 	: cur_vert(vertices)
 	, cur_tex(texcoords)
 	, cur_col(colors)
 	, last_texture(0)
+	, white_texture_id(white_texture.id)
 	, geom_mode(gb_none)
 	, continuation(false) {
 		col[0] = 0;
@@ -38,6 +40,7 @@ struct GeomBuffer {
 	float* cur_col;
 	float col[4];
 	int last_texture;
+	int white_texture_id;
 
 	tl::VectorF2 first;
 	int modes, geom_mode;

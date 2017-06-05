@@ -61,15 +61,15 @@ static int find_closest_video_mode(int *w, int *h, int *bpp, int *refresh) {
 
 	int mode, bestmode, match, bestmatch, bestrr;
 	BOOL success;
-	DEVMODE dm;
+	DEVMODEA dm;
 
 	// Find best match
 	bestmatch = 0x7fffffff;
 	bestrr = 0x7fffffff;
 	mode = bestmode = 0;
 	do {
-		dm.dmSize = sizeof(DEVMODE);
-		success = EnumDisplaySettings(NULL, mode, &dm);
+		dm.dmSize = sizeof(dm);
+		success = EnumDisplaySettingsA(NULL, mode, &dm);
 		if (success) {
 			match = dm.dmBitsPerPel - *bpp;
 			if (match < 0) match = -match;
@@ -97,16 +97,16 @@ static int find_closest_video_mode(int *w, int *h, int *bpp, int *refresh) {
 static int set_video_mode(int mode) {
 
 	// Get the parameters
-	DEVMODE dm;
-	dm.dmSize = sizeof(DEVMODE);
-	EnumDisplaySettings(NULL, mode, &dm);
+	DEVMODEA dm;
+	dm.dmSize = sizeof(dm);
+	EnumDisplaySettingsA(NULL, mode, &dm);
 
 	// Set which fields we want to specify
 	dm.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
 
 	// Change display setting
-	dm.dmSize = sizeof(DEVMODE);
-	if (ChangeDisplaySettings(&dm, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
+	dm.dmSize = sizeof(dm);
+	if (ChangeDisplaySettingsA(&dm, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
 		return -1;
 	return 0;
 }
@@ -122,12 +122,12 @@ static void on_focus(CommonWindow& self) {
 
 static void on_unfocus(CommonWindow& self) {
 	if (self.fullscreen) {
-		ChangeDisplaySettings(NULL, CDS_FULLSCREEN);
+		ChangeDisplaySettingsA(NULL, CDS_FULLSCREEN);
 	}
 }
 
-static LRESULT CALLBACK window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam) {
-	LONG_PTR lptr = GetWindowLongPtr(wnd, GWLP_USERDATA);
+static LRESULT TL_STDCALL window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam) {
+	LONG_PTR lptr = GetWindowLongPtrA(wnd, GWLP_USERDATA);
 
 	if (lptr) {
 		CommonWindow* self = (CommonWindow *)lptr;
@@ -170,7 +170,7 @@ static LRESULT CALLBACK window_proc(HWND wnd, UINT message, WPARAM wparam, LPARA
 			case WM_SETCURSOR:
 				if (LOWORD(lparam) == HTCLIENT) {
 					SetCursor(0);
-					return TRUE;
+					return 1;
 				}
 				break;
 
@@ -222,12 +222,12 @@ static LRESULT CALLBACK window_proc(HWND wnd, UINT message, WPARAM wparam, LPARA
 		}
 	}
 
-	return DefWindowProc(wnd, message, wparam, lparam);
+	return DefWindowProcA(wnd, message, wparam, lparam);
 }
 
-static LPCTSTR window_class() {
-	WNDCLASS wc;
-	static LPCTSTR name = 0;
+static LPCSTR window_class() {
+	WNDCLASSA wc;
+	static LPCSTR name = 0;
 	if (name)
 		return name;
 
@@ -237,13 +237,13 @@ static LPCTSTR window_class() {
 	wc.lpfnWndProc = window_proc;
 	//wc.cbClsExtra = 0;
 	//wc.cbWndExtra = 0;
-	wc.hInstance = GetModuleHandle(0);
-	wc.hIcon = LoadIcon(wc.hInstance, MAKEINTRESOURCE(101));
+	wc.hInstance = GetModuleHandleA(0);
+	wc.hIcon = LoadIconA(wc.hInstance, MAKEINTRESOURCEA(101));
 	//wc.hCursor = 0;
 	//wc.hbrBackground = 0;
 	//wc.lpszMenuName = 0;
 		
-	name = (LPCTSTR)RegisterClass(&wc);
+	name = (LPCSTR)RegisterClassA(&wc);
 	//check(name, "registering a window class");
 	return name;
 }
@@ -252,11 +252,11 @@ static void process_messages() {
 
 	MSG message;
 
-	while (PeekMessage(&message, 0, 0, 0, PM_REMOVE)) {
+	while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE)) {
 		//if (!handledByHook(message))
 		{
 			TranslateMessage(&message);
-			DispatchMessage(&message);
+			DispatchMessageA(&message);
 		}
 	}
 		
@@ -516,9 +516,9 @@ static int create_window(CommonWindow* self, int dummy, int fullscreen) {
 	}
 
 	// Create window
-	hwnd = CreateWindowEx(styleEx, window_class(), 0, style,
+	hwnd = CreateWindowExA(styleEx, window_class(), 0, style,
 		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0,
-		GetModuleHandle(0), 0);
+		GetModuleHandleA(0), 0);
 	CHECKB(hwnd);
 
 	hdc = GetDC(hwnd);
@@ -605,7 +605,7 @@ static int create_window(CommonWindow* self, int dummy, int fullscreen) {
 		common_setup_gl((CommonWindow*)self);
 
 		SetLastError(0);
-		SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)self);
+		SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)self);
 	} else {
 		// It's over for dummy
 		wglMakeCurrent(0, 0);
@@ -630,7 +630,7 @@ static int create_window(CommonWindow* self, int dummy, int fullscreen) {
 		rc.top = 0;
 		rc.right = self->width;
 		rc.bottom = self->height;
-		AdjustWindowRectEx(&rc, style, FALSE, styleEx);
+		AdjustWindowRectEx(&rc, style, 0, styleEx);
 		windowW = rc.right - rc.left;
 		windowH = rc.bottom - rc.top;
 
@@ -692,8 +692,8 @@ int CommonWindow::set_visible(bool state) {
 
 
 	{
-		DEVMODE devMode;
-		if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &devMode)) {
+		DEVMODEA devMode;
+		if (EnumDisplaySettingsA(NULL, ENUM_CURRENT_SETTINGS, &devMode)) {
 			this->refresh_rate = devMode.dmDisplayFrequency;
 #if GFX_PREDICT_VSYNC
 			this->min_swap_interval = TICKS_IN_SECOND / devMode.dmDisplayFrequency;

@@ -34,7 +34,7 @@ struct Texture {
 		glBindTexture(GL_TEXTURE_2D, this->id);
 	}
 
-	void upload_subimage(tl::ImageSlice const& slice, u32 x = 0, u32 y = 0);
+	void upload_subimage(tl::ImageSlice const& slice, tl::VectorU2 x = tl::VectorU2());
 
 	GLuint id;
 };

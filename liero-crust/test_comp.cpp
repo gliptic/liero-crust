@@ -7,10 +7,10 @@
 
 #include "bmp.hpp"
 
-typedef BOOL(WINAPI * PFNWGLSWAPINTERVALEXTPROC) (int interval);
-
 #define WIN32_LEAN_AND_MEAN 1
 #include <windows.h>
+
+typedef BOOL(WINAPI * PFNWGLSWAPINTERVALEXTPROC) (int interval);
 
 struct DomainInfo {
 	tl::VectorU2 range;
@@ -270,7 +270,7 @@ void test_comp() {
 
 	tl::Image dest_img(bmp_img.width(), bmp_img.height(), bmp_img.bytespp());
 
-	gfx::GeomBuffer buf;
+	gfx::GeomBuffer buf(win.white_texture);
 
 	fractal(bmp_img.slice(), dest_img.slice(), [&]{
 		if (!win.end_drawing()) {
