@@ -1,13 +1,15 @@
-#ifndef UUID_C8B889F6B0254CE3F7AE58B920794A20
-#define UUID_C8B889F6B0254CE3F7AE58B920794A20
+#ifndef VECTOR_H
+#define VECTOR_H
 
 #include <stddef.h>
-//#include <stdlib.h>
 #include "std.h"
 
-#include <assert.h>
 #include "cstdint.h"
 #include "platform.h"
+
+#if TL_CPP
+extern "C" {
+#endif
 
 #define tl_vector_new(v, t, n) do { \
 	size_t n_ = (n); \
@@ -97,11 +99,11 @@
 #define tl_vector_post_enlarge(v, t, n) ((v).size += (n))
 #define tl_vector_free(v) free((v).impl)
 
-typedef struct tl_vector {
-	size_t cap;
-	size_t size;
-	void* impl;
-} tl_vector;
+	typedef struct tl_vector {
+		size_t cap;
+		size_t size;
+		void* impl;
+	} tl_vector;
 
 #define tl_def_vector(name, t) \
 typedef struct name { \
@@ -118,4 +120,8 @@ TL_INLINE void name##_enlarge(name* V, size_t extra) { tl_vector_enlarge(V->v, t
 TL_INLINE void name##_post_enlarge(name* V, size_t extra) { tl_vector_post_enlarge(V->v, t, extra); } \
 TL_INLINE tl_vector* name##_super(name* V) { return &V->v; }
 
-#endif // UUID_C8B889F6B0254CE3F7AE58B920794A20
+#if TL_CPP
+} // extern "C"
+#endif
+
+#endif // VECTOR_H
