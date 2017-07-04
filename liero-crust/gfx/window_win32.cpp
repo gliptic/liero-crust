@@ -184,7 +184,6 @@ static LRESULT TL_STDCALL window_proc(HWND wnd, UINT message, WPARAM wparam, LPA
 				GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
 
 				if (dwSize > 0) {
-					//void* rip = alloca(dwSize);
 					u32 buf[256];
 					void* rip = buf;
 

@@ -173,10 +173,13 @@ struct Context3 {
 	};
 
 	Container* cur_parent;
+	tl::TreeNode<Window>::ChildRange cur_child;
 	u64 focus_id;
 	Font& font;
 
-	Context3(Font& font) : font(font) {
+	Context3(Font& font)
+		: font(font) {
+
 		cur_parent = new Frame();
 		focus_id = 1;
 	}
@@ -184,7 +187,7 @@ struct Context3 {
 	template<typename F>
 	void frame(u64 id, F f) {
 		Frame* frame = 0;
-		auto cur = cur_parent->children();
+		auto cur = this->cur_child; // cur_parent->children();
 		
 		while (cur.has_more()) {
 			auto* c = cur.next();
@@ -200,39 +203,51 @@ struct Context3 {
 			frame->attrib = 0;
 			frame->type = 1;
 			frame->id = id;
-			//cur_parent->children.push_back(frame);
-			cur.link_sibling_after(frame);
+		} else {
+			frame->unlink();
 		}
+		this->cur_child.link_sibling_after(frame);
 
 		auto* old_parent = cur_parent;
-		cur_parent = frame;
+		auto old_cur_child = cur_child;
+		this->cur_parent = frame;
+		this->cur_child = frame->children();
 		f();
-		cur_parent = old_parent;
+		this->cur_parent = old_parent;
+		this->cur_child = old_cur_child;
 	}
 
 	void button(u64 id, Size size, tl::StringSlice text) {
 		Button* button = 0;
-		auto cur = cur_parent->children();
+		auto cur = this->cur_child; // cur_parent->children();
 
 		while (cur.has_more()) {
 			auto* c = cur.next();
 			if (c->id == id && c->type == 0) {
-				// TODO: Diff attributes
 				button = (Button *)c;
 				break;
 			}
 		}
 
+		// TODO: Better focus handling. Store away
+		// currently focused window in context.
+
+		u32 new_attrib = id == focus_id ? WindowDesc::Focus : 0;
+
 		if (!button) {
 			button = new Button();
-			button->attrib = id == focus_id ? WindowDesc::Focus : 0;
+			button->attrib = new_attrib;
 			button->type = 0;
 			button->win_size = size;
 			button->text = tl::String(text);
 			button->id = id;
-			//cur_parent->children.push_back(button);
-			cur.link_sibling_after(button);
+		} else {
+			// TODO: Diff other attributes
+			button->attrib = new_attrib;
+			button->unlink();
 		}
+
+		this->cur_child.link_sibling_after(button);
 	}
 
 	void render2(gfx::GeomBuffer& geom);
@@ -242,6 +257,8 @@ struct LieroGui {
 
 	template<typename Context>
 	void run(Context& ctx) {
+		ctx.cur_child = ctx.cur_parent->children();
+
 		ctx.frame(0, [&] {
 			ctx.button(1, Size(200, 30), "Foo"_S);
 			ctx.button(2, Size(200, 30), "Bar"_S);

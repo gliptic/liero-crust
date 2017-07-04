@@ -10,6 +10,7 @@
       <Filter>data</Filter>
     </None>
     <None Include="build.lua" />
+    <None Include="context.lua" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="data\model.cpp">

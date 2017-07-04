@@ -67,6 +67,6 @@
     <ClInclude Include="lfs.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="memo.lua" />
+    <CustomBuild Include="memo.lua" />
   </ItemGroup>
 </Project>

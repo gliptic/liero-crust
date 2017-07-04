@@ -41,7 +41,7 @@ namespace liero {
 void do_ai(State& state, Worm& worm, u32 worm_index, WormTransientState& transient_state);
 }
 
-bool vsync = true;
+bool vsync = false;
 u32 repeat = 1;
 bool graphics = true;
 #define RUN_AI 0
@@ -77,6 +77,7 @@ struct Sampler {
 		auto now = tl_get_ticks();
 		samples[count & (MaxSamples - 1)].v[(int)type] = now;
 
+#if SLEE
 		if (mins[type] >= TICKS_IN_SECOND / 60 / 2) {
 			u64 target = now + mins[type] * 15 / 16;
 			last_sleeps = 0;
@@ -88,6 +89,7 @@ struct Sampler {
 				now = tl_get_ticks();
 			} while (now < target);
 		}
+#endif
 	}
 
 	void wait(Type type) {
@@ -384,14 +386,18 @@ void main()
 	// GUI
 	gui::Context3 gui_ctx(font);
 
+	u64 prev_frame = tl_get_ticks();
+#define TICKS_PER_FRAME (TICKS_IN_SECOND / 60)
+#define TICKS_IN_MS (TICKS_IN_SECOND / 1000)
+
 	//while (state.current_time < 60*60*repeat) {
 	while (true) {
 		{
 			liero::ControlState c;
-			c.set(liero::WcLeft, win.button_state[kbLeft] != 0);
-			c.set(liero::WcRight, win.button_state[kbRight] != 0);
-			c.set(liero::WcUp, win.button_state[kbUp] != 0);
-			c.set(liero::WcDown, win.button_state[kbDown] != 0);
+			c.set(liero::WcLeft, win.button_state[kbA] != 0);
+			c.set(liero::WcRight, win.button_state[kbO] != 0);
+			c.set(liero::WcUp, win.button_state[kbU] != 0);
+			c.set(liero::WcDown, win.button_state[kbE] != 0);
 			c.set(liero::WcFire, win.button_state[kbT] != 0);
 			c.set(liero::WcJump, win.button_state[kbS] != 0);
 			c.set(liero::WcChange, win.button_state[kbD] != 0);
@@ -497,6 +503,7 @@ void main()
 				gui.run(gui_ctx);
 				gui_ctx.render2(buf);
 				
+				
 			}
 			
 			//buf.color(1, 1, 1, 1);
@@ -530,8 +537,37 @@ void main()
 			if (!win.update()) { return; }
 
 			for (auto& ev : win.events) {
-				TL_UNUSED(ev);
-				//
+				if (ev.ev == gfx::ev_button && ev.down) {
+					if (ev.d.button.id == kbDown) {
+						bool found = false;
+						tl::Vec<tl::TreeNode<gui::Context3::Window>::ChildRange> parents;
+						tl::TreeNode<gui::Context3::Window>::ChildRange cur_range = gui_ctx.cur_parent->children();
+
+						for (;;) {
+						begin:
+							if (!cur_range.has_more()) {
+								if (parents.size() > 0) {
+									cur_range = parents.back();
+									parents.pop_back();
+									goto begin;
+								} else {
+									break;
+								}
+							}
+
+							auto* c = cur_range.next();
+							if (found) {
+								gui_ctx.focus_id = c->id;
+								break;
+							} else if (c->id == gui_ctx.focus_id) {
+								found = true;
+							} else if (c->has_children()) {
+								parents.push_back(cur_range);
+								cur_range = c->children();
+							}
+						}
+					}
+				}
 			}
 
 #if GFX_PREDICT_VSYNC
@@ -541,6 +577,27 @@ void main()
 
 		//} while (!win.end_drawing());
 		sampler.sample(Sampler::BeforeSwap);
+
+		if (!vsync) {
+			while (true) {
+				u64 cur = tl_get_ticks();
+
+				if (cur >= prev_frame + TICKS_PER_FRAME) {
+					do
+						prev_frame += TICKS_PER_FRAME;
+					while (cur >= prev_frame + TICKS_PER_FRAME);
+					break;
+				}
+
+				i32 sleep = i64(prev_frame + TICKS_PER_FRAME - TICKS_IN_MS * 2 - cur) / TICKS_IN_MS;
+
+				if (sleep > 0) {
+					Sleep(sleep);
+				} else {
+					Sleep(0);
+				}
+			}
+		}
 		win.end_drawing();
 
 		sampler.done_frame();
