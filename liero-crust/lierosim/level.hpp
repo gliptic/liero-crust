@@ -118,6 +118,7 @@ struct Level {
 	u8* materials_bitmap_dirt_rock;
 	usize materials_pitch, materials_pitch_words;
 	usize materials_bitmap_size;
+	tl::VectorU2 materials_dim;
 
 	Level(tl::Source& src, tl::Palette& pal, ModRef& mod);
 
@@ -139,20 +140,24 @@ struct Level {
 
 	void alloc_mat(usize w, usize h) {
 		// TODO: If not interleaving materials, the left and right red-zone can share the same space
-		usize w_bytes = 4 + 4 * ((w + 31) / 32) + 4;
-		usize bitmap_size = w_bytes * h;
-		usize bitmap_total_size = bitmap_size * mat_channels;
-		u8* buf_ptr = (u8 *)malloc(bitmap_total_size);
-		memset(buf_ptr, 0, bitmap_total_size);
-		materials_bitmap = buf_ptr;
+		if (materials_dim.x != w || materials_dim.y != h) {
+			free(this->materials_bitmap);
+			usize w_bytes = 4 + 4 * ((w + 31) / 32) + 4;
+			usize bitmap_size = w_bytes * h;
+			usize bitmap_total_size = bitmap_size * mat_channels;
+			u8* buf_ptr = (u8 *)malloc(bitmap_total_size);
+			memset(buf_ptr, 0, bitmap_total_size);
+			this->materials_bitmap = buf_ptr;
 
-		materials_bitmap_dirt = buf_ptr + 4; // Top-right
-		materials_bitmap_back = materials_bitmap_dirt + bitmap_size;
-		materials_bitmap_dirt_rock = materials_bitmap_dirt + 2 * bitmap_size;
+			this->materials_bitmap_dirt = buf_ptr + 4; // Top-right
+			this->materials_bitmap_back = materials_bitmap_dirt + bitmap_size;
+			this->materials_bitmap_dirt_rock = materials_bitmap_dirt + 2 * bitmap_size;
 
-		materials_pitch = w_bytes;
-		materials_pitch_words = w_bytes / 4;
-		materials_bitmap_size = bitmap_size;
+			this->materials_pitch = w_bytes;
+			this->materials_pitch_words = w_bytes / 4;
+			this->materials_bitmap_size = bitmap_size;
+			this->materials_dim = tl::VectorU2((u32)w, (u32)h);
+		}
 	}
 
 	void copy_from(Level const& other, bool copy_graphics = false) {
@@ -160,20 +165,19 @@ struct Level {
 		if (copy_graphics) {
 			graphics.copy_from(other.graphics);
 		} else {
-			graphics.alloc_uninit(other.graphics.width(), other.graphics.height(), other.graphics.bytespp());
+			graphics.clear();
 		}
 
-		if (!this->materials_bitmap) {
-			alloc_mat(graphics.width(), graphics.height());
-		}
+		alloc_mat(other.graphics.width(), other.graphics.height());
 
 		memcpy(materials_bitmap, other.materials_bitmap, this->materials_bitmap_size * mat_channels);
 	}
 
 	MaterialIterator mat_iter() {
-		return MaterialIterator(materials_bitmap_dirt
-			, materials_pitch
-			, materials_bitmap_size
+		return MaterialIterator(
+			materials_bitmap_dirt,
+			materials_pitch,
+			materials_bitmap_size
 		);
 	}
 
@@ -204,7 +208,7 @@ struct Level {
 	}
 
 	bool is_inside(tl::VectorI2 pos) const {
-		return this->graphics.is_inside(pos);
+		return ((u32)pos.x < this->materials_dim.x) && ((u32)pos.y < this->materials_dim.y);
 	}
 };
 

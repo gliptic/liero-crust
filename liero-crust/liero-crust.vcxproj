@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{AA68ABEC-4FA5-4330-98BC-CFD1CD650384}</ProjectGuid>
     <RootNamespace>marfcpp</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -251,6 +251,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ai.hpp" />
+    <ClInclude Include="ai2.hpp" />
     <ClInclude Include="bmp.hpp" />
     <ClInclude Include="gfx\buttons.hpp" />
     <ClInclude Include="gfx\buttons_common.hpp" />

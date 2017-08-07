@@ -246,6 +246,7 @@
     <ClInclude Include="liero\font.hpp">
       <Filter>liero</Filter>
     </ClInclude>
+    <ClInclude Include="ai2.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="build.lua" />

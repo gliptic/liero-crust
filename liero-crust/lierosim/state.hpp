@@ -140,8 +140,6 @@ struct State {
 	Level level;
 
 	NObjectList nobjects;
-	BObjectList bobjects;
-	SObjectList sobjects; // GFX
 	WormList worms;
 	BonusList bonuses;
 
@@ -151,6 +149,8 @@ struct State {
 	tl::LcgPair gfx_rand; // GFX
 	
 	u32 current_time;
+	BObjectList bobjects;
+	SObjectList sobjects; // GFX
 
 	void update(TransientState& transient_state);
 
