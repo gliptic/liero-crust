@@ -1,7 +1,11 @@
 #include "../platform.h"
+#include <stdlib.h>
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#if TL_CPP
+extern "C" {
+#endif
+
+#include "win.hpp"
 
 // Minimal runtime support
 #pragma comment(linker, "/merge:.CRT=.rdata")
@@ -11,24 +15,42 @@
 typedef void(__cdecl *_PVFV)(void);
 typedef int(__cdecl *_PIFV)(void);
 typedef void(__cdecl *_PVFI)(int);
+typedef char _TSCHAR;
 
-#define _CRTALLOC(x) __declspec(allocate(x))
-_CRTALLOC(".CRT$XIA") _PIFV __xi_a[] = { NULL };
-_CRTALLOC(".CRT$XIZ") _PIFV __xi_z[] = { NULL };
+typedef struct {
+	int newmode;
+} _startupinfo;
+
+#define TL_CRTALLOC(x) __declspec(allocate(x))
+TL_CRTALLOC(".CRT$XIA") _PIFV __xi_a[] = { NULL };
+TL_CRTALLOC(".CRT$XIZ") _PIFV __xi_z[] = { NULL };
 
 char _fltused;
 
-extern void main();
+//extern void main();
+void __cdecl __getmainargs(int *, char ***, char ***, int, _startupinfo *);
+//__declspec(noreturn) void __cdecl exit(int _Code);
+extern int main(int, char **, char **);
 
 #define PC_53	0x200
 #define PC_64	0x300
 
+#if 0
 #define _IMP___FMODE    (__p__fmode())
 #define _IMP___COMMODE  (__p__commode())
 extern int * _IMP___FMODE;      /* exported from the CRT DLL */
 extern int * _IMP___COMMODE;    /* these names are implementation-specific */
-#define _fmode (0)
-#define _commode (0)
+#endif
+
+#ifndef _fmode
+# define _fmode (0)
+#endif
+#ifndef _commode
+# define _commode (0)
+#endif
+#ifndef _dowildcard
+# define _dowildcard (0)
+#endif
 
 void __declspec(noinline) mainCRTStartup(void) {
 
@@ -51,6 +73,19 @@ void __declspec(noinline) mainCRTStartup(void) {
 	__asm { fldcw x }
 #endif
 
-	main();
-	ExitProcess(0);
+	_startupinfo startinfo;
+	int argc;
+	_TSCHAR **argv;
+	_TSCHAR **envp;
+	__getmainargs(&argc, &argv, &envp, _dowildcard, &startinfo);
+
+	tl_std_init();
+
+	int r = main(argc, argv, envp);
+
+	ExitProcess((UINT)r);
 }
+
+#if TL_CPP
+} // extern "C"
+#endif

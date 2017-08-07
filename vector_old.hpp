@@ -79,12 +79,12 @@ struct vector_slice {
 
 struct memalloc_allocator {
 	template<typename T>
-	void alloc_empty(T& slice) {
+	void alloc_empty(T&) {
 	}
 
 	template<typename T>
 	void* alloc_slice(T& slice, usize cap_in_bytes) {
-		return memalloc(cap_in_bytes);
+		return malloc(cap_in_bytes);
 	}
 
 	template<typename T>
@@ -95,7 +95,7 @@ struct memalloc_allocator {
 
 		if (new_cap_in_bytes < size_bytes
 		 || !(new_b = memrealloc(slice.b, new_cap_in_bytes, old_cap_in_bytes))) {
-			memfree(slice.b);
+			free(slice.b);
 			new_b = 0;
 		}
 
@@ -104,7 +104,7 @@ struct memalloc_allocator {
 
 	template<typename T>
 	void free_slice(T& slice) {
-		memfree(slice.b);
+		free(slice.b);
 	}
 };
 
@@ -161,14 +161,14 @@ struct vector : protected vector_slice<T>, private Allocator {
 	void push_back(T const& value) {
 		if(this->cap_left_in_bytes() < sizeof(T))
 			enlarge(sizeof(T));
-		new (this->e) T(value);
+		new (this->e, non_null()) T(value);
 		++this->e;
 	}
 
 	void push_back(T&& value) {
 		if(this->cap_left_in_bytes() < sizeof(T))
 			enlarge(sizeof(T));
-		new (this->e++) T(move(value));
+		new (this->e++, non_null()) T(move(value));
 	}
 
 	T* cap_end() {
@@ -259,7 +259,7 @@ struct mixed_buffer : tl::vector<u8> {
 	void unsafe_push(U const& v) {
 		if(this->cap_left_in_bytes() < sizeof(U))
 			enlarge(sizeof(U));
-		new (this->e) U(v);
+		new (this->e, non_null()) U(v);
 		this->e += sizeof(U);
 	}
 
