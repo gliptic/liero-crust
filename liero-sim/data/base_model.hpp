@@ -11,21 +11,31 @@ namespace ss {
 
 struct Expander;
 
-template<typename T>
-struct Ref {
+struct BaseRef {
 	u8* ptr;
 	u32 abs_offs;
+
+	BaseRef(u8* ptr_init, u32 abs_offs)
+		: ptr(ptr_init), abs_offs(abs_offs) {
+	}
+
+	TL_FORCE_INLINE BaseRef add_words(usize i) {
+		return BaseRef(this->ptr + i * 8, this->abs_offs + i);
+	}
+};
+
+template<typename T>
+struct Ref : BaseRef {
 
 	Ref(Ref const&) = default;
 	Ref& operator=(Ref const&) = default;
 
 	Ref(u8* ptr_init, u32 abs_offs)
-		: abs_offs(abs_offs), ptr(ptr_init) {
+		: BaseRef(ptr_init, abs_offs) {
 	}
 
 	Ref(Ref&& other)
-		: abs_offs(other.abs_offs)
-		, ptr(other.ptr) {
+		: BaseRef(other.ptr, other.abs_offs) {
 
 		other.abs_offs = 0;
 		other.ptr = 0;
@@ -408,6 +418,8 @@ struct Expander {
 
 	template<typename To, typename From>
 	usize array_calc_size(usize cur_size, Offset const& from) {
+		static_assert((sizeof(To) & 7) == 0, "To type must be 8-byte aligned");
+		static_assert((sizeof(From) & 7) == 0, "From type must be 8-byte aligned");
 		auto p = (From const *)from.ptr();
 
 		cur_size += from.size * sizeof(To);
@@ -423,7 +435,7 @@ struct Expander {
 	usize array_calc_size_plain(usize cur_size, Offset const& from) {
 		static_assert(std::is_same<To, From>::value, "types must be the same");
 
-		cur_size += from.size * sizeof(To);
+		cur_size += round_size_up(from.size * sizeof(To));
 
 		return cur_size;
 	}

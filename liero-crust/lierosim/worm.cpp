@@ -513,7 +513,9 @@ void Worm::reset_weapons(ModRef& mod) {
 }
 
 void Worm::spawn(State& state) {
+	this->health = 100; // TODO: Reset to correct health
 	this->reset_weapons(state.mod);
+	this->visible(1);
 }
 
 void Worm::update(State& state, TransientState& transient_state, u32 index) {
@@ -521,7 +523,7 @@ void Worm::update(State& state, TransientState& transient_state, u32 index) {
 
 	auto& worm_transient_state = transient_state.worm_state[index];
 
-	if (true) { // TODO: is_visible
+	if (this->visible()) {
 
 		pixel_counts = count_worm_pixels(*this, state);
 
@@ -537,6 +539,20 @@ void Worm::update(State& state, TransientState& transient_state, u32 index) {
 		/* TODO: This is a graphics thing only
 		processSight(game);
 		*/
+
+		if (this->health <= 0) {
+			// TODO: Stop weapon sounds
+			this->ninjarope.st = Ninjarope::Hidden;
+			this->muzzle_fire = 0;
+			this->visible(0);
+		}
+	} else {
+		// Worm has not yet spawned
+		// TODO: Spawn when fire has been pressed and kill timer is done
+		if (transient_state.respawn) {
+			this->pos = liero::find_spawn(state.level, state.rand).cast<liero::Scalar>();
+			this->spawn(state);
+		}
 	}
 
 	this->prev_controls(worm_transient_state.input);

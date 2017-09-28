@@ -48,6 +48,12 @@ inline Vector2 rand_max_vector2(Rand& rand, Ratio max) {
 }
 
 template<typename Rand>
+inline Vector2 rand_max_vector2(Rand& rand, Scalar max) {
+	auto v = rand.get_vectori2(max.raw());
+	return Vector2(Fixed::from_raw(v.x), Fixed::from_raw(v.y));
+}
+
+template<typename Rand>
 inline Vector2 rand_max_vector2(Rand& rand, tl::VectorD2 max) {
 	auto v = rand.get_vectori2_f64(max);
 	return Vector2(Fixed::from_raw(v.x), Fixed::from_raw(v.y));

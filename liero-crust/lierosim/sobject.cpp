@@ -52,7 +52,7 @@ void create(SObjectType const& self, State& state, TransientState& transient_sta
 		
 		// TODO: might_collide_with_worm assumes the worm is not a point, but this test is against a point.
 
-		if (transient_state.might_collide_with_worm(pos, ldetect_range)) {
+		if (transient_state.might_collide_with_worm(state, pos, ldetect_range)) {
 			++transient_state.col_tests;
 
 			auto wr = state.worms.all();
@@ -75,12 +75,25 @@ void create(SObjectType const& self, State& state, TransientState& transient_sta
 						w->vel.y += worm_blow_away * power.y * sign(delta.y);
 					}
 
-					u32 ldamage = self.damage() * u32(power.x + power.y) / 2;
+					u32 power_sum = u32(power.x + power.y) / 2;
+
+					u32 ldamage = self.damage() * power_sum;
 					if (ldetect_range)
 						ldamage /= ldetect_range;
 
-					// TODO: Cause damage to worm
-					w->do_damage(ldamage);
+					if (w->health > 0) {
+						w->do_damage(ldamage);
+
+						u32 blood_amount = 100 /* TODO: game.settings->blood */ * power_sum / 100;
+
+						for (u32 i = 0; i < blood_amount; ++i) {
+							auto angle = Fixed::from_raw(state.rand.next() & ((128 << 16) - 1));
+							auto part_vel = sincos(angle) + w->vel / 3;
+							// TODO: 40 + 6 should be blood index
+							// TODO: Blood distribution. Check other blood spawning.
+							create(state.mod.get_nobject_type(40 + 6), state, angle, w->pos, part_vel, -1); // TODO: Owner of blood
+						}
+					}
 				}
 			}
 		}

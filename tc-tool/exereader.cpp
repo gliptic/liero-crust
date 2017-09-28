@@ -612,6 +612,20 @@ bool load_from_exe(
 		tc.bonus_frames()[0] = c_bonus_frame_0;
 		tc.bonus_frames()[1] = c_bonus_frame_1;
 
+		{
+			NObjectEmitterTypeBuilder et(tcdata);
+			u32 blood_type = 6;
+			et.distribution(ratio_for_bi_rand(n_distribution[blood_type]));
+			//et.distribution(Scalar::from_raw(n_distribution[blood_type]) * 2);
+
+			auto speed_v = ratio_from_speed(n_speed_v[blood_type]);
+			auto speed = ratio_from_speed(n_speed[blood_type]) - speed_v * 0.5;
+			et.speed(speed);
+			et.speed_v(ratio_for_rand_ratio(speed_v));
+
+			tc.blood_emitter(et.done());
+		}
+		
 		root.set(tc.done());
 	}
 

@@ -38,26 +38,32 @@ struct MaterialIterator {
 	}
 
 	void write_dirt_16(i32 x, u32 bits) {
+		// TODO: Fix unaligned write
 		*(u32 *)(dirt_p() + (x >> 3)) = bits;
 	}
 
 	u32 read_back_16(i32 x) {
+		// TODO: Fix unaligned read
 		return *(u32 const *)(back_p() + (x >> 3));
 	}
 
 	void write_back_16(i32 x, u32 bits) {
+		// TODO: Fix unaligned write
 		*(u32 *)(back_p() + (x >> 3)) = bits;
 	}
 
 	u32 read_dirt_rock_16(i32 x) {
+		// TODO: Fix unaligned read
 		return *(u32 const *)(dirt_rock_p() + (x >> 3));
 	}
 
 	void write_dirt_rock_16(i32 x, u32 bits) {
+		// TODO: Fix unaligned write
 		*(u32 *)(dirt_rock_p() + (x >> 3)) = bits;
 	}
 
 	u32 read_back_word32(i32 word_x) {
+
 		return *((u32 const *)back_p() + word_x);
 	}
 

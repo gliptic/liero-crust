@@ -18,6 +18,7 @@
 #include "liero/viewport.hpp"
 #include "liero/font.hpp"
 #include "ai.hpp"
+#include "ai2.hpp"
 #include "liero/gui.hpp"
 
 void mixer_fill(sfx::Stream& str, u32 /*start*/, u32 frames) {
@@ -28,7 +29,7 @@ void mixer_fill(sfx::Stream& str, u32 /*start*/, u32 frames) {
 
 void mixer_play_sound(liero::ModRef& mod, i16 sound_index, liero::TransientState& transient_state) {
 
-	//return; // TEMP
+	return; // TEMP
 
 	if (sound_index < 0)
 		return;
@@ -37,14 +38,15 @@ void mixer_play_sound(liero::ModRef& mod, i16 sound_index, liero::TransientState
 	mixer->play(&mod.sounds[sound_index], mixer->now(), 1, 1);
 }
 
+/*
 namespace liero {
 void do_ai(State& state, Worm& worm, u32 worm_index, WormTransientState& transient_state);
-}
+}*/
 
 bool vsync = false;
 u32 repeat = 1;
 bool graphics = true;
-#define RUN_AI 0
+#define RUN_AI 1
 
 #define TICKS_IN_SECOND (10000000)
 
@@ -348,8 +350,7 @@ void main()
 			w->weapons[i].ty_idx = i;
 		}
 		//w->pos = liero::Vector2(70, 70);
-		w->pos = liero::find_spawn(state.level, state.rand).cast<liero::Scalar>();
-		w->spawn(state);
+		//w->spawn(state);
 	}
 
 	{
@@ -376,7 +377,11 @@ void main()
 
 	//u32 col_tests = 0, col2_tests = 0, col_mask_tests = 0;
 
+#if AI1
 	liero::Ai ai(mod.ref());
+#else
+	liero::ai::Ai2 ai(mod.ref());
+#endif
 
 	u64 total_ai_time = 0;
 	liero::TransientState transient_state;
@@ -437,6 +442,10 @@ void main()
 #endif
 
 					state.update(transient_state);
+
+#if RUN_AI
+					ai.done_frame(1, transient_state);
+#endif
 				}
 			});
 

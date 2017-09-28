@@ -167,6 +167,14 @@ struct WormInput {
 
 	bool up() const { return (v & (u8)Aim::Up) != 0; }
 	bool down() const { return (v & (u8)Aim::Down) != 0; }
+
+	bool operator==(WormInput const& other) const {
+		return this->v == other.v;
+	}
+
+	bool operator!=(WormInput const& other) const {
+		return this->v != other.v;
+	}
 };
 
 struct WormTransientState {
@@ -233,7 +241,8 @@ struct Worm {
 	Worm() :
 		aiming_angle(0), aiming_angle_vel(0), current_weapon(0), leave_shell_time(0),
 		health(0),
-		muzzle_fire(0), bits0(PrevNoLeft | PrevNoRight | PrevNoJump) {
+		muzzle_fire(0),
+		bits0((1 << PrevNoLeft) | (1 << PrevNoRight) | (1 << PrevNoJump)) {
 	}
 
 	Vector2 pos, vel;
@@ -253,7 +262,10 @@ struct Worm {
 		PrevNoLeft = 0,
 		PrevNoRight = 1,
 		PrevChange = 2,
-		PrevNoJump = 3
+		PrevNoJump = 3,
+
+		Direction = 4,
+		Visible = 5,
 	};
 
 	void prev_controls(u32 controls) {
@@ -270,11 +282,20 @@ struct Worm {
 
 	void direction(u8 dir) {
 		assert(dir == 0 || dir == 1);
-		bits0 = (bits0 & ~16) | (dir << 4);
+		bits0 = (bits0 & ~(1 << Direction)) | (dir << Direction);
 	}
 
 	u8 direction() const {
-		return (bits0 >> 4) & 1;
+		return (bits0 >> Direction) & 1;
+	}
+
+	void visible(u8 v) {
+		assert(v == 0 || v == 1);
+		bits0 = (bits0 & ~(1 << Visible)) | (v << Visible);
+	}
+
+	u8 visible() const {
+		return (bits0 >> Visible) & 1;
 	}
 
 	bool prev_no_left() const { return (bits0 & (1 << PrevNoLeft)) != 0; }
@@ -307,7 +328,7 @@ struct Worm {
 	}
 
 	void do_damage(i32 amount) {
-		health -= amount;
+		this->health -= amount;
 	}
 
 	void update(State& state, TransientState& state_input, u32 index);

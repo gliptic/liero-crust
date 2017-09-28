@@ -93,7 +93,7 @@ void NObject::explode_obj(NObjectType const& ty, Vector2 pos, Vector2 vel, i16 o
 	draw_level_effect(state, pos.cast<i32>(), ty.level_effect(), transient_state.graphics, transient_state);
 }
 
-bool update(NObject& self, State& state, NObjectList::Range& range, TransientState& transient_state) {
+NObject::ObjState update(NObject& self, State& state, FixedObjectListRange<NObject>& range, TransientState& transient_state) {
 	NObject::ObjState obj_state = NObject::Alive;
 	u32 iteration = 0;
 
@@ -276,7 +276,7 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 		// Coldet with worms
 		if (ty.worm_coldet()) {
 
-			if (transient_state.might_collide_with_worm(ipos, (i32)ty.detect_distance())) {
+			if (transient_state.might_collide_with_worm(state, ipos, (i32)ty.detect_distance())) {
 				++transient_state.col_tests;
 
 				auto wr = state.worms.all();
@@ -293,10 +293,20 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 						w->vel += lvel * ty.blowaway();
 						w->do_damage(ty.hit_damage());
 
+						auto blood_emitter = state.mod.tcdata->blood_emitter();
+
 						u32 blood_amount = ty.worm_col_blood();
 						for (u32 i = 0; i < blood_amount; ++i) {
+							// TODO: Move this to its own function
 							auto angle = Fixed::from_raw(state.rand.next() & ((128 << 16) - 1));
-							auto part_vel = sincos(angle); // TODO: Correct blood velocity
+							Ratio speed = blood_emitter.speed() + state.rand.get_f64(blood_emitter.speed_v());
+
+							auto part_vel = vector2(sincos_f64(angle) * speed);
+
+							if (blood_emitter.distribution() != Ratio()) {
+								part_vel += rand_max_vector2(state.rand, blood_emitter.distribution());
+							}
+
 							create(state.mod.get_nobject_type(40 + 6), state, angle, lpos, part_vel + lvel / 3, self.owner);
 						}
 
@@ -326,43 +336,10 @@ bool update(NObject& self, State& state, NObjectList::Range& range, TransientSta
 		
 	} while (iteration < max_iteration);
 
-	if (obj_state == NObject::Alive) {
-		self.vel = lvel;
+	self.vel = lvel;
+	self.pos = lpos;
 
-#if UPDATE_POS_IMMEDIATE
-#if !IMPLICIT_NOBJ_CELL
-		self.pos = lpos;
-		self.cell = state.nobject_broadphase.update(narrow<CellNode::Index>(state.nobjects.index_of(&self)), lpos, self.cell);
-#else
-		state.nobject_broadphase.update(narrow<CellNode::Index>(state.nobjects.index_of(&self)), ipos, self.pos);
-		self.pos = lpos;
-#endif
-#else
-		auto idx = narrow<CellNode::Index>(state.nobjects.index_of(&self));
-		transient_state.next_nobj_pos[idx].pos = lpos;
-		//transient_state.next_nobj_pos[idx].cur_cell = self.cell;
-#endif
-
-		return true;
-	} else {
-		auto owner = self.owner;
-#if QUEUE_REMOVE_NOBJS
-		CellNode::Index idx = (CellNode::Index)state.nobjects.index_of(&self);
-		state.nobject_broadphase.remove(idx);
-		//transient_state.nobj_remove_queue.push_back(idx);
-		*transient_state.nobj_remove_queue_ptr++ = idx;
-		self.cell = 0;
-#else
-		state.nobject_broadphase.swap_remove(CellNode::Index(state.nobjects.index_of(&self)), CellNode::Index(state.nobjects.size() - 1));
-		state.nobjects.free(range);
-#endif
-
-		if (obj_state == NObject::Exploded) {
-			NObject::explode_obj(ty, lpos, lvel, owner, state, transient_state);
-		}
-
-		return false;
-	}
+	return obj_state;
 }
 
 }

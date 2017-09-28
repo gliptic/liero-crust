@@ -15,10 +15,12 @@ void test_net3();
 void test_net4();
 void test_net5();
 void test_error();
+void test_rand();
+void test_ser();
 
 int main() {
 
-	test_gfx();
+	//test_gfx();
 	//test_sincos();
 	//test_gui();
 
@@ -28,6 +30,8 @@ int main() {
 	//test_net4();
 	//test_net5();
 	//test_io();
+	//test_rand();
+	test_ser();
 
 	//test_error();
 

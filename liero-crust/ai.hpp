@@ -67,6 +67,7 @@ struct Ai {
 	}
 
 	void do_ai(State& state, Worm& worm, u32 worm_index, WormTransientState& transient_state);
+	void done_frame(u32 worm_index, TransientState& transient_state) {}
 };
 
 }

@@ -13,6 +13,7 @@ struct WeaponType;
 struct WeaponTypeList;
 struct NObjectType;
 struct SObjectType;
+struct NObjectEmitterType;
 struct LevelEffect;
 struct TcData;
 struct PlayerControls;
@@ -255,7 +256,6 @@ struct alignas(8) NObjectType : ss::Struct {
 			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
 		}
 	}
-
 };
 
 struct NObjectTypeBuilder : ss::Ref<NObjectTypeReader> {
@@ -432,6 +432,69 @@ struct SObjectTypeBuilder : ss::Ref<SObjectTypeReader> {
 
 };
 
+struct alignas(8) NObjectEmitterTypeReader : ss::Struct {
+	u8 data[24];
+
+};
+
+struct alignas(8) NObjectEmitterType : ss::Struct {
+	static u8 _defaults[24];
+
+	u8 data[24];
+
+	NObjectEmitterType() { memcpy(data, _defaults, sizeof(_defaults)); }
+
+	f64 speed() const { return this->_field<f64, 0>(); }
+	f64 speed_v() const { return this->_field<f64, 8>(); }
+	f64 distribution() const { return this->_field<f64, 16>(); }
+
+	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<NObjectEmitterTypeReader> const& src) {
+		TL_UNUSED(expander); TL_UNUSED(src);
+		return cur_size;
+	}
+
+	static void expand_raw(ss::Ref<NObjectEmitterType> dest, ss::Expander& expander, ss::StructOffset<NObjectEmitterTypeReader> const& src) {
+		TL_UNUSED(expander);
+		u32 src_size = src.size;
+		NObjectEmitterTypeReader const* srcp = src.get();
+		u64 *p = (u64 *)dest.ptr;
+		u64 const *s = (u64 const*)srcp;
+		u64 const *d = (u64 const*)NObjectEmitterType::_defaults;
+		for (u32 i = 0; i < 3; ++i) {
+			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
+		}
+	}
+
+};
+
+struct NObjectEmitterTypeBuilder : ss::Ref<NObjectEmitterTypeReader> {
+	NObjectEmitterTypeBuilder(ss::Builder& b)
+		: Ref<NObjectEmitterTypeReader>(b.alloc<NObjectEmitterTypeReader>()) {
+	}
+
+	Ref<NObjectEmitterTypeReader> done() { return std::move(*this); }
+
+
+	void speed(f64 v) {
+		u64 s;
+		memcpy(&s, &v, sizeof(v));
+		this->_field<u64, 0>() = s ^ 0;
+	}
+
+	void speed_v(f64 v) {
+		u64 s;
+		memcpy(&s, &v, sizeof(v));
+		this->_field<u64, 8>() = s ^ 0;
+	}
+
+	void distribution(f64 v) {
+		u64 s;
+		memcpy(&s, &v, sizeof(v));
+		this->_field<u64, 16>() = s ^ 0;
+	}
+
+};
+
 struct alignas(8) LevelEffectReader : ss::Struct {
 	u8 data[16];
 
@@ -483,14 +546,14 @@ struct LevelEffectBuilder : ss::Ref<LevelEffectReader> {
 };
 
 struct alignas(8) TcDataReader : ss::Struct {
-	u8 data[288];
+	u8 data[296];
 
 };
 
 struct alignas(8) TcData : ss::Struct {
-	static u8 _defaults[288];
+	static u8 _defaults[296];
 
-	u8 data[288];
+	u8 data[296];
 
 	TcData() { memcpy(data, _defaults, sizeof(_defaults)); }
 
@@ -556,6 +619,7 @@ struct alignas(8) TcData : ss::Struct {
 	bonus_framesVal const& bonus_frames() const { return this->_field<bonus_framesVal const, 280>(); }
 
 	u8 reload_sound() const { return this->_field<u8, 251>(); }
+	NObjectEmitterType const& blood_emitter() const { return *this->_field<ss::StructOffset<NObjectEmitterType>, 288>().get(); }
 
 	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<TcDataReader> const& src) {
 		TL_UNUSED(expander); TL_UNUSED(src);
@@ -566,6 +630,7 @@ struct alignas(8) TcData : ss::Struct {
 		cur_size = expander.array_calc_size<LevelEffect, ss::StructOffset<LevelEffectReader>>(cur_size, srcp->_field<ss::Offset, 24>());
 		cur_size = expander.array_calc_size_plain<u8, u8>(cur_size, srcp->_field<ss::Offset, 256>());
 		cur_size = expander.array_calc_size<ss::StringOffset, ss::StringOffset>(cur_size, srcp->_field<ss::Offset, 264>());
+		cur_size = NObjectEmitterType::calc_extra_size(24 + cur_size, expander, srcp->_field<ss::StructOffset<NObjectEmitterTypeReader> const, 288>());
 		return cur_size;
 	}
 
@@ -576,7 +641,7 @@ struct alignas(8) TcData : ss::Struct {
 		u64 *p = (u64 *)dest.ptr;
 		u64 const *s = (u64 const*)srcp;
 		u64 const *d = (u64 const*)TcData::_defaults;
-		for (u32 i = 0; i < 36; ++i) {
+		for (u32 i = 0; i < 37; ++i) {
 			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
 		}
 		auto nobjects_copy = expander.expand_array_raw<NObjectType, ss::StructOffset<NObjectTypeReader>>(srcp->_field<ss::Offset, 0>());
@@ -585,14 +650,16 @@ struct alignas(8) TcData : ss::Struct {
 		auto level_effects_copy = expander.expand_array_raw<LevelEffect, ss::StructOffset<LevelEffectReader>>(srcp->_field<ss::Offset, 24>());
 		auto materials_copy = expander.expand_array_raw_plain<u8, u8>(srcp->_field<ss::Offset, 256>());
 		auto sound_names_copy = expander.expand_array_raw<ss::StringOffset, ss::StringOffset>(srcp->_field<ss::Offset, 264>());
+		auto blood_emitter_copy = expander.alloc_uninit_raw<NObjectEmitterType>();
+		NObjectEmitterType::expand_raw(blood_emitter_copy, expander, srcp->_field<ss::StructOffset<NObjectEmitterTypeReader>, 288>());
 		dest._field_ref<ss::ArrayOffset<NObjectType>, 0>().set(nobjects_copy);
 		dest._field_ref<ss::ArrayOffset<SObjectType>, 8>().set(sobjects_copy);
 		dest._field_ref<ss::ArrayOffset<WeaponType>, 16>().set(weapons_copy);
 		dest._field_ref<ss::ArrayOffset<LevelEffect>, 24>().set(level_effects_copy);
 		dest._field_ref<ss::ArrayOffset<u8>, 256>().set(materials_copy);
 		dest._field_ref<ss::ArrayOffset<ss::StringOffset>, 264>().set(sound_names_copy);
+		dest._field_ref<ss::StructOffset<NObjectEmitterType>, 288>().set(blood_emitter_copy);
 	}
-
 };
 
 struct TcDataBuilder : ss::Ref<TcDataReader> {
@@ -724,6 +791,7 @@ struct TcDataBuilder : ss::Ref<TcDataReader> {
 	typedef u16 bonus_framesVal[2];
 	bonus_framesVal& bonus_frames() { return this->_field<bonus_framesVal, 280>(); }
 	void reload_sound(u8 v) { this->_field<u8, 251>() = v ^ 0; }
+	void blood_emitter(ss::Ref<NObjectEmitterTypeReader> v) { return this->_field_ref<ss::StructOffset<NObjectEmitterTypeReader>, 288>().set(v); }
 
 };
 
@@ -833,6 +901,8 @@ struct PlayerSettingsBuilder : ss::Ref<PlayerSettingsReader> {
 
 	Ref<PlayerSettingsReader> done() { return std::move(*this); }
 
+	void left_controls(ss::Ref<PlayerControlsReader> v) { return this->_field_ref<ss::StructOffset<PlayerControlsReader>, 0>().set(v); }
+	void right_controls(ss::Ref<PlayerControlsReader> v) { return this->_field_ref<ss::StructOffset<PlayerControlsReader>, 8>().set(v); }
 
 };
 }

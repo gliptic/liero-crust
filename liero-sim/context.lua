@@ -625,6 +625,14 @@ local Context_mt = {
 							pr(ii, 'void ', f.name, '(ss::StringRef v) { ')
 							pr('return this->_field_ref<ss::StringOffset, ', f.offset >> 3, '>().set(v); ')
 							pr('}\n')
+						elseif f.type.kind == 'Struct' then
+							local datatype = f.type.datatype(nil, 'expanded2')
+							local strict_datatype = f.type.datatype(nil, 'strict2')
+							--local element_datatype = f.type.element_type.datatype(nil, 'strict2')
+
+							pr(ii, 'void ', f.name, '(ss::Ref<', datatype, 'Reader> v) { ')
+							pr('return this->_field_ref<', strict_datatype, ', ', f.offset >> 3, '>().set(v); ')
+							pr('}\n')
 						elseif f.type.kind == 'Array' then
 
 							local datatype = f.type.datatype(nil, 'expanded2')

@@ -72,24 +72,27 @@ struct FixedObjectListBase<Limit, true> {
 
 };
 
+template<typename T>
+struct FixedObjectListRange {
+	FixedObjectListRange(T* cur, T* end)
+		: cur(cur), end(end) {
+	}
+
+	T* next() {
+		T* ret = cur;
+		++cur;
+
+		return ret == end ? 0 : ret;
+	}
+
+	T* cur;
+	T* end;
+};
+
 template<typename T, int Limit, bool QueueNew = false>
 struct FixedObjectList : FixedObjectListBase<Limit, QueueNew> {
 
-	struct Range {
-		Range(T* cur, T* end)
-			: cur(cur), end(end) {
-		}
-
-		T* next() {
-			T* ret = cur;
-			++cur;
-
-			return ret == end ? 0 : ret;
-		}
-
-		T* cur;
-		T* end;
-	};
+	typedef FixedObjectListRange<T> Range;
 
 	FixedObjectList() {
 		this->clear();

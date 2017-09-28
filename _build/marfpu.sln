@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.25428.1
+VisualStudioVersion = 15.0.26430.15
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tl", "..\tl\_build\tl.vcxproj", "{7FC0A21B-7780-470B-960E-38294E4BA0AB}"
 EndProject
@@ -32,14 +32,14 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Debug|x64.ActiveCfg = Debug|x64
-		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Debug|x64.Build.0 = Debug|x64
-		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Debug|x86.ActiveCfg = Debug|Win32
-		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Debug|x86.Build.0 = Debug|Win32
-		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Release|x64.ActiveCfg = Release|x64
-		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Release|x64.Build.0 = Release|x64
-		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Release|x86.ActiveCfg = Release|Win32
-		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Release|x86.Build.0 = Release|Win32
+		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Debug|x64.ActiveCfg = DebugNoRuntime|x64
+		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Debug|x64.Build.0 = DebugNoRuntime|x64
+		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Debug|x86.ActiveCfg = DebugNoRuntime|Win32
+		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Debug|x86.Build.0 = DebugNoRuntime|Win32
+		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Release|x64.ActiveCfg = ReleaseSmallRuntime|x64
+		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Release|x64.Build.0 = ReleaseSmallRuntime|x64
+		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Release|x86.ActiveCfg = ReleaseSmallRuntime|Win32
+		{7FC0A21B-7780-470B-960E-38294E4BA0AB}.Release|x86.Build.0 = ReleaseSmallRuntime|Win32
 		{AA68ABEC-4FA5-4330-98BC-CFD1CD650384}.Debug|x64.ActiveCfg = Debug|x64
 		{AA68ABEC-4FA5-4330-98BC-CFD1CD650384}.Debug|x64.Build.0 = Debug|x64
 		{AA68ABEC-4FA5-4330-98BC-CFD1CD650384}.Debug|x86.ActiveCfg = Debug|Win32

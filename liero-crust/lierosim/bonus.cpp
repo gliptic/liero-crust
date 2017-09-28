@@ -25,7 +25,7 @@ bool update(State& state, Bonus& self, TransientState& transient_state) {
 		}
 	}
 
-	if (transient_state.might_collide_with_worm(ipos, 5)) {
+	if (transient_state.might_collide_with_worm(state, ipos, 5)) {
 		auto wr = state.worms.all();
 
 		for (Worm* w; (w = wr.next()) != 0; ) {

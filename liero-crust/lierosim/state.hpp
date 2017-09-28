@@ -46,6 +46,7 @@ struct TransientState {
 		play_sound = play_sound_init;
 		sound_user_data = sound_user_data_init;
 		graphics = true;
+		respawn = true;
 		current_time_modulos = 0;
 #if PROFILE
 		col_mask_tests = 0;
@@ -80,7 +81,7 @@ struct TransientState {
 
 	PlaySoundFunc play_sound;
 	void* sound_user_data;
-	bool graphics;
+	bool graphics, respawn;
 
 #if !UPDATE_POS_IMMEDIATE
 	NextNobjPos next_nobj_pos[NObjectLimit];
@@ -116,22 +117,7 @@ struct TransientState {
 #endif
 	}
 
-	bool might_collide_with_worm(tl::VectorI2 ipos, i32 detect_distance) {
-		u32 xsh1 = (ipos.x + 8) >> 4;
-		u32 ysh1 = (ipos.y + 8) >> 4;
-
-		u32 max = ((detect_distance + 7 + 15) >> 4);
-
-		u32 mask = (1 << (max & 31)) - 1;
-		u32 mask2 = mask | (mask << (32 - max));
-
-		u32 xmask = rotl(mask2, xsh1);
-		u32 ymask = rotl(mask2, ysh1);
-
-		++this->col_mask_tests;
-
-		return (this->worm_bloom_x & xmask) && (this->worm_bloom_y & ymask);
-	}
+	inline bool might_collide_with_worm(State& state, tl::VectorI2 ipos, i32 detect_distance);
 
 };
 
@@ -182,6 +168,45 @@ struct State {
 	}
 };
 
+inline bool TransientState::might_collide_with_worm(State& state, tl::VectorI2 ipos, i32 detect_distance) {
+	u32 xsh1 = (ipos.x + 8) >> 4;
+	u32 ysh1 = (ipos.y + 8) >> 4;
+
+	u32 max = ((detect_distance + 7 + 15) >> 4);
+
+	u32 mask = (1 << (max & 31)) - 1;
+	u32 mask2 = mask | (mask << (32 - max));
+
+	u32 xmask = rotl(mask2, xsh1);
+	u32 ymask = rotl(mask2, ysh1);
+
+	++this->col_mask_tests;
+
+	bool might_hit = (this->worm_bloom_x & xmask) && (this->worm_bloom_y & ymask);
+
+#if !NDEBUG
+	bool accurate_might_hit = false;
+
+	auto wr = state.worms.all();
+
+	for (Worm* w; (w = wr.next()) != 0; ) {
+		auto wpos = w->pos.cast<i32>();
+
+		if (wpos.x - 2 < ipos.x + detect_distance
+			&& wpos.x + 2 > ipos.x - detect_distance
+			&& wpos.y - 4 < ipos.y + detect_distance
+			&& wpos.y + 4 > ipos.y - detect_distance) {
+
+			accurate_might_hit = true;
+			break;
+		}
+	}
+
+	assert(!accurate_might_hit || might_hit);
+#endif
+
+	return might_hit;
+}
 
 }
 

@@ -62,23 +62,27 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\tl\_build\Tl Standard Config.props" />
     <Import Project="..\tl\_build\Tl IEEE SEE2.props" />
+    <Import Project="..\tl\_build\Tl Small Runtime.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\tl\_build\Tl Standard Config.props" />
     <Import Project="..\tl\_build\Tl IEEE SEE2.props" />
     <Import Project="..\tl\_build\Minimal size.props" />
+    <Import Project="..\tl\_build\Tl Small Runtime.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\tl\_build\Tl Standard Config.props" />
     <Import Project="..\tl\_build\Tl IEEE SEE2.props" />
+    <Import Project="..\tl\_build\Tl Small Runtime.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\tl\_build\Tl Standard Config.props" />
     <Import Project="..\tl\_build\Tl IEEE SEE2.props" />
     <Import Project="..\tl\_build\Minimal size.props" />
+    <Import Project="..\tl\_build\Tl Small Runtime.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -185,6 +189,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ai.cpp" />
+    <ClCompile Include="ai2.cpp" />
     <ClCompile Include="bmp.cpp" />
     <ClCompile Include="gfx\buttons.cpp" />
     <ClCompile Include="gfx\geom_buffer.cpp" />
@@ -235,6 +240,7 @@
     <ClCompile Include="test_gui.cpp" />
     <ClCompile Include="test_io.cpp" />
     <ClCompile Include="test_net.cpp" />
+    <ClCompile Include="test_rand.cpp" />
     <ClCompile Include="test_ser.cpp" />
     <ClCompile Include="test_sincos.cpp" />
   </ItemGroup>

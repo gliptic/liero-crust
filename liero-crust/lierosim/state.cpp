@@ -105,7 +105,43 @@ void State::update(TransientState& transient_state) {
 		auto r = this->nobjects.all();
 
 		for (NObject* b; (b = r.next()) != 0; ) {
-			liero::update(*b, *this, r, transient_state);
+			NObject::ObjState new_state = liero::update(*b, *this, r, transient_state);
+
+			if (new_state != NObject::Alive) {
+
+				auto owner = b->owner;
+				auto lpos = b->pos, lvel = b->vel;
+				NObjectType const& ty = this->mod.get_nobject_type(b->ty_idx);
+
+#if QUEUE_REMOVE_NOBJS
+				CellNode::Index idx = (CellNode::Index)state.nobjects.index_of(&self);
+				state.nobject_broadphase.remove(idx);
+				//transient_state.nobj_remove_queue.push_back(idx);
+				*transient_state.nobj_remove_queue_ptr++ = idx;
+				self.cell = 0;
+#else
+				this->nobject_broadphase.swap_remove(CellNode::Index(this->nobjects.index_of(b)), CellNode::Index(this->nobjects.size() - 1));
+				this->nobjects.free(r);
+#endif
+
+				if (new_state == NObject::Exploded) {
+					NObject::explode_obj(ty, lpos, lvel, owner, *this, transient_state);
+				}
+			} else {
+
+#if UPDATE_POS_IMMEDIATE
+#  if !IMPLICIT_NOBJ_CELL
+				b->cell = this->nobject_broadphase.update(narrow<CellNode::Index>(this->nobjects.index_of(b)), b->pos, b->cell);
+#  else
+				state.nobject_broadphase.update(narrow<CellNode::Index>(state.nobjects.index_of(&self)), ipos, self.pos);
+				self.pos = lpos;
+#  endif
+#else
+				auto idx = narrow<CellNode::Index>(state.nobjects.index_of(&self));
+				transient_state.next_nobj_pos[idx].pos = lpos;
+				//transient_state.next_nobj_pos[idx].cur_cell = self.cell;
+#endif
+			}
 		}
 	}
 

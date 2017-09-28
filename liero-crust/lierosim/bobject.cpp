@@ -27,8 +27,10 @@ bool BObject::update(State& state) {
 
 		ModRef& mod = state.mod;
 
-		if (state.level.graphics.dimensions().y && state.level.mat_dirt_rock(ipos)) {
-			state.level.graphics.unsafe_pixel32(ipos.x, ipos.y) = this->color;
+		if (state.level.mat_dirt_rock(ipos)) {
+			if (state.level.graphics.dimensions().y) {
+				state.level.graphics.unsafe_pixel32(ipos.x, ipos.y) = this->color;
+			}
 
 			return false;
 		}

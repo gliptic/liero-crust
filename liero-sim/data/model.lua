@@ -143,6 +143,11 @@ local function generate(header_path, source_path)
 		{'damage', 9, t.U32},
 		{'num_sounds', 6, t.U8})
 
+	ctx:Struct(t.NObjectEmitterType,
+		{'speed', 0, t.F64},
+		{'speed_v', 1, t.F64},
+		{'distribution', 2, t.F64})
+
 	ctx:Struct(t.LevelEffect,
 		{'mframe', 0, t.U32},
 		{'rframe', 1, t.U32},
@@ -209,7 +214,8 @@ local function generate(header_path, source_path)
 		{'bonus_rand_timer_min', 76, ctx:StaticArray(t.U16, 2)},
 		{'bonus_rand_timer_var', 77, ctx:StaticArray(t.U16, 2)},
 		{'bonus_frames', 78, ctx:StaticArray(t.U16, 2)},
-		{'reload_sound', 79, t.U8})
+		{'reload_sound', 79, t.U8},
+		{'blood_emitter', 80, t.NObjectEmitterType})
 
 	ctx:Struct(t.PlayerControls,
 		{'up', 0, t.U16},
