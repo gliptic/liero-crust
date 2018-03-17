@@ -19,6 +19,8 @@ struct HashSet {
 	template<typename K>
 	S remove(K const& key);
 
+	bool insert(S&& key);
+
 	u32 hshift, keycount;
 	S* tab;
 };
@@ -195,6 +197,26 @@ S* HashSet<S>::get(K key) {
 	}
 
 	return v;
+}
+
+template<typename S>
+bool HashSet<S>::insert(S&& key) {
+	S* v;
+
+	u32 hmask = ((u32)-1) >> hshift;
+
+	auto hash = S::hash(key);
+
+	// TODO: Proper conversion key -> slot
+	if (insert(*this, hash, move(key), this->hshift, this->tab, &v)) {
+		return false;
+	}
+
+	if (++this->keycount > hmask - (hmask >> 2)) {
+		resize(*this);
+	}
+
+	return true;
 }
 
 template<typename S>
