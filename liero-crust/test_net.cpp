@@ -302,6 +302,13 @@ struct FindNodeReply {
 	u32 _padding;
 	Contact contacts[];
 
+	FindNodeReply(tl::VecSlice<Contact> contacts) {
+		this->count = contacts.size();
+		for (usize i = 0; i < this->count; ++i) {
+			this->contacts[i] = contacts[i];
+		}
+	}
+
 	bool validate_length(usize len) const {
 		return len >= 4 && len >= size(this->count);
 	}
@@ -423,12 +430,14 @@ struct NodeNetworking {
 				reply->op() = RpcPacket::FindNode | RpcPacket::Reply;
 
 				// TODO: This is not aligned
-				FindNodeReply* fnr = new (reply->payload(), tl::non_null()) FindNodeReply();
+				FindNodeReply* fnr = new (reply->payload(), tl::non_null()) FindNodeReply(tl::VecSlice<Contact>(contacts, contacts + count));
 
+				/*
 				fnr->count = count;
 				for (usize i = 0; i < count; ++i) {
 					fnr->contacts[i] = contacts[i];
 				}
+				*/
 
 				packet->size = RpcPacket::HeaderSize + FindNodeReply::size(count);
 

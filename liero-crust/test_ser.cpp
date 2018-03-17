@@ -25,8 +25,110 @@
 	Field
 */
 
+u32 expand_exec_alloc(u32 dest, ss::Expander& expander, u64 const* program, ss::Offset const& src) {
+	//u64 *p = (u64 *)dest.ptr;
+	u8 const *s = src.ptr();
+	u32 src_size = src.size;
+
+	{
+		u64 op = *program++;
+		u32 src_word_count = op & 0xffffff;
+		//u32 dest_word_count = (op >> 24) & 0xffffff;
+
+		u64 const *flags = program;
+		u64 const *default_data = program + (src_word_count + 63) / 64;
+
+		auto destp = dest;
+
+		for (u32 i = 0; i < src_word_count; ++i) {
+			u8 expanded = (flags[i >> 6] >> (i & 63)) & 1;
+			u64 info = *default_data++;
+			if (expanded) {
+				// Expanding struct in-place
+
+				i32 rel_offs = i32(info & 0xffffffff);
+
+				switch ((info >> 32) & 0xff) {
+				case 0: { // Inline struct
+					u64 const* subprogram = program + rel_offs; // TODO: Overflow in multiply
+					if (i < src_size) {
+						auto const& offs = ((ss::Offset const *)s)[i];
+						destp = expand_exec_alloc(destp, expander, subprogram, offs);
+					} else {
+						ss::Offset dummy_offset;
+						dummy_offset.set(u32(0), 0);
+						destp = expand_exec_alloc(destp, expander, subprogram, dummy_offset);
+					}
+					break;
+				}
+
+				case 1: { // Array
+					if (i < src_size) {
+						auto const& offs = ((ss::Offset const *)s)[i];
+
+						u64 const* subprogram = program + rel_offs;
+						u64 subheader = *subprogram;
+						u32 sub_dest_word_count = (subheader >> 24) & 0xffffff;
+
+						usize array_size = sub_dest_word_count * offs.size; // TODO: Overflow check
+						auto arr = expander.alloc_uninit<u64>(array_size);
+
+						auto p = arr;
+						ss::Offset *sub_src = (ss::Offset *)offs.ptr();
+						for (u32 j = 0; j < offs.size; ++j) {
+							p = expand_exec_alloc(p, expander, subprogram, *sub_src);
+							++sub_src;
+						}
+
+						//((ss::Offset *)destp.ptr)->set(arr.ptr, offs.size);
+						//((ss::Offset *)&expander.buf[destp])->set(arr.ptr, offs.size);
+						((ss::Offset *)expander.word(destp))->set(arr - destp, offs.size);
+
+					} else {
+						// Empty array
+						//((ss::Offset *)destp.ptr)->set(u32(0), 0);
+						((ss::Offset *)expander.word(destp))->set(u32(0), 0);
+					}
+					break;
+				}
+
+				case 2: { // Plain array
+					if (i < src_size) {
+						auto const& offs = ((ss::Offset const *)s)[i];
+
+						u32 sub_dest_byte_count = info & 0xffffffff;
+
+						usize array_size_bytes = sub_dest_byte_count * offs.size; // TODO: Overflow check
+						auto arr = expander.alloc_uninit<u8>(array_size_bytes);
+
+						u8 const *sub_src = offs.ptr();
+						memcpy(&expander.buf[arr], sub_src, array_size_bytes);
+						//((ss::Offset *)destp.ptr)->set(arr.ptr, offs.size);
+						((ss::Offset *)expander.word(destp))->set(arr - destp, offs.size);
+
+					} else {
+						// Empty array
+						//((ss::Offset *)destp.ptr)->set(u32(0), 0);
+						((ss::Offset *)expander.word(destp))->set(u32(0), 0);
+					}
+					break;
+				}
+
+				}
+			} else {
+				//*destp.ptr = info ^ (i < src_size ? ((u64 const *)s)[i] : 0);
+				*expander.word(destp) = info ^ (i < src_size ? ((u64 const *)s)[i] : 0);
+				//destp = destp.add_words(1);
+				++destp;
+			}
+		}
+
+		return destp;
+	}
+}
+
 ss::BaseRef expand_exec(ss::BaseRef dest, ss::Expander& expander, u64 const* program, ss::Offset const& src) {
-	u64 *p = (u64 *)dest.ptr;
+	//u64 *p = (u64 *)dest.ptr;
 	u8 const *s = src.ptr();
 	u32 src_size = src.size;
 
@@ -45,11 +147,12 @@ ss::BaseRef expand_exec(ss::BaseRef dest, ss::Expander& expander, u64 const* pro
 			u64 info = *default_data++;
 			if (expanded) {
 				// Expanding struct in-place
+
 				i32 rel_offs = i32(info & 0xffffffff);
 
 				switch ((info >> 32) & 0xff) {
 				case 0: { // Inline struct
-					u64 const* subprogram = program + rel_offs; // TODO: Overflow in multiply
+					u64 const* subprogram = program + rel_offs; // TODO: Overflow in multiply?
 					if (i < src_size) {
 						auto const& offs = ((ss::Offset const *)s)[i];
 						destp = expand_exec(destp, expander, subprogram, offs);
@@ -66,7 +169,7 @@ ss::BaseRef expand_exec(ss::BaseRef dest, ss::Expander& expander, u64 const* pro
 						auto const& offs = ((ss::Offset const *)s)[i];
 
 						u64 const* subprogram = program + rel_offs;
-						u32 subheader = *subprogram;
+						u64 subheader = *subprogram;
 						u32 sub_dest_word_count = (subheader >> 24) & 0xffffff;
 
 						usize array_size = sub_dest_word_count * offs.size; // TODO: Overflow check
@@ -166,24 +269,28 @@ void test_ser() {
 	u64 *flags_cur = 0;
 	u64 *start_struct = 0;
 	u32 flags_idx = 0;
-	u32 labels[1024] = {};
-	u32 label_idx = 0;
-	LabelRef label_refs[1024];
-	u32 label_ref_idx = 0;
+	//u32 labels[1024] = {};
+	//u32 label_idx = 0;
+	tl::Vec<u32> labels;
+	//LabelRef label_refs[1024];
+	//u32 label_ref_idx = 0;
+	tl::Vec<LabelRef> label_refs;
 
 	auto w = [&](u64 v) { *info_write++ = v; };
-	auto l = [&]() { return label_idx++; };
+	auto l = [&]() { auto i = tl::narrow<u32>(labels.size()); labels.push_back(0); return i; };
 	auto defl = [&](u32 label) { labels[label] = info_write - info_buf; };
 
 	auto usel = [&](u32 label) {
 		u32 pos = info_write - info_buf;
-		label_refs[label_ref_idx++] = LabelRef(label, pos, start_struct + 1 - info_buf);
+		//label_refs[label_ref_idx++] = LabelRef(label, pos, start_struct + 1 - info_buf);
+		label_refs.push_back(LabelRef(label, pos, start_struct + 1 - info_buf));
 	};
 
 	auto finish_labels = [&]() {
-		for (u32 i = 0; i < label_ref_idx; ++i) {
-			u32 pos = label_refs[i].pos;
-			info_buf[pos] = (info_buf[pos] | u32((i32)labels[label_refs[i].label] - label_refs[i].struct_offset));
+		//for (u32 i = 0; i < label_refs.size(); ++i) {
+		for (auto const& lr : label_refs) {
+			u32 pos = lr.pos;
+			info_buf[pos] = (info_buf[pos] | u32((i32)labels[lr.label] - lr.struct_offset));
 		}
 	};
 
@@ -211,14 +318,14 @@ void test_ser() {
 	};
 
 	auto arr_word = [&](u32 struct_label) {
-		*flags_cur |= 1 << flags_idx;
+		*flags_cur |= u64(1) << flags_idx;
 		if (flags_idx++ == 64) {
 			flags_idx = 0;
 			++flags_cur;
 		}
 
 		usel(struct_label);
-		*info_write++ = 0 | (1 << 32);
+		*info_write++ = 0 | (u64(1) << 32);
 	};
 
 	auto main = l();
@@ -235,7 +342,6 @@ void test_ser() {
 	finish_labels();
 
 	ss::Builder builder;
-	//auto root = builder.alloc_words(1);
 	auto b = builder.alloc_words(1);
 	
 	auto arr = builder.alloc_words(1);
@@ -248,11 +354,19 @@ void test_ser() {
 
 	b._field<ss::Offset, 0>().set(arr.ptr, 1);
 
-	//root._field<ss::Offset, 0>().set(b.ptr, 1);
-
 	auto vec = builder.to_vec();
 
 	ss::Expander expander(vec.slice_const());
+
+#if 0
 	expand_exec(r, expander, info_buf + labels[main], *(ss::Offset const *)vec.begin());
+#else
+	auto program = info_buf + labels[main];
+	u64 op = *program;
+	u32 dest_word_count = (op >> 24) & 0xffffff;
+	auto dest = expander.alloc_uninit<u64>(dest_word_count);
+
+	expand_exec_alloc(dest, expander, program, *(ss::Offset const *)vec.begin());
+#endif
 
 }

@@ -369,6 +369,20 @@ struct Expander {
 		: data(data) {
 	}
 
+	u64* word(u32 offset) {
+		return (u64 *)buf.begin() + offset;
+	}
+
+	template<typename T>
+	u32 alloc_uninit(usize count = 1) {
+		usize size = sizeof(T) * count;
+		if ((sizeof(T) & 7) != 0) {
+			size = round_size_up(size);
+		}
+		u8* ptr = this->buf.unsafe_alloc(size);
+		return tl::narrow<u32>((ptr - this->buf.begin()) >> 3);
+	}
+
 	template<typename T>
 	Ref<T> alloc_uninit_raw(usize count = 1) {
 		usize size = sizeof(T) * count;
