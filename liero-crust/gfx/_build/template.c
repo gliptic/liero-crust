@@ -136,7 +136,7 @@ GLenum glewInit() {
 		wgl_crippled = _wglewGetExtensionsStringARB == NULL && _wglewGetExtensionsStringEXT == NULL;
 
 		if (_wglewGetExtensionsStringARB != NULL) {
-			p = (GLubyte*)_wglewGetExtensionsStringARB(wglGetCurrentDC());
+			p = (GLubyte*)_wglewGetExtensionsStringARB(tl::win::wglGetCurrentDC());
 		} else if (_wglewGetExtensionsStringEXT != NULL) {
 			p = (GLubyte*)_wglewGetExtensionsStringEXT();
 		}
@@ -174,3 +174,7 @@ GLenum glewInit() {
 
 	return GLEW_OK;
 }
+
+#ifdef __cplusplus
+}
+#endif

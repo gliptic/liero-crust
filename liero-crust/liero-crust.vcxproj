@@ -194,12 +194,7 @@
     <ClCompile Include="gfx\buttons.cpp" />
     <ClCompile Include="gfx\geom_buffer.cpp" />
     <ClCompile Include="gfx\gfx.cpp" />
-    <ClCompile Include="gfx\GL\glew.cpp">
-      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCpp</CompileAs>
-      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCpp</CompileAs>
-      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCpp</CompileAs>
-      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCpp</CompileAs>
-    </ClCompile>
+    <ClCompile Include="gfx\GL\glew.cpp" />
     <ClCompile Include="gfx\shader.cpp" />
     <ClCompile Include="gfx\texture.cpp" />
     <ClCompile Include="gfx\window_win32.cpp" />

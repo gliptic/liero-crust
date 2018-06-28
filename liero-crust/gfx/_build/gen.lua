@@ -573,7 +573,7 @@ function mod.gen_bindings(buildpath, glpath, specfile)
 
 	lfs.mkdir(glpath)
 
-	writeall(glpath .. "/glew.c", fill_template(buildpath, readall(buildpath .. "template.c"), ctx))
+	writeall(glpath .. "/glew.cpp", fill_template(buildpath, readall(buildpath .. "template.c"), ctx))
 	writeall(glpath .. "/glew.h", fill_template(buildpath, readall(buildpath .. "template.h"), ctx))
 	writeall(glpath .. "/wglew.h", fill_template(buildpath, readall(buildpath .. "templatewgl.h"), ctx))
 end
@@ -588,7 +588,7 @@ function mod.run(base, glpath, specfile)
 		buildpath .. 'templatewgl.h',
 		specfile
 	}, {
-		glpath .. 'glew.c',
+		glpath .. 'glew.cpp',
 		glpath .. 'glew.h',
 		glpath .. 'wglew.h'
 	}, function()

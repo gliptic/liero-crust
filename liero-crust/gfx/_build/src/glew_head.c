@@ -5,6 +5,10 @@
 #  include "glxew.h"
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Define glewGetContext and related helper macros.
  */
@@ -106,7 +110,7 @@ void* dlGetProcAddress (const GLubyte* name)
  * Define glewGetProcAddress.
  */
 #if defined(_WIN32)
-#  define glewGetProcAddress(name) wglGetProcAddress((LPCSTR)name)
+#  define glewGetProcAddress(name) tl::win::wglGetProcAddress((tl::win::LPCSTR)name)
 #else
 #  if defined(__APPLE__)
 #    define glewGetProcAddress(name) NSGLGetProcAddress(name)

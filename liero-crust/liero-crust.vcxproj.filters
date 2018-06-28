@@ -88,12 +88,12 @@
     <ClCompile Include="test_error.cpp" />
     <ClCompile Include="ai2.cpp" />
     <ClCompile Include="test_rand.cpp" />
-    <ClCompile Include="gfx\GL\glew.cpp">
-      <Filter>gfx\GL</Filter>
-    </ClCompile>
     <ClCompile Include="test_irc.cpp" />
     <ClCompile Include="test_http.cpp" />
     <ClCompile Include="test_bloom.cpp" />
+    <ClCompile Include="gfx\GL\glew.cpp">
+      <Filter>gfx\GL</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="gfx">
