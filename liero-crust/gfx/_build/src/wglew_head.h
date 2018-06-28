@@ -8,14 +8,15 @@
 
 #define __wglext_h_
 
-#if !defined(WINAPI)
-#  undef WIN32_LEAN_AND_MEAN
-#  define WIN32_LEAN_AND_MEAN 1
-#  undef NOMINMAX
-#  define NOMINMAX 1
-#  include <windows.h>
-#  undef WIN32_LEAN_AND_MEAN
-#endif
+//#if !defined(WINAPI)
+//#  undef WIN32_LEAN_AND_MEAN
+//#  define WIN32_LEAN_AND_MEAN 1
+//#  undef NOMINMAX
+//#  define NOMINMAX 1
+//#  include <windows.h>
+#  include "tl/windows/miniwindows.h"
+//#  undef WIN32_LEAN_AND_MEAN
+//#endif
 
 /*
  * GLEW_STATIC needs to be set when using the static version.

@@ -110,7 +110,7 @@ struct GeomBuffer {
 
 		set_texture(texture);
 
-		check_vertices(4);
+		check_vertices(8);
 		vertex_color(4);
 		unsafe_vertex(x1, y1);
 		unsafe_vertex(x2, y1);
@@ -121,6 +121,17 @@ struct GeomBuffer {
 		unsafe_texcoord(tx2, ty1);
 		unsafe_texcoord(tx2, ty2);
 		unsafe_texcoord(tx1, ty2);
+	}
+
+	void rect(float x1, float y1, float x2, float y2) {
+		assert(this->geom_mode == gb_quad);
+
+		check_vertices(8);
+		vertex_color(4);
+		unsafe_vertex(x1, y1);
+		unsafe_vertex(x2, y1);
+		unsafe_vertex(x2, y2);
+		unsafe_vertex(x1, y2);
 	}
 
 	// TODO: This shouldn't be exposed

@@ -1,6 +1,7 @@
 #include "sfx.hpp"
 
 #include <windows.h>
+//#include <tl/windows/miniwindows.h>
 #include <objbase.h>
 #include <MMReg.h>
 #include <tl/memory.h>

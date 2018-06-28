@@ -77,7 +77,8 @@ Mod::Mod(tl::FsNode& root) {
 
 	ss::Expander expander(buf);
 
-	auto* tc = expander.expand_root<TcData>(*(ss::StructOffset<TcDataReader> const*)buf.begin());
+	//auto* tc = expander.expand_root<TcData>(*(ss::StructOffset<TcDataReader> const*)buf.begin());
+	auto* tc = (liero::TcData *)expander.expand(liero::TcData::expand_program(), buf.begin());
 
 	this->tcdata = tc;
 	this->weapon_types = tc->weapons().begin();

@@ -20,6 +20,7 @@
 #include "ai.hpp"
 #include "ai2.hpp"
 #include "liero/gui.hpp"
+#include <tl/windows/miniwindows.h>
 
 void mixer_fill(sfx::Stream& str, u32 /*start*/, u32 frames) {
 	sfx::Mixer* mixer = (sfx::Mixer *)str.ud;
@@ -390,14 +391,25 @@ void main()
 	
 	// GUI
 	gui::Context3 gui_ctx(font);
+	ss::Builder settingsBuilder;
 
+	liero::PlayerSettingsBuilder playerSettings(settingsBuilder);
+	gui::LieroGui gui(playerSettings.clone());
+	
 	u64 prev_frame = tl_get_ticks();
 #define TICKS_PER_FRAME (TICKS_IN_SECOND / 60)
 #define TICKS_IN_MS (TICKS_IN_SECOND / 1000)
 
+	// Must do this before transient state can be used
+	transient_state.init(state.worms.size(), mixer_play_sound, &mixer);
+	transient_state.graphics = graphics;
+	u32 gui_version = 1;
+	gui.run(gui_ctx, gui_version, mod);
+
 	//while (state.current_time < 60*60*repeat) {
 	while (true) {
-		{
+
+		if (gui.mode == gui::LieroGui::Game) {
 			liero::ControlState c;
 			c.set(liero::WcLeft, win.button_state[kbA] != 0);
 			c.set(liero::WcRight, win.button_state[kbO] != 0);
@@ -467,25 +479,6 @@ void main()
 				for (auto& vp : viewports) {
 					vp.draw(state, target, transient_state);
 				}
-#if 0
-				for (int i = 0; i < 128; ++i) {
-					f64 radius = 90.0;
-					u32 offset = 200;
-
-					tl::VectorI2 sc;
-
-					/*
-					sc = tl::sincos_fixed(i << 16);
-					target.image.unsafe_pixel32(200 + i32(sc.x * radius / 65536.0), 200 + i32(sc.y * radius / 65536.0)) = 0xffffffff;
-					*/
-
-					sc = tl::sincos_fixed2(i << 16);
-					target.image.unsafe_pixel32(200 + i32(sc.x * radius / 65536.0), 200 + i32(sc.y * radius / 65536.0)) = 0xffff7f7f;
-
-					auto sc2 = tl::sincos(i * (tl::pi2 / 128.0));
-					target.image.unsafe_pixel32(200 + i32(sc2.x * radius), 200 + i32(sc2.y * radius)) = 0xff7f7fff;
-				}
-#endif
 			}
 
 			sampler.sample(Sampler::BeforeDraw);
@@ -507,12 +500,8 @@ void main()
 			win.textured_blended.use();
 
 			// GUI
-			{
-				gui::LieroGui gui;
-				gui.run(gui_ctx);
+			if (gui.mode != gui::LieroGui::Game) {
 				gui_ctx.render2(buf);
-				
-				
 			}
 			
 			//buf.color(1, 1, 1, 1);
@@ -528,16 +517,6 @@ void main()
 		render();
 #endif
 
-#if SDF
-		sdf_program.use();
-
-		buf.quads();
-		buf.tex_rect(0.f, 0.f, 512.0, 512.0, 0.f, 0.f, 1.f, 1.f, sdf.id);
-		//buf.tex_rect(0.f, 0.f, 512.0, 512.0, 0.f, 0.f, 32.0f, 32.0f, sdf.id);
-			
-		buf.clear();
-#endif
-
 #if !BONK_USE_GL2
 		glEnable(GL_BLEND);
 #endif
@@ -545,35 +524,31 @@ void main()
 		//do {
 			if (!win.update()) { return; }
 
-			for (auto& ev : win.events) {
-				if (ev.ev == gfx::ev_button && ev.down) {
-					if (ev.d.button.id == kbDown) {
-						bool found = false;
-						tl::Vec<tl::TreeNode<gui::Context3::Window>::ChildRange> parents;
-						tl::TreeNode<gui::Context3::Window>::ChildRange cur_range = gui_ctx.cur_parent->children();
+			gui_ctx.event = gfx::Event::none();
 
-						for (;;) {
-						begin:
-							if (!cur_range.has_more()) {
-								if (parents.size() > 0) {
-									cur_range = parents.back();
-									parents.pop_back();
-									goto begin;
-								} else {
-									break;
-								}
-							}
+			if (gui.mode != gui::LieroGui::Game) {
 
-							auto* c = cur_range.next();
-							if (found) {
-								gui_ctx.focus_id = c->id;
-								break;
-							} else if (c->id == gui_ctx.focus_id) {
-								found = true;
-							} else if (c->has_children()) {
-								parents.push_back(cur_range);
-								cur_range = c->children();
-							}
+				for (auto& ev : win.events) {
+					if (ev.ev == gfx::ev_button && ev.down) {
+						if (ev.d.button.id == kbDown
+							|| ev.d.button.id == kbUp
+							|| ev.d.button.id == kbLeft
+							|| ev.d.button.id == kbRight
+							|| ev.d.button.id == kbEnter) {
+
+							gui_ctx.event = ev;
+							gui.run(gui_ctx, gui_version, mod);
+						}
+					}
+				}
+
+				gui.run(gui_ctx, gui_version, mod);
+
+			} else {
+				for (auto& ev : win.events) {
+					if (ev.ev == gfx::ev_button && ev.down) {
+						if (ev.d.button.id == kbEscape) {
+							gui.mode = gui::LieroGui::Main;
 						}
 					}
 				}
@@ -601,9 +576,9 @@ void main()
 				i32 sleep = i64(prev_frame + TICKS_PER_FRAME - TICKS_IN_MS * 2 - cur) / TICKS_IN_MS;
 
 				if (sleep > 0) {
-					Sleep(sleep);
+					tl::win::Sleep(sleep);
 				} else {
-					Sleep(0);
+					tl::win::Sleep(0);
 				}
 			}
 		}

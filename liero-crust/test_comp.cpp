@@ -7,10 +7,10 @@
 
 #include "bmp.hpp"
 
-#define WIN32_LEAN_AND_MEAN 1
-#include <windows.h>
+//#define WIN32_LEAN_AND_MEAN 1
+//#include <windows.h>
 
-typedef BOOL(WINAPI * PFNWGLSWAPINTERVALEXTPROC) (int interval);
+//typedef BOOL(WINAPI * PFNWGLSWAPINTERVALEXTPROC) (int interval);
 
 struct DomainInfo {
 	tl::VectorU2 range;
@@ -257,7 +257,7 @@ void test_comp() {
 	memset(canvas.data(), 0, canvas.size());
 
 	
-	PFNWGLSWAPINTERVALEXTPROC sw = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+	PFNWGLSWAPINTERVALEXTPROC sw = (PFNWGLSWAPINTERVALEXTPROC)tl::win::wglGetProcAddress("wglSwapIntervalEXT");
 	sw(1);
 
 	{

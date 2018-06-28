@@ -199,7 +199,7 @@ NObject::ObjState update(NObject& self, State& state, FixedObjectListRange<NObje
 			for (u16 idx; r.next(idx); ) {
 				auto& nobj = state.nobjects.of_index(idx);
 
-				if (nobj.ty_idx != self.ty_idx || nobj.owner != self.owner) {
+				if (nobj.ty_idx != self.ty_idx || nobj.owner != self.owner) { // TODO: Fix https://github.com/gliptic/liero/issues/7
 					auto other_pos = nobj.pos;
 
 					if (other_pos.x <= lpos.x + Scalar(detect_range)

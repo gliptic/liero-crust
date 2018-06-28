@@ -38,9 +38,12 @@ int read_bmp(
 	u32 hsz, offset;
 
 	{
-		auto hdr = src.window(sizeof(BmpHeader));
-		CHECK(!hdr.empty());
-		BmpHeader const* header = (BmpHeader const*)hdr.begin();
+		//auto hdr = src.window(sizeof(BmpHeader));
+		//CHECK(!hdr.empty());
+		//BmpHeader const* header = (BmpHeader const*)hdr.begin();
+
+		BmpHeader const* header = src.window<BmpHeader>();
+		CHECK(header);
 
 		hsz = read_le(header->hsz);
 		offset = read_le(header->offset);

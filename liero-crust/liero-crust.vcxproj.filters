@@ -2,9 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="gfx\GL\glew.c">
-      <Filter>gfx\GL</Filter>
-    </ClCompile>
     <ClCompile Include="gfx\window_win32.cpp">
       <Filter>gfx</Filter>
     </ClCompile>
@@ -91,6 +88,12 @@
     <ClCompile Include="test_error.cpp" />
     <ClCompile Include="ai2.cpp" />
     <ClCompile Include="test_rand.cpp" />
+    <ClCompile Include="gfx\GL\glew.cpp">
+      <Filter>gfx\GL</Filter>
+    </ClCompile>
+    <ClCompile Include="test_irc.cpp" />
+    <ClCompile Include="test_http.cpp" />
+    <ClCompile Include="test_bloom.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="gfx">
@@ -263,6 +266,7 @@
     <Text Include="gfx\_build\ideas.txt">
       <Filter>gfx\_build</Filter>
     </Text>
+    <Text Include="tidbits.txt" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="liero-crust.rc" />

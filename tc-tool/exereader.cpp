@@ -258,6 +258,7 @@ bool load_from_exe(
 			NObjectTypeBuilder nt(tcdata);
 
 			u32 str_size = *strp++;
+			// TODO: Don't understand this "&& str_size <= 13" check, shouldn't it be "|| str_size > 13", or limit str_size to 13
 			if (window.end() - strp < str_size && str_size <= 13) return false;
 
 			auto name = tcdata.alloc_str(tl::StringSlice(strp, strp + str_size));

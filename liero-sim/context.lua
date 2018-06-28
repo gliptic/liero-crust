@@ -22,13 +22,11 @@ local Context_mt = {
 		ty.datatype = function(name, kind)
 			if name then name = ' ' .. name else name = '' end
 			if kind == 'strict' then
-				return 'ss::StructRef<' .. ty.name .. 'Reader>' .. name
-			elseif kind == 'strict2' then
 				return 'ss::StructOffset<' .. ty.name .. 'Reader>' .. name
 			elseif kind == 'expanded' then
 				return ty.name .. name
-			elseif kind == 'expanded2' then
-				return ty.name .. name
+			elseif kind == 'readerref' then
+				return 'ss::Ref<' .. ty.name .. 'Reader>'
 			else
 				return 'ss::Offset' .. name
 			end
@@ -239,7 +237,7 @@ local Context_mt = {
 
 				f.var_start = var_start
 				f.var_stop = var_start + var_size
-				f.var_datatype = var_type.datatype
+				f.var_type = var_type
 
 				pos = math.max(pos, f.var_stop)
 			end
@@ -270,7 +268,7 @@ local Context_mt = {
 		ty.kind = 'ExtType'
 		ty.ref_size = assert(base_type.ref_size)
 		ty.datatype = function(name, kind)
-			if kind == 'expanded' or kind == 'expanded2' then
+			if kind == 'expanded' or kind == 'expanded' then
 				if name then name = ' ' .. name else name = '' end
 				return literal .. name
 			end
@@ -298,7 +296,7 @@ local Context_mt = {
 		ty.kind = 'Enum'
 		ty.ref_size = assert(base_type.ref_size) -- TODO: Support lazy resolve?
 		ty.datatype = function(name, kind)
-			if kind == 'expanded' or kind == 'expanded2' then
+			if kind == 'expanded' then
 				if name then name = ' ' .. name else name = '' end
 				return ty.name .. name
 			end
@@ -326,12 +324,10 @@ local Context_mt = {
 				element_type = element_type,
 				datatype = function(name, kind)
 					if name then name = ' ' .. name else name = '' end
-					if kind == 'expanded2' then
+					if kind == 'expanded' then
 						return 'tl::VecSlice<' .. element_type.datatype(nil, kind) .. ' const>' .. name
-					elseif kind == 'strict2' then
+					elseif kind == 'strict' then
 						return 'ss::ArrayOffset<' .. element_type.datatype(nil, kind) .. '>' .. name
-					elseif kind == 'strict' or kind == 'expanded' then
-						return 'ss::ArrayRef<' .. element_type.datatype(nil, kind) .. '>' .. name
 					else
 						return 'ss::Offset' .. name
 					end
@@ -365,10 +361,114 @@ local Context_mt = {
 		return {t = 'Union', name = name, index = index, ty = ty, ...}
 	end,
 
+	compile_expand_programs = function(self)
+		if self.expand_programs then
+			return self.expand_programs
+		end
+
+		local programs = {}
+		self.expand_programs = programs
+
+		local program_refs = {}
+
+		for _,t in ipairs(self.type_list) do
+			if t.kind == 'Struct' then
+				assert(t.program_pos == nil)
+
+				local program_pos = #programs
+				t.program_pos = program_pos
+
+				local src_word_count = t.size >> 6
+				local dest_word_count = src_word_count
+				local op = src_word_count | (dest_word_count << 24)
+				print('Gen program for', t.name, #programs, src_word_count, dest_word_count, op)
+				programs[#programs + 1] = op
+
+				local expand_flags_size = (src_word_count + 63) >> 6
+				for i = 1,expand_flags_size do
+					programs[#programs + 1] = 0
+				end
+
+				local default_pos = #programs + 1
+
+				for i = 1,src_word_count do
+					programs[#programs + 1] = t.defaults_block[i]
+				end
+
+				for _,f in ipairs(t.all_fields) do
+					local word_pos = f.offset >> 6
+					local op
+					local info = 0
+
+					if f.type.kind == 'String' then
+						op = 3
+					elseif f.type.kind == 'Array' then
+						local element_type = f.type.element_type
+
+						if element_type.kind == 'Struct' then
+							op = 1
+							program_refs[#program_refs + 1] = {
+								from_struct = t,
+								pos = default_pos + word_pos,
+								struct = element_type
+							}
+						elseif element_type.kind == 'String' then
+							op = 4
+						else
+							op = 2
+							info = element_type.ref_size >> 3
+						end
+						
+					elseif f.type.kind == 'Struct' then
+						print('Struct field', t.name, f.type.name)
+						op = 5
+						program_refs[#program_refs + 1] = {
+							from_struct = t,
+							pos = default_pos + word_pos,
+							struct = f.type
+						}
+					end
+
+					if op ~= nil then
+						programs[default_pos + word_pos] = (op << 32) | info
+						programs[program_pos + 2 + (word_pos >> 6)] = programs[program_pos + 2 + (word_pos >> 6)] | (1 << (word_pos & 63))
+					end
+				end
+			end
+		end
+
+		-- Fix references
+		for _,r in ipairs(program_refs) do
+			print(r.from_struct.name, r.struct.name)
+			-- Relative to the second word of from_struct
+			local rel_offs = r.struct.program_pos - (r.from_struct.program_pos + 1)
+			local w = (programs[r.pos] & ~0xffffffff) | (rel_offs & 0xffffffff)
+			print('Writing to', r.pos - 1)
+			programs[r.pos] = w
+		end
+
+		return programs
+	end,
+
 	output_cpp = function(self, namespace, header_path, pr)
 		pr('#include "', header_path, '"\n\n')
 
 		pr('namespace ', namespace, ' {\n\n')
+
+		local programs = self:compile_expand_programs()
+
+		pr('u64 const expand_programs[' .. #programs .. '] = {')
+
+		print('tc root:', programs[1 + 53])
+
+		for i=0,#programs-1 do
+			if (i & 3) == 0 then pr('\n', ii) end
+			pr(programs[1 + i], ', ')
+		end
+
+		pr('\n};\n\n')
+
+		--[[
 
 		for _,t in ipairs(self.type_list) do
 			if t.kind == 'Struct' then
@@ -386,6 +486,7 @@ local Context_mt = {
 				pr('\n};\n\n')
 			end
 		end
+		]]
 
 		pr('}\n')
 	end,
@@ -398,11 +499,15 @@ local Context_mt = {
 		pr('#include <tl/bits.h>\n')
 		pr('#include "base_model.hpp"\n\n')
 
+		local programs = self:compile_expand_programs()
+
 		for _,v in ipairs(self.includes) do
 			pr('#include ', v, '\n\n')
 		end
 
 		pr('namespace ', namespace, ' {\n\n')
+
+		pr('extern u64 const expand_programs[', #programs, '];\n\n')
 
 		for _,t in ipairs(self.type_list) do
 			if t.kind == 'Struct' then
@@ -420,6 +525,12 @@ local Context_mt = {
 			end
 		end
 
+		local function def_types_for_field(f)
+			if f.type.kind == 'StaticArray' then
+				pr(ii, 'typedef ', f.var_type.datatype(f.name .. 'Val', 'expanded'), ';\n')
+			end
+		end
+
 		for _,t in ipairs(self.type_list) do
 			if t.kind == 'Struct' then
 				
@@ -434,13 +545,21 @@ local Context_mt = {
 				do
 					pr('\nstruct alignas(8) ', t.name, ' : ss::Struct {\n')
 
+					--[[
 					pr(ii, 'static u8 _defaults[' .. (t.size >> 3) .. '];\n\n')
+					]]
 
 					pr(ii, 'u8 data[', t.size >> 3, '];\n\n');
 
+					--[[
 					pr(ii, t.name, '() { memcpy(data, _defaults, sizeof(_defaults)); }\n')
+					]]
 
+					pr(ii, 'static u64 const* expand_program() { return expand_programs + ', t.program_pos, '; }\n')
+					
 					for _,f in ipairs(t.all_fields) do
+
+						def_types_for_field(f)
 
 						if f.type.kind == 'String' then
 							pr('\n')
@@ -451,8 +570,8 @@ local Context_mt = {
 						elseif f.type.kind == 'Array' then
 							pr('\n')
 
-							local datatype = f.type.datatype(nil, 'expanded2')
-							local element_datatype = f.type.element_type.datatype(nil, 'expanded2')
+							local datatype = f.type.datatype(nil, 'expanded')
+							local element_datatype = f.type.element_type.datatype(nil, 'expanded')
 
 							pr(ii, datatype, ' ', f.name, '() const { ')
 							pr('return this->_field<ss::ArrayOffset<', element_datatype, '>, ', f.offset >> 3, '>().get(); ')
@@ -460,7 +579,7 @@ local Context_mt = {
 						elseif f.type.kind == 'Struct' then
 							pr('\n')
 
-							local datatype = f.type.datatype(nil, 'expanded2')
+							local datatype = f.type.datatype(nil, 'expanded')
 
 							pr(ii, datatype, ' const& ', f.name, '() const { ')
 							pr('return *this->_field<ss::StructOffset<', datatype, '>, ', f.offset >> 3, '>().get(); ')
@@ -479,7 +598,7 @@ local Context_mt = {
 							local varmask = (1 << (f.var_stop - f.var_start)) - 1
 							local ishmask = ~shmask & varmask
 
-							local var_ref = 'this->_field<' .. f.var_datatype() .. ', ' .. (f.var_start >> 3) .. '>()'
+							local var_ref = 'this->_field<' .. f.var_type.datatype() .. ', ' .. (f.var_start >> 3) .. '>()'
 
 							pr('\n')
 							if f.type.ref_size == 1 then
@@ -492,7 +611,7 @@ local Context_mt = {
 							pr('}')
 
 						elseif f.type.kind == nil or f.type.kind == 'Float' or f.type.kind == 'ExtType' or f.type.kind == 'Enum' then
-							local rtype = f.type.datatype(nil, 'expanded2')
+							local rtype = f.type.datatype(nil, 'expanded')
 							
 							pr('\n')
 							pr(ii, rtype, ' ', f.name, '() const { ')
@@ -500,18 +619,20 @@ local Context_mt = {
 							pr('}')
 						elseif f.type.kind == 'StaticArray' then
 
-							local rtype = f.var_datatype(nil, 'expanded2')
+							local rtype = f.var_type.datatype(nil, 'expanded')
 
-							pr(ii, 'typedef ', f.var_datatype(f.name .. 'Val', 'expanded2'), ';\n')
+							--pr('\n')
+							--pr(ii, 'typedef ', f.var_type.datatype(f.name .. 'Val', 'expanded'), ';\n')
 
 							local var_ref = 'this->_field<' .. f.name .. 'Val const, ' .. (f.var_start >> 3) .. '>()'
 
 							pr(ii, f.name, 'Val const& ', f.name, '() const { ')
 							pr('return ', var_ref, '; ')
-							pr('}\n')
+							pr('}')
 						end
 					end
 
+					--[[
 					do
 						pr('\n\n')
 						pr(ii, 'static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<', t.name, 'Reader> const& src) {\n')
@@ -544,8 +665,8 @@ local Context_mt = {
 								end
 
 								pr(iiii, 'cur_size = expander.', func, '<',
-									element_type.datatype(nil, 'expanded2'), ', ',
-									element_type.datatype(nil, 'strict2'),
+									element_type.datatype(nil, 'expanded'), ', ',
+									element_type.datatype(nil, 'strict'),
 									'>(cur_size, srcp->_field<ss::Offset, ', f.offset >> 3, '>());\n')
 							end
 						end
@@ -585,8 +706,8 @@ local Context_mt = {
 								end
 
 								pr(iiii, 'auto ', f.name, '_copy = expander.', func, '<',
-									element_type.datatype(nil, 'expanded2'), ', ',
-									element_type.datatype(nil, 'strict2'),
+									element_type.datatype(nil, 'expanded'), ', ',
+									element_type.datatype(nil, 'strict'),
 									'>(srcp->_field<ss::Offset, ', f.offset >> 3, '>());\n')
 							end
 						end
@@ -600,7 +721,7 @@ local Context_mt = {
 								local element_type = f.type.element_type
 
 								pr(iiii, 'dest._field_ref<ss::ArrayOffset<',
-									element_type.datatype(nil, 'expanded2'),
+									element_type.datatype(nil, 'expanded'),
 									'>, ', f.offset >> 3, '>().set(', f.name, '_copy);\n')
 							end
 						end
@@ -608,35 +729,47 @@ local Context_mt = {
 						pr(ii, '}\n')
 					end
 
+					]]
+
 					pr('\n};\n')
 				end
 
 				do
-					pr('\nstruct ', t.name, 'Builder : ss::Ref<', t.name, 'Reader> {\n')
+					local basetype = t.datatype(nil, 'readerref')
+					pr('\nstruct ', t.name, 'Builder : ', basetype, ' {\n')
 
 					pr(ii, t.name, 'Builder(ss::Builder& b)\n')
 					pr(iiii, ': Ref<', t.name, 'Reader>(b.alloc<', t.name, 'Reader>()) {\n')
 					pr(ii, '}\n\n')
 
-					pr(ii, 'Ref<', t.name, 'Reader> done() { return std::move(*this); }\n\n')
+					pr(ii, t.name, 'Builder(ss::Ref<', t.name, 'Reader> b)\n')
+					pr(iiii, ': Ref<', t.name, 'Reader>(b) {\n')
+					pr(ii, '}\n\n')
+
+					pr(ii, basetype, ' done() { return std::move(*this); }\n\n')
 
 					for _,f in ipairs(t.all_fields) do
+
+						def_types_for_field(f)
+
+						local function def_set_for_field(f)
+							
+						end
+
 						if f.type.kind == 'String' then
 							pr(ii, 'void ', f.name, '(ss::StringRef v) { ')
 							pr('return this->_field_ref<ss::StringOffset, ', f.offset >> 3, '>().set(v); ')
 							pr('}\n')
 						elseif f.type.kind == 'Struct' then
-							local datatype = f.type.datatype(nil, 'expanded2')
-							local strict_datatype = f.type.datatype(nil, 'strict2')
-							--local element_datatype = f.type.element_type.datatype(nil, 'strict2')
+							local ref_datatype = f.type.datatype(nil, 'readerref')
+							local strict_datatype = f.type.datatype(nil, 'strict')
 
-							pr(ii, 'void ', f.name, '(ss::Ref<', datatype, 'Reader> v) { ')
+							pr(ii, 'void ', f.name, '(', ref_datatype, ' v) { ')
 							pr('return this->_field_ref<', strict_datatype, ', ', f.offset >> 3, '>().set(v); ')
 							pr('}\n')
 						elseif f.type.kind == 'Array' then
 
-							local datatype = f.type.datatype(nil, 'expanded2')
-							local element_datatype = f.type.element_type.datatype(nil, 'strict2')
+							local element_datatype = f.type.element_type.datatype(nil, 'strict')
 
 							pr(ii, 'void ', f.name, '(ss::ArrayRef<', element_datatype, '> v) { ')
 							pr('return this->_field_ref<ss::ArrayOffset<', element_datatype, '>, ', f.offset >> 3, '>().set(v); ')
@@ -657,7 +790,7 @@ local Context_mt = {
 
 							local default = t.var_default(f.offset, f.size)
 
-							local var_ref = 'this->_field<' .. f.var_datatype() .. ', ' .. (f.var_start >> 3) .. '>()'
+							local var_ref = 'this->_field<' .. f.var_type.datatype() .. ', ' .. (f.var_start >> 3) .. '>()'
 
 							pr(ii, 'void ', f.name, '(', rtype, ' v) { ')
 							pr(var_ref, ' = (', var_ref, ' & ', string.format('0x%x', ishmask), ') | ((v ^ ', default, ') << ', offset_in_var, '); ')
@@ -665,7 +798,7 @@ local Context_mt = {
 
 						elseif f.type.kind == nil then
 
-							local rtype = f.var_datatype()
+							local rtype = f.var_type.datatype()
 
 							local var_ref = 'this->_field<' .. rtype .. ', ' .. (f.offset >> 3) .. '>()'
 							local default = t.var_default(f.offset, f.size)
@@ -675,9 +808,7 @@ local Context_mt = {
 							pr('}\n')
 						elseif f.type.kind == 'StaticArray' then
 
-							local rtype = f.var_datatype(nil, 'expanded2')
-
-							pr(ii, 'typedef ', f.var_datatype(f.name .. 'Val', 'expanded2'), ';\n')
+							local rtype = f.var_type.datatype(nil, 'expanded')
 
 							local var_ref = 'this->_field<' .. f.name .. 'Val, ' .. (f.var_start >> 3) .. '>()'
 
@@ -686,7 +817,7 @@ local Context_mt = {
 							pr('}\n')
 						elseif f.type.kind == 'Float' then
 							local storetype = f.type.datatype()
-							local rtype = f.type.datatype(nil, 'expanded2')
+							local rtype = f.type.datatype(nil, 'expanded')
 
 							local var_ref = 'this->_field<' .. storetype .. ', ' .. (f.var_start >> 3) .. '>()'
 							local default = t.var_default(f.offset, f.size)
@@ -709,7 +840,7 @@ local Context_mt = {
 							pr('}\n')
 						elseif f.type.kind == 'Enum' then
 							local storetype = f.type.datatype()
-							local rtype = f.type.datatype(nil, 'expanded2')
+							local rtype = f.type.datatype(nil, 'expanded')
 							
 							local var_ref = 'this->_field<' .. storetype .. ', ' .. (f.var_start >> 3) .. '>()'
 							local default = t.var_default(f.offset, f.size)
@@ -758,7 +889,7 @@ local function Context()
 		end },
 		String = { kind = 'String', ref_size = 64, align = 64, datatype = function(name, kind)
 			if name then name = ' ' .. name else name = '' end
-			if kind == 'strict2' or kind == 'expanded2' then
+			if kind == 'strict' or kind == 'expanded' then
 				return 'ss::StringOffset' .. name
 			else
 				return 'ss::StringRef' .. name
@@ -766,7 +897,7 @@ local function Context()
 		end },
 		F64 = { kind = 'Float', ref_size = 64, align = 64, datatype = function(name, kind)
 			if name then name = ' ' .. name else name = '' end
-			if kind == 'expanded' or kind == 'expanded2' or kind == 'strict' or kind == 'strict2' then
+			if kind == 'expanded' or kind == 'strict' then
 				return 'f64' .. name
 			else
 				return 'u64' .. name

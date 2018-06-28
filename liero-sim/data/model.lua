@@ -228,7 +228,8 @@ local function generate(header_path, source_path)
 
 	ctx:Struct(t.PlayerSettings,
 		{'left_controls', 0, t.PlayerControls},
-		{'right_controls', 1, t.PlayerControls})
+		{'right_controls', 1, t.PlayerControls},
+		{'weapons', 2, ctx:StaticArray(t.U16, 5)})
 
 	--[[
 	ctx:Struct(t.Node,

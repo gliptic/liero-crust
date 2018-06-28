@@ -311,8 +311,7 @@ struct Cellphase {
 			// Fix up neighbours of moved node
 			auto last = get(last_idx);
 
-			set_next(move_to_idx, last.next);
-			set_prev(move_to_idx, last.prev);
+			set(move_to_idx, last.next, last.prev);
 
 			assert(get_next(last.prev) == last_idx);
 			assert(get_prev(last.next) == last_idx);

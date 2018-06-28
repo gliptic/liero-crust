@@ -194,7 +194,12 @@
     <ClCompile Include="gfx\buttons.cpp" />
     <ClCompile Include="gfx\geom_buffer.cpp" />
     <ClCompile Include="gfx\gfx.cpp" />
-    <ClCompile Include="gfx\GL\glew.c" />
+    <ClCompile Include="gfx\GL\glew.cpp">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCpp</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCpp</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCpp</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCpp</CompileAs>
+    </ClCompile>
     <ClCompile Include="gfx\shader.cpp" />
     <ClCompile Include="gfx\texture.cpp" />
     <ClCompile Include="gfx\window_win32.cpp" />
@@ -234,11 +239,14 @@
     <ClCompile Include="runtime.cpp" />
     <ClCompile Include="sfx\mixer.cpp" />
     <ClCompile Include="sfx\sfx_win32.cpp" />
+    <ClCompile Include="test_bloom.cpp" />
     <ClCompile Include="test_comp.cpp" />
     <ClCompile Include="test_error.cpp" />
     <ClCompile Include="test_gfx.cpp" />
     <ClCompile Include="test_gui.cpp" />
+    <ClCompile Include="test_http.cpp" />
     <ClCompile Include="test_io.cpp" />
+    <ClCompile Include="test_irc.cpp" />
     <ClCompile Include="test_net.cpp" />
     <ClCompile Include="test_rand.cpp" />
     <ClCompile Include="test_ser.cpp" />
@@ -339,6 +347,7 @@
   <ItemGroup>
     <Text Include="gfx\glext.txt" />
     <Text Include="gfx\_build\ideas.txt" />
+    <Text Include="tidbits.txt" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="liero-crust.rc" />

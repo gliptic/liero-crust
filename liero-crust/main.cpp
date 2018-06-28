@@ -17,6 +17,10 @@ void test_net5();
 void test_error();
 void test_rand();
 void test_ser();
+void test_ser2();
+void test_irc();
+void test_http();
+void test_bloom();
 
 int main() {
 
@@ -31,9 +35,14 @@ int main() {
 	//test_net5();
 	//test_io();
 	//test_rand();
-	test_ser();
+	//test_ser();
+	//test_ser2();
+
+	//test_irc();
+	//test_http();
 
 	//test_error();
+	test_bloom();
 
 	return 0;
 }

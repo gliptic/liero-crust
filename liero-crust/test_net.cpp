@@ -331,7 +331,7 @@ struct NodeNetworking {
 		, socket(socket)
 		, node(Node::create()) {
 
-		iocp.reg(this->socket.to_handle());
+		iocp.begin_recvfrom(this->socket.to_handle());
 	}
 
 	NodeNetworking(tl::Socket socket, Key const& key)
@@ -339,7 +339,7 @@ struct NodeNetworking {
 		, socket(socket)
 		, node(key) {
 
-		iocp.reg(this->socket.to_handle());
+		iocp.begin_recvfrom(this->socket.to_handle());
 	}
 
 	template<typename T, typename F>
@@ -455,7 +455,7 @@ struct NodeNetworking {
 			if (iocp.wait(events, 1000 * 1000)) {
 				for (auto& ev : events) {
 
-					if (ev.is_read) {
+					if (ev.is_read_()) {
 						//tl::IocpRecvFromOp& req = *(tl::IocpRecvFromOp *)ev.op.get();
 						handle_recv_from(node, ev);
 					}
@@ -528,7 +528,7 @@ void test_net5() {
 	int r = sock1.bind(1567);
 	r = sock2.bind(0);
 
-	iocp.reg(sock1.to_handle());
+	iocp.begin_recvfrom(sock1.to_handle());
 	//r = sock2.sendto_async("lo"_S, dest, &sendop);
 
 	{

@@ -18,7 +18,7 @@
 typedef BOOL(WINAPI * PFNWGLSWAPINTERVALEXTPROC) (int interval);
 
 #define WIN32_LEAN_AND_MEAN 1
-#include <windows.h>
+//#include <windows.h>
 
 #define PARSE_TEST 1
 

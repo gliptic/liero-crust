@@ -50,8 +50,8 @@ static void close(CommonWindow& self) {
 
 CommonWindow::~CommonWindow() {
 	close(*this);
-	if(this->hdc) ReleaseDC((HWND)this->hwnd, (HDC)this->hdc);
-	if(this->hwnd) DestroyWindow((HWND)this->hwnd);
+	if(this->hdc) tl::win::ReleaseDC((tl::win::HWND)this->hwnd, (tl::win::HDC)this->hdc);
+	if(this->hwnd) tl::win::DestroyWindow((tl::win::HWND)this->hwnd);
 }
 
 // Mode guessing experimentally adapted from GLFW library.
@@ -60,8 +60,8 @@ CommonWindow::~CommonWindow() {
 static int find_closest_video_mode(int *w, int *h, int *bpp, int *refresh) {
 
 	int mode, bestmode, match, bestmatch, bestrr;
-	BOOL success;
-	DEVMODEA dm;
+	tl::win::BOOL success;
+	tl::win::DEVMODEA dm;
 
 	// Find best match
 	bestmatch = 0x7fffffff;
@@ -97,16 +97,16 @@ static int find_closest_video_mode(int *w, int *h, int *bpp, int *refresh) {
 static int set_video_mode(int mode) {
 
 	// Get the parameters
-	DEVMODEA dm;
+	tl::win::DEVMODEA dm;
 	dm.dmSize = sizeof(dm);
-	EnumDisplaySettingsA(NULL, mode, &dm);
+	tl::win::EnumDisplaySettingsA(NULL, mode, &dm);
 
 	// Set which fields we want to specify
-	dm.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
+	dm.dmFields = tl::win::DM_PELSWIDTH | tl::win::DM_PELSHEIGHT | tl::win::DM_BITSPERPEL;
 
 	// Change display setting
 	dm.dmSize = sizeof(dm);
-	if (ChangeDisplaySettingsA(&dm, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
+	if (ChangeDisplaySettingsA(&dm, tl::win::CDS_FULLSCREEN) != tl::win::DISP_CHANGE_SUCCESSFUL)
 		return -1;
 	return 0;
 }
@@ -122,22 +122,22 @@ static void on_focus(CommonWindow& self) {
 
 static void on_unfocus(CommonWindow& self) {
 	if (self.fullscreen) {
-		ChangeDisplaySettingsA(NULL, CDS_FULLSCREEN);
+		tl::win::ChangeDisplaySettingsA(NULL, tl::win::CDS_FULLSCREEN);
 	}
 }
 
-static LRESULT TL_STDCALL window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam) {
-	LONG_PTR lptr = GetWindowLongPtrA(wnd, GWLP_USERDATA);
+static tl::win::LRESULT TL_STDCALL window_proc(tl::win::HWND wnd, tl::win::UINT message, tl::win::WPARAM wparam, tl::win::LPARAM lparam) {
+	tl::win::LONG_PTR lptr = tl::win::GetWindowLongPtrA(wnd, tl::win::GWLP_USERDATA);
 
 	if (lptr) {
 		CommonWindow* self = (CommonWindow *)lptr;
 	
 		switch (message) {
-			case WM_SETFOCUS:
-				if(self->fullscreen && IsWindowVisible(wnd)) {
+			case tl::win::WM_SETFOCUS:
+				if(self->fullscreen && tl::win::IsWindowVisible(wnd)) {
 
 					if (self->iconified) {
-						OpenIcon(wnd);
+						tl::win::OpenIcon(wnd);
 						
 						on_focus(*self);
 						self->iconified = false;
@@ -146,54 +146,54 @@ static LRESULT TL_STDCALL window_proc(HWND wnd, UINT message, WPARAM wparam, LPA
 				}
 				break;
 
-			case WM_KILLFOCUS:
-				if (self->fullscreen && IsWindowVisible(wnd)) {
+			case tl::win::WM_KILLFOCUS:
+				if (self->fullscreen && tl::win::IsWindowVisible(wnd)) {
 
 					if (!self->iconified) {
 						on_unfocus(*self);
-						CloseWindow(wnd);
+						tl::win::CloseWindow(wnd);
 						self->iconified = true;
 					}
 					return 0;
 				}
 				break;
 
-			case WM_SYSKEYDOWN:
-			case WM_SYSKEYUP:
+			case tl::win::WM_SYSKEYDOWN:
+			case tl::win::WM_SYSKEYUP:
 
-				if(wparam == VK_F4 && (lparam & (1<<29)))
+				if(wparam == tl::win::VK_F4 && (lparam & (1<<29)))
 					close(*self);
 
 				//printf("%d %x %x\n", message, wparam, lparam);
 				return 0;
 	
-			case WM_SETCURSOR:
-				if (LOWORD(lparam) == HTCLIENT) {
-					SetCursor(0);
+			case tl::win::WM_SETCURSOR:
+				if (tl::win::LOWORD(lparam) == tl::win::HTCLIENT) {
+					tl::win::SetCursor(0);
 					return 1;
 				}
 				break;
 
-			case WM_CLOSE:
+			case tl::win::WM_CLOSE:
 				close(*self);
 				return 0;
 
-			case WM_INPUT: {
-				UINT dwSize;
+			case tl::win::WM_INPUT: {
+				tl::win::UINT dwSize;
 
-				GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
+				tl::win::GetRawInputData((tl::win::HRAWINPUT)lparam, tl::win::RID_INPUT, NULL, &dwSize, sizeof(tl::win::RAWINPUTHEADER));
 
 				if (dwSize > 0) {
 					u32 buf[256];
 					void* rip = buf;
 
-					if (GetRawInputData((HRAWINPUT)lparam, RID_INPUT, rip, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize) {
+					if (tl::win::GetRawInputData((tl::win::HRAWINPUT)lparam, tl::win::RID_INPUT, rip, &dwSize, sizeof(tl::win::RAWINPUTHEADER)) != dwSize) {
 #if 0
 						printf("Wrong size\n");
 #endif
 					}
 
-					RAWINPUT* ri = static_cast<RAWINPUT*>(rip);
+					tl::win::RAWINPUT* ri = static_cast<tl::win::RAWINPUT*>(rip);
 					
 #if 0
 					printf("type = %d. VK = %x. EI = %d. F = %d. M = %d. MC = %d.\n",
@@ -208,54 +208,54 @@ static LRESULT TL_STDCALL window_proc(HWND wnd, UINT message, WPARAM wparam, LPA
 				break;
 			}
 
-			case WM_PAINT: {
+			case tl::win::WM_PAINT: {
 				int swap = 0;
 
 				if (swap) {
-					SwapBuffers((HDC)self->hdc);
+					tl::win::SwapBuffers((tl::win::HDC)self->hdc);
 				}
 
-				ValidateRect(wnd, 0);
+				tl::win::ValidateRect(wnd, 0);
 				return 0;
 			}
 		}
 	}
 
-	return DefWindowProcA(wnd, message, wparam, lparam);
+	return tl::win::DefWindowProcA(wnd, message, wparam, lparam);
 }
 
-static LPCSTR window_class() {
-	WNDCLASSA wc;
-	static LPCSTR name = 0;
+static tl::win::LPCSTR window_class() {
+	tl::win::WNDCLASSA wc;
+	static tl::win::LPCSTR name = 0;
 	if (name)
 		return name;
 
 	memset(&wc, 0, sizeof(wc));
 	wc.lpszClassName = "m";
-	wc.style = CS_OWNDC;
+	wc.style = tl::win::CS_OWNDC;
 	wc.lpfnWndProc = window_proc;
 	//wc.cbClsExtra = 0;
 	//wc.cbWndExtra = 0;
-	wc.hInstance = GetModuleHandleA(0);
-	wc.hIcon = LoadIconA(wc.hInstance, MAKEINTRESOURCEA(101));
+	wc.hInstance = tl::win::GetModuleHandleA(0);
+	wc.hIcon = tl::win::LoadIconA(wc.hInstance, MAKEINTRESOURCEA(101));
 	//wc.hCursor = 0;
 	//wc.hbrBackground = 0;
 	//wc.lpszMenuName = 0;
 		
-	name = (LPCSTR)RegisterClassA(&wc);
+	name = (tl::win::LPCSTR)tl::win::RegisterClassA(&wc);
 	//check(name, "registering a window class");
 	return name;
 }
 
 static void process_messages() {
 
-	MSG message;
+	tl::win::MSG message;
 
-	while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE)) {
+	while (tl::win::PeekMessageA(&message, 0, 0, 0, tl::win::PM_REMOVE)) {
 		//if (!handledByHook(message))
 		{
-			TranslateMessage(&message);
-			DispatchMessageA(&message);
+			tl::win::TranslateMessage(&message);
+			tl::win::DispatchMessageA(&message);
 		}
 	}
 		
@@ -285,7 +285,7 @@ static HANDLE di_library;
 #endif
 
 static int setup_input(CommonWindow& self) {
-	RAWINPUTDEVICE Rid[1];
+	tl::win::RAWINPUTDEVICE Rid[1];
 
 	/*
 	Rid[0].usUsagePage = 0x01;
@@ -363,29 +363,29 @@ static int setup_input(CommonWindow& self) {
 	IDirectInputDevice_Acquire(mouseRaw);
 #endif
 
-	self.swapMouse = GetSystemMetrics(SM_SWAPBUTTON) != 0;
+	self.swapMouse = tl::win::GetSystemMetrics(tl::win::SM_SWAPBUTTON) != 0;
 	return 0;
 fail:
 	return -1;
 }
 
 static void update_mouse_pos(CommonWindow* self) {
-	POINT pos;
-	if(!GetCursorPos(&pos) || !ScreenToClient((HWND)self->hwnd, &pos))
+	tl::win::POINT pos;
+	if(!tl::win::GetCursorPos(&pos) || !tl::win::ScreenToClient((tl::win::HWND)self->hwnd, &pos))
 		return;
 
 	if(pos.x < 0) pos.x = 0;
 	if(pos.y < 0) pos.y = 0;
-	if(pos.x >= (LONG)self->width) pos.x = self->width;
-	if(pos.y >= (LONG)self->height) pos.y = self->height;
+	if(pos.x >= (tl::win::LONG)self->width) pos.x = self->width;
+	if(pos.y >= (tl::win::LONG)self->height) pos.y = self->height;
 
 	self->mouseX = (int)pos.x;
 	self->mouseY = (int)pos.y;
 }
 
 static void update_win32_keys(CommonWindow* self) {
-	BYTE keystate[256];
-	if (GetKeyboardState(keystate)) {
+	tl::win::BYTE keystate[256];
+	if (tl::win::GetKeyboardState(keystate)) {
 		for (int i = 0; i < 256; ++i) {
 			int key = gfx_native_to_keys[i];
 			if (key) {
@@ -486,49 +486,49 @@ static void update_di_buttons(CommonWindow* self, int collect_events) {
 }
 #endif
 
-static HGLRC create_context(int pf, HDC hdc, PIXELFORMATDESCRIPTOR* pfd) {
-	HGLRC dummyHrc;
-	if(!SetPixelFormat(hdc, pf, pfd)) return NULL;
+static tl::win::HGLRC create_context(int pf, tl::win::HDC hdc, tl::win::PIXELFORMATDESCRIPTOR* pfd) {
+	tl::win::HGLRC dummyHrc;
+	if(!tl::win::SetPixelFormat(hdc, pf, pfd)) return NULL;
 
-	dummyHrc = wglCreateContext(hdc);
+	dummyHrc = tl::win::wglCreateContext(hdc);
 	if(!dummyHrc) return NULL;
 	if(!wglMakeCurrent(hdc, dummyHrc)) return NULL;
 	return dummyHrc;
 }
 
 static int create_window(CommonWindow* self, int dummy, int fullscreen) {
-	DWORD style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
-	DWORD styleEx = WS_EX_APPWINDOW;
-	HDC hdc = NULL;
-	HWND hwnd = NULL;
-	HGLRC dummyHrc = NULL;
-	PIXELFORMATDESCRIPTOR pfd;
+	tl::win::DWORD style = tl::win::WS_CLIPSIBLINGS | tl::win::WS_CLIPCHILDREN;
+	tl::win::DWORD styleEx = tl::win::WS_EX_APPWINDOW;
+	tl::win::HDC hdc = NULL;
+	tl::win::HWND hwnd = NULL;
+	tl::win::HGLRC dummyHrc = NULL;
+	tl::win::PIXELFORMATDESCRIPTOR pfd;
 	int pf = 0;
 	int chosenFsaa = 0;
 		
 	if(fullscreen) {
-		style |= WS_POPUP;
-		styleEx |= WS_EX_TOPMOST;
+		style |= tl::win::WS_POPUP;
+		styleEx |= tl::win::WS_EX_TOPMOST;
 	} else {
-		style |= WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
-		styleEx |= WS_EX_WINDOWEDGE;
+		style |= tl::win::WS_CAPTION | tl::win::WS_SYSMENU | tl::win::WS_MINIMIZEBOX;
+		styleEx |= tl::win::WS_EX_WINDOWEDGE;
 	}
 
 	// Create window
-	hwnd = CreateWindowExA(styleEx, window_class(), 0, style,
-		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0,
-		GetModuleHandleA(0), 0);
+	hwnd = tl::win::CreateWindowExA(styleEx, window_class(), 0, style,
+		tl::win::CW_USEDEFAULT, tl::win::CW_USEDEFAULT, tl::win::CW_USEDEFAULT, tl::win::CW_USEDEFAULT, 0, 0,
+		tl::win::GetModuleHandleA(0), 0);
 	CHECKB(hwnd);
 
-	hdc = GetDC(hwnd);
+	hdc = tl::win::GetDC(hwnd);
 	CHECKB(hdc);
 
 	memset(&pfd, 0, sizeof(pfd));
 	pfd.nSize        = sizeof(pfd);
 	pfd.nVersion     = 1;
-	pfd.dwFlags      = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-	pfd.iLayerType   = PFD_MAIN_PLANE;
-	pfd.iPixelType   = PFD_TYPE_RGBA;
+	pfd.dwFlags      = tl::win::PFD_DRAW_TO_WINDOW | tl::win::PFD_SUPPORT_OPENGL | tl::win::PFD_DOUBLEBUFFER;
+	pfd.iLayerType   = tl::win::PFD_MAIN_PLANE;
+	pfd.iPixelType   = tl::win::PFD_TYPE_RGBA;
 	if(dummy) {
 		pfd.cColorBits = 16;
 	} else {
@@ -559,7 +559,7 @@ static int create_window(CommonWindow* self, int dummy, int fullscreen) {
 		// Dummy finds out valid FSAA levels.
 		// Real tries to select pixel format with wglChoosePixelFormatARB.
 		int formats[256];
-		UINT count = 0;
+		tl::win::UINT count = 0;
 
 		int iattr[] = {
 			WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
@@ -603,14 +603,14 @@ static int create_window(CommonWindow* self, int dummy, int fullscreen) {
 
 		common_setup_gl((CommonWindow*)self);
 
-		SetLastError(0);
-		SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)self);
+		tl::win::SetLastError(0);
+		tl::win::SetWindowLongPtrA(hwnd, tl::win::GWLP_USERDATA, (tl::win::LONG_PTR)self);
 	} else {
 		// It's over for dummy
-		wglMakeCurrent(0, 0);
-		wglDeleteContext(dummyHrc);
+		tl::win::wglMakeCurrent(0, 0);
+		tl::win::wglDeleteContext(dummyHrc);
 
-		DestroyWindow(hwnd);
+		tl::win::DestroyWindow(hwnd);
 		return 0;
 	}
 
@@ -620,7 +620,7 @@ static int create_window(CommonWindow* self, int dummy, int fullscreen) {
 	
 	{ // Place window
 		// Determine the size the window needs to have.
-		RECT rc;
+		tl::win::RECT rc;
 		unsigned windowW, windowH;
 		int windowX = 0;
 		int windowY = 0;
@@ -629,31 +629,31 @@ static int create_window(CommonWindow* self, int dummy, int fullscreen) {
 		rc.top = 0;
 		rc.right = self->width;
 		rc.bottom = self->height;
-		AdjustWindowRectEx(&rc, style, 0, styleEx);
+		tl::win::AdjustWindowRectEx(&rc, style, 0, styleEx);
 		windowW = rc.right - rc.left;
 		windowH = rc.bottom - rc.top;
 
 		if(!fullscreen) {
 			// Center the window.
-			HWND desktopWindow = GetDesktopWindow();
-			RECT desktopRect;
+			tl::win::HWND desktopWindow = tl::win::GetDesktopWindow();
+			tl::win::RECT desktopRect;
 			int desktopW, desktopH;
 
-			GetClientRect(desktopWindow, &desktopRect);
+			tl::win::GetClientRect(desktopWindow, &desktopRect);
 			desktopW = desktopRect.right - desktopRect.left;
 			desktopH = desktopRect.bottom - desktopRect.top;
 			windowX = (desktopW - windowW) / 2;
 			windowY = (desktopH - windowH) / 2;
 		}
 
-		MoveWindow((HWND)self->hwnd, windowX, windowY, windowW, windowH, 0);
+		tl::win::MoveWindow((tl::win::HWND)self->hwnd, windowX, windowY, windowW, windowH, 0);
 
 		CHECK(setup_input(*self));
 	}
 	return 0;
 
 fail:
-	if(hwnd) DestroyWindow(hwnd);
+	if(hwnd) tl::win::DestroyWindow(hwnd);
 	return -1;
 }
 
@@ -678,7 +678,7 @@ fail:
 
 int CommonWindow::set_visible(bool state) {
 
-	if(!!IsWindowVisible((HWND)this->hwnd) == state)
+	if(!!tl::win::IsWindowVisible((tl::win::HWND)this->hwnd) == state)
 		return 0; // Already in the right state
 		
 	if (state) {
@@ -687,12 +687,12 @@ int CommonWindow::set_visible(bool state) {
 		on_unfocus(*this);
 	}
 		
-	ShowWindow((HWND)this->hwnd, state ? SW_SHOW : SW_HIDE);
+	tl::win::ShowWindow((tl::win::HWND)this->hwnd, state ? tl::win::SW_SHOW : tl::win::SW_HIDE);
 
 
 	{
-		DEVMODEA devMode;
-		if (EnumDisplaySettingsA(NULL, ENUM_CURRENT_SETTINGS, &devMode)) {
+		tl::win::DEVMODEA devMode;
+		if (EnumDisplaySettingsA(NULL, tl::win::ENUM_CURRENT_SETTINGS, &devMode)) {
 			this->refresh_rate = devMode.dmDisplayFrequency;
 #if GFX_PREDICT_VSYNC
 			this->min_swap_interval = TICKS_IN_SECOND / devMode.dmDisplayFrequency;
@@ -735,7 +735,7 @@ int CommonWindow::end_drawing() {
 	}
 #endif
 
-	SwapBuffers((HDC)this->hdc);
+	tl::win::SwapBuffers((tl::win::HDC)this->hdc);
 	
 #if GFX_PREDICT_VSYNC
 	this->prev_swap_end = this->swap_end;

@@ -465,8 +465,10 @@ function mod.gen_bindings(buildpath, glpath, specfile)
 		for fname,func in pairs(all_spec_used.func_name_to_func) do
 			if func.ext.name:sub(1, #prefix) == prefix then
 				ctx.NAME = fname
+				local parms = func.parms
+				parms = parms:gsub("HDC", "tl::win::HDC")
 				ctx.TYPEDECL = func.rtype .. " (*PFN" .. fname:upper() .. "PROC)(" .. func.parms .. ")"
-				ctx.WGL_TYPEDECL = func.rtype .. " (WINAPI *PFN" .. fname:upper() .. "PROC)(" .. func.parms .. ")"
+				ctx.WGL_TYPEDECL = func.rtype .. " (TL_WINAPI *PFN" .. fname:upper() .. "PROC)(" .. func.parms .. ")"
 				ctx.TYPENAME = "PFN" .. fname:upper() .. "PROC"
 				ctx.INDEX = all_spec_used.func_to_global_id[func]-1
 				result[#result + 1] = fill_template(buildpath, pattern, ctx)

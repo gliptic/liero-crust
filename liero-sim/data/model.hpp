@@ -9,6 +9,8 @@
 
 namespace liero {
 
+extern u64 const expand_programs[102];
+
 struct WeaponType;
 struct WeaponTypeList;
 struct NObjectType;
@@ -44,11 +46,9 @@ struct alignas(8) WeaponTypeReader : ss::Struct {
 };
 
 struct alignas(8) WeaponType : ss::Struct {
-	static u8 _defaults[72];
-
 	u8 data[72];
 
-	WeaponType() { memcpy(data, _defaults, sizeof(_defaults)); }
+	static u64 const* expand_program() { return expand_programs + 0; }
 
 	tl::StringSlice name() const { return this->_field<ss::StringOffset, 0>().get(); }
 	f64 speed() const { return this->_field<f64, 8>(); }
@@ -64,28 +64,6 @@ struct alignas(8) WeaponType : ss::Struct {
 	f64 recoil() const { return this->_field<f64, 56>(); }
 	i16 fire_sound() const { return this->_field<i16, 64>(); }
 	u8 muzzle_fire() const { return this->_field<u8, 39>(); }
-
-	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<WeaponTypeReader> const& src) {
-		TL_UNUSED(expander); TL_UNUSED(src);
-		WeaponTypeReader const* srcp = src.get();
-		cur_size += ss::round_size_up(srcp->_field<ss::StringOffset, 0>().size);
-		return cur_size;
-	}
-
-	static void expand_raw(ss::Ref<WeaponType> dest, ss::Expander& expander, ss::StructOffset<WeaponTypeReader> const& src) {
-		TL_UNUSED(expander);
-		u32 src_size = src.size;
-		WeaponTypeReader const* srcp = src.get();
-		u64 *p = (u64 *)dest.ptr;
-		u64 const *s = (u64 const*)srcp;
-		u64 const *d = (u64 const*)WeaponType::_defaults;
-		for (u32 i = 0; i < 9; ++i) {
-			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
-		}
-		auto name_copy = expander.alloc_str_raw(srcp->_field<ss::StringOffset, 0>().get());
-		dest._field_ref<ss::StringOffset, 0>().set(name_copy);
-	}
-
 };
 
 struct WeaponTypeBuilder : ss::Ref<WeaponTypeReader> {
@@ -93,7 +71,11 @@ struct WeaponTypeBuilder : ss::Ref<WeaponTypeReader> {
 		: Ref<WeaponTypeReader>(b.alloc<WeaponTypeReader>()) {
 	}
 
-	Ref<WeaponTypeReader> done() { return std::move(*this); }
+	WeaponTypeBuilder(ss::Ref<WeaponTypeReader> b)
+		: Ref<WeaponTypeReader>(b) {
+	}
+
+	ss::Ref<WeaponTypeReader> done() { return std::move(*this); }
 
 	void name(ss::StringRef v) { return this->_field_ref<ss::StringOffset, 0>().set(v); }
 
@@ -138,35 +120,11 @@ struct alignas(8) WeaponTypeListReader : ss::Struct {
 };
 
 struct alignas(8) WeaponTypeList : ss::Struct {
-	static u8 _defaults[8];
-
 	u8 data[8];
 
-	WeaponTypeList() { memcpy(data, _defaults, sizeof(_defaults)); }
+	static u64 const* expand_program() { return expand_programs + 11; }
 
 	tl::VecSlice<WeaponType const> list() const { return this->_field<ss::ArrayOffset<WeaponType>, 0>().get(); }
-
-	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<WeaponTypeListReader> const& src) {
-		TL_UNUSED(expander); TL_UNUSED(src);
-		WeaponTypeListReader const* srcp = src.get();
-		cur_size = expander.array_calc_size<WeaponType, ss::StructOffset<WeaponTypeReader>>(cur_size, srcp->_field<ss::Offset, 0>());
-		return cur_size;
-	}
-
-	static void expand_raw(ss::Ref<WeaponTypeList> dest, ss::Expander& expander, ss::StructOffset<WeaponTypeListReader> const& src) {
-		TL_UNUSED(expander);
-		u32 src_size = src.size;
-		WeaponTypeListReader const* srcp = src.get();
-		u64 *p = (u64 *)dest.ptr;
-		u64 const *s = (u64 const*)srcp;
-		u64 const *d = (u64 const*)WeaponTypeList::_defaults;
-		for (u32 i = 0; i < 1; ++i) {
-			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
-		}
-		auto list_copy = expander.expand_array_raw<WeaponType, ss::StructOffset<WeaponTypeReader>>(srcp->_field<ss::Offset, 0>());
-		dest._field_ref<ss::ArrayOffset<WeaponType>, 0>().set(list_copy);
-	}
-
 };
 
 struct WeaponTypeListBuilder : ss::Ref<WeaponTypeListReader> {
@@ -174,7 +132,11 @@ struct WeaponTypeListBuilder : ss::Ref<WeaponTypeListReader> {
 		: Ref<WeaponTypeListReader>(b.alloc<WeaponTypeListReader>()) {
 	}
 
-	Ref<WeaponTypeListReader> done() { return std::move(*this); }
+	WeaponTypeListBuilder(ss::Ref<WeaponTypeListReader> b)
+		: Ref<WeaponTypeListReader>(b) {
+	}
+
+	ss::Ref<WeaponTypeListReader> done() { return std::move(*this); }
 
 	void list(ss::ArrayRef<ss::StructOffset<WeaponTypeReader>> v) { return this->_field_ref<ss::ArrayOffset<ss::StructOffset<WeaponTypeReader>>, 0>().set(v); }
 
@@ -186,11 +148,9 @@ struct alignas(8) NObjectTypeReader : ss::Struct {
 };
 
 struct alignas(8) NObjectType : ss::Struct {
-	static u8 _defaults[176];
-
 	u8 data[176];
 
-	NObjectType() { memcpy(data, _defaults, sizeof(_defaults)); }
+	static u64 const* expand_program() { return expand_programs + 14; }
 
 	Scalar gravity() const { return this->_field<Scalar, 0>(); }
 	u32 splinter_count() const { return this->_field<u32, 4>(); }
@@ -211,7 +171,6 @@ struct alignas(8) NObjectType : ss::Struct {
 	i32 start_frame() const { return this->_field<i32, 44>(); }
 	i32 num_frames() const { return this->_field<i32, 88>(); }	typedef tl::Color colorsVal[2];
 	colorsVal const& colors() const { return this->_field<colorsVal const, 92>(); }
-
 	u32 detect_distance() const { return this->_field<u32, 100>(); }
 	bool expl_ground() const { return (this->_field<u8, 11>() & 1) != 0; }
 	bool sobj_trail_when_hitting() const { return (this->_field<u8, 11>() & 2) != 0; }
@@ -239,23 +198,6 @@ struct alignas(8) NObjectType : ss::Struct {
 	u32 worm_col_blood() const { return this->_field<u32, 156>(); }
 	u32 nobj_trail_interval_inv() const { return this->_field<u32, 160>(); }
 	f64 splinter_speed() const { return this->_field<f64, 168>(); }
-
-	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<NObjectTypeReader> const& src) {
-		TL_UNUSED(expander); TL_UNUSED(src);
-		return cur_size;
-	}
-
-	static void expand_raw(ss::Ref<NObjectType> dest, ss::Expander& expander, ss::StructOffset<NObjectTypeReader> const& src) {
-		TL_UNUSED(expander);
-		u32 src_size = src.size;
-		NObjectTypeReader const* srcp = src.get();
-		u64 *p = (u64 *)dest.ptr;
-		u64 const *s = (u64 const*)srcp;
-		u64 const *d = (u64 const*)NObjectType::_defaults;
-		for (u32 i = 0; i < 22; ++i) {
-			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
-		}
-	}
 };
 
 struct NObjectTypeBuilder : ss::Ref<NObjectTypeReader> {
@@ -263,7 +205,11 @@ struct NObjectTypeBuilder : ss::Ref<NObjectTypeReader> {
 		: Ref<NObjectTypeReader>(b.alloc<NObjectTypeReader>()) {
 	}
 
-	Ref<NObjectTypeReader> done() { return std::move(*this); }
+	NObjectTypeBuilder(ss::Ref<NObjectTypeReader> b)
+		: Ref<NObjectTypeReader>(b) {
+	}
+
+	ss::Ref<NObjectTypeReader> done() { return std::move(*this); }
 
 	void gravity(Scalar v) { this->_field<i32, 0>() = (v.raw()) ^ 0; }
 	void splinter_count(u32 v) { this->_field<u32, 4>() = v ^ 0; }
@@ -376,11 +322,9 @@ struct alignas(8) SObjectTypeReader : ss::Struct {
 };
 
 struct alignas(8) SObjectType : ss::Struct {
-	static u8 _defaults[32];
-
 	u8 data[32];
 
-	SObjectType() { memcpy(data, _defaults, sizeof(_defaults)); }
+	static u64 const* expand_program() { return expand_programs + 38; }
 
 	u32 anim_delay() const { return this->_field<u32, 0>(); }
 	u16 start_frame() const { return this->_field<u16, 4>(); }
@@ -392,24 +336,6 @@ struct alignas(8) SObjectType : ss::Struct {
 	Scalar worm_blow_away() const { return this->_field<Scalar, 20>(); }
 	Scalar nobj_blow_away() const { return this->_field<Scalar, 24>(); }
 	u32 damage() const { return this->_field<u32, 28>(); }
-
-	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<SObjectTypeReader> const& src) {
-		TL_UNUSED(expander); TL_UNUSED(src);
-		return cur_size;
-	}
-
-	static void expand_raw(ss::Ref<SObjectType> dest, ss::Expander& expander, ss::StructOffset<SObjectTypeReader> const& src) {
-		TL_UNUSED(expander);
-		u32 src_size = src.size;
-		SObjectTypeReader const* srcp = src.get();
-		u64 *p = (u64 *)dest.ptr;
-		u64 const *s = (u64 const*)srcp;
-		u64 const *d = (u64 const*)SObjectType::_defaults;
-		for (u32 i = 0; i < 4; ++i) {
-			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
-		}
-	}
-
 };
 
 struct SObjectTypeBuilder : ss::Ref<SObjectTypeReader> {
@@ -417,7 +343,11 @@ struct SObjectTypeBuilder : ss::Ref<SObjectTypeReader> {
 		: Ref<SObjectTypeReader>(b.alloc<SObjectTypeReader>()) {
 	}
 
-	Ref<SObjectTypeReader> done() { return std::move(*this); }
+	SObjectTypeBuilder(ss::Ref<SObjectTypeReader> b)
+		: Ref<SObjectTypeReader>(b) {
+	}
+
+	ss::Ref<SObjectTypeReader> done() { return std::move(*this); }
 
 	void anim_delay(u32 v) { this->_field<u32, 0>() = v ^ 0; }
 	void start_frame(u16 v) { this->_field<u16, 4>() = v ^ 0; }
@@ -438,33 +368,13 @@ struct alignas(8) NObjectEmitterTypeReader : ss::Struct {
 };
 
 struct alignas(8) NObjectEmitterType : ss::Struct {
-	static u8 _defaults[24];
-
 	u8 data[24];
 
-	NObjectEmitterType() { memcpy(data, _defaults, sizeof(_defaults)); }
+	static u64 const* expand_program() { return expand_programs + 44; }
 
 	f64 speed() const { return this->_field<f64, 0>(); }
 	f64 speed_v() const { return this->_field<f64, 8>(); }
 	f64 distribution() const { return this->_field<f64, 16>(); }
-
-	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<NObjectEmitterTypeReader> const& src) {
-		TL_UNUSED(expander); TL_UNUSED(src);
-		return cur_size;
-	}
-
-	static void expand_raw(ss::Ref<NObjectEmitterType> dest, ss::Expander& expander, ss::StructOffset<NObjectEmitterTypeReader> const& src) {
-		TL_UNUSED(expander);
-		u32 src_size = src.size;
-		NObjectEmitterTypeReader const* srcp = src.get();
-		u64 *p = (u64 *)dest.ptr;
-		u64 const *s = (u64 const*)srcp;
-		u64 const *d = (u64 const*)NObjectEmitterType::_defaults;
-		for (u32 i = 0; i < 3; ++i) {
-			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
-		}
-	}
-
 };
 
 struct NObjectEmitterTypeBuilder : ss::Ref<NObjectEmitterTypeReader> {
@@ -472,7 +382,11 @@ struct NObjectEmitterTypeBuilder : ss::Ref<NObjectEmitterTypeReader> {
 		: Ref<NObjectEmitterTypeReader>(b.alloc<NObjectEmitterTypeReader>()) {
 	}
 
-	Ref<NObjectEmitterTypeReader> done() { return std::move(*this); }
+	NObjectEmitterTypeBuilder(ss::Ref<NObjectEmitterTypeReader> b)
+		: Ref<NObjectEmitterTypeReader>(b) {
+	}
+
+	ss::Ref<NObjectEmitterTypeReader> done() { return std::move(*this); }
 
 
 	void speed(f64 v) {
@@ -501,34 +415,14 @@ struct alignas(8) LevelEffectReader : ss::Struct {
 };
 
 struct alignas(8) LevelEffect : ss::Struct {
-	static u8 _defaults[16];
-
 	u8 data[16];
 
-	LevelEffect() { memcpy(data, _defaults, sizeof(_defaults)); }
+	static u64 const* expand_program() { return expand_programs + 49; }
 
 	u32 mframe() const { return this->_field<u32, 0>(); }
 	u32 rframe() const { return this->_field<u32, 4>(); }
 	u32 sframe() const { return this->_field<u32, 8>(); }
 	bool draw_back() const { return (this->_field<u8, 12>() & 1) != 0; }
-
-	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<LevelEffectReader> const& src) {
-		TL_UNUSED(expander); TL_UNUSED(src);
-		return cur_size;
-	}
-
-	static void expand_raw(ss::Ref<LevelEffect> dest, ss::Expander& expander, ss::StructOffset<LevelEffectReader> const& src) {
-		TL_UNUSED(expander);
-		u32 src_size = src.size;
-		LevelEffectReader const* srcp = src.get();
-		u64 *p = (u64 *)dest.ptr;
-		u64 const *s = (u64 const*)srcp;
-		u64 const *d = (u64 const*)LevelEffect::_defaults;
-		for (u32 i = 0; i < 2; ++i) {
-			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
-		}
-	}
-
 };
 
 struct LevelEffectBuilder : ss::Ref<LevelEffectReader> {
@@ -536,7 +430,11 @@ struct LevelEffectBuilder : ss::Ref<LevelEffectReader> {
 		: Ref<LevelEffectReader>(b.alloc<LevelEffectReader>()) {
 	}
 
-	Ref<LevelEffectReader> done() { return std::move(*this); }
+	LevelEffectBuilder(ss::Ref<LevelEffectReader> b)
+		: Ref<LevelEffectReader>(b) {
+	}
+
+	ss::Ref<LevelEffectReader> done() { return std::move(*this); }
 
 	void mframe(u32 v) { this->_field<u32, 0>() = v ^ 0; }
 	void rframe(u32 v) { this->_field<u32, 4>() = v ^ 0; }
@@ -551,11 +449,9 @@ struct alignas(8) TcDataReader : ss::Struct {
 };
 
 struct alignas(8) TcData : ss::Struct {
-	static u8 _defaults[296];
-
 	u8 data[296];
 
-	TcData() { memcpy(data, _defaults, sizeof(_defaults)); }
+	static u64 const* expand_program() { return expand_programs + 53; }
 
 	tl::VecSlice<NObjectType const> nobjects() const { return this->_field<ss::ArrayOffset<NObjectType>, 0>().get(); }
 	tl::VecSlice<SObjectType const> sobjects() const { return this->_field<ss::ArrayOffset<SObjectType>, 8>().get(); }
@@ -610,56 +506,12 @@ struct alignas(8) TcData : ss::Struct {
 	tl::VecSlice<u8 const> materials() const { return this->_field<ss::ArrayOffset<u8>, 256>().get(); }
 	tl::VecSlice<ss::StringOffset const> sound_names() const { return this->_field<ss::ArrayOffset<ss::StringOffset>, 264>().get(); }
 	u8 throw_sound() const { return this->_field<u8, 250>(); }	typedef u16 bonus_sobjVal[2];
-	bonus_sobjVal const& bonus_sobj() const { return this->_field<bonus_sobjVal const, 252>(); }
-	typedef u16 bonus_rand_timer_minVal[2];
-	bonus_rand_timer_minVal const& bonus_rand_timer_min() const { return this->_field<bonus_rand_timer_minVal const, 272>(); }
-	typedef u16 bonus_rand_timer_varVal[2];
-	bonus_rand_timer_varVal const& bonus_rand_timer_var() const { return this->_field<bonus_rand_timer_varVal const, 276>(); }
-	typedef u16 bonus_framesVal[2];
+	bonus_sobjVal const& bonus_sobj() const { return this->_field<bonus_sobjVal const, 252>(); }	typedef u16 bonus_rand_timer_minVal[2];
+	bonus_rand_timer_minVal const& bonus_rand_timer_min() const { return this->_field<bonus_rand_timer_minVal const, 272>(); }	typedef u16 bonus_rand_timer_varVal[2];
+	bonus_rand_timer_varVal const& bonus_rand_timer_var() const { return this->_field<bonus_rand_timer_varVal const, 276>(); }	typedef u16 bonus_framesVal[2];
 	bonus_framesVal const& bonus_frames() const { return this->_field<bonus_framesVal const, 280>(); }
-
 	u8 reload_sound() const { return this->_field<u8, 251>(); }
 	NObjectEmitterType const& blood_emitter() const { return *this->_field<ss::StructOffset<NObjectEmitterType>, 288>().get(); }
-
-	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<TcDataReader> const& src) {
-		TL_UNUSED(expander); TL_UNUSED(src);
-		TcDataReader const* srcp = src.get();
-		cur_size = expander.array_calc_size<NObjectType, ss::StructOffset<NObjectTypeReader>>(cur_size, srcp->_field<ss::Offset, 0>());
-		cur_size = expander.array_calc_size<SObjectType, ss::StructOffset<SObjectTypeReader>>(cur_size, srcp->_field<ss::Offset, 8>());
-		cur_size = expander.array_calc_size<WeaponType, ss::StructOffset<WeaponTypeReader>>(cur_size, srcp->_field<ss::Offset, 16>());
-		cur_size = expander.array_calc_size<LevelEffect, ss::StructOffset<LevelEffectReader>>(cur_size, srcp->_field<ss::Offset, 24>());
-		cur_size = expander.array_calc_size_plain<u8, u8>(cur_size, srcp->_field<ss::Offset, 256>());
-		cur_size = expander.array_calc_size<ss::StringOffset, ss::StringOffset>(cur_size, srcp->_field<ss::Offset, 264>());
-		cur_size = NObjectEmitterType::calc_extra_size(24 + cur_size, expander, srcp->_field<ss::StructOffset<NObjectEmitterTypeReader> const, 288>());
-		return cur_size;
-	}
-
-	static void expand_raw(ss::Ref<TcData> dest, ss::Expander& expander, ss::StructOffset<TcDataReader> const& src) {
-		TL_UNUSED(expander);
-		u32 src_size = src.size;
-		TcDataReader const* srcp = src.get();
-		u64 *p = (u64 *)dest.ptr;
-		u64 const *s = (u64 const*)srcp;
-		u64 const *d = (u64 const*)TcData::_defaults;
-		for (u32 i = 0; i < 37; ++i) {
-			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
-		}
-		auto nobjects_copy = expander.expand_array_raw<NObjectType, ss::StructOffset<NObjectTypeReader>>(srcp->_field<ss::Offset, 0>());
-		auto sobjects_copy = expander.expand_array_raw<SObjectType, ss::StructOffset<SObjectTypeReader>>(srcp->_field<ss::Offset, 8>());
-		auto weapons_copy = expander.expand_array_raw<WeaponType, ss::StructOffset<WeaponTypeReader>>(srcp->_field<ss::Offset, 16>());
-		auto level_effects_copy = expander.expand_array_raw<LevelEffect, ss::StructOffset<LevelEffectReader>>(srcp->_field<ss::Offset, 24>());
-		auto materials_copy = expander.expand_array_raw_plain<u8, u8>(srcp->_field<ss::Offset, 256>());
-		auto sound_names_copy = expander.expand_array_raw<ss::StringOffset, ss::StringOffset>(srcp->_field<ss::Offset, 264>());
-		auto blood_emitter_copy = expander.alloc_uninit_raw<NObjectEmitterType>();
-		NObjectEmitterType::expand_raw(blood_emitter_copy, expander, srcp->_field<ss::StructOffset<NObjectEmitterTypeReader>, 288>());
-		dest._field_ref<ss::ArrayOffset<NObjectType>, 0>().set(nobjects_copy);
-		dest._field_ref<ss::ArrayOffset<SObjectType>, 8>().set(sobjects_copy);
-		dest._field_ref<ss::ArrayOffset<WeaponType>, 16>().set(weapons_copy);
-		dest._field_ref<ss::ArrayOffset<LevelEffect>, 24>().set(level_effects_copy);
-		dest._field_ref<ss::ArrayOffset<u8>, 256>().set(materials_copy);
-		dest._field_ref<ss::ArrayOffset<ss::StringOffset>, 264>().set(sound_names_copy);
-		dest._field_ref<ss::StructOffset<NObjectEmitterType>, 288>().set(blood_emitter_copy);
-	}
 };
 
 struct TcDataBuilder : ss::Ref<TcDataReader> {
@@ -667,7 +519,11 @@ struct TcDataBuilder : ss::Ref<TcDataReader> {
 		: Ref<TcDataReader>(b.alloc<TcDataReader>()) {
 	}
 
-	Ref<TcDataReader> done() { return std::move(*this); }
+	TcDataBuilder(ss::Ref<TcDataReader> b)
+		: Ref<TcDataReader>(b) {
+	}
+
+	ss::Ref<TcDataReader> done() { return std::move(*this); }
 
 	void nobjects(ss::ArrayRef<ss::StructOffset<NObjectTypeReader>> v) { return this->_field_ref<ss::ArrayOffset<ss::StructOffset<NObjectTypeReader>>, 0>().set(v); }
 	void sobjects(ss::ArrayRef<ss::StructOffset<SObjectTypeReader>> v) { return this->_field_ref<ss::ArrayOffset<ss::StructOffset<SObjectTypeReader>>, 8>().set(v); }
@@ -801,11 +657,9 @@ struct alignas(8) PlayerControlsReader : ss::Struct {
 };
 
 struct alignas(8) PlayerControls : ss::Struct {
-	static u8 _defaults[16];
-
 	u8 data[16];
 
-	PlayerControls() { memcpy(data, _defaults, sizeof(_defaults)); }
+	static u64 const* expand_program() { return expand_programs + 92; }
 
 	u16 up() const { return this->_field<u16, 0>(); }
 	u16 down() const { return this->_field<u16, 2>(); }
@@ -814,24 +668,6 @@ struct alignas(8) PlayerControls : ss::Struct {
 	u16 fire() const { return this->_field<u16, 8>(); }
 	u16 change() const { return this->_field<u16, 10>(); }
 	u16 jump() const { return this->_field<u16, 12>(); }
-
-	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<PlayerControlsReader> const& src) {
-		TL_UNUSED(expander); TL_UNUSED(src);
-		return cur_size;
-	}
-
-	static void expand_raw(ss::Ref<PlayerControls> dest, ss::Expander& expander, ss::StructOffset<PlayerControlsReader> const& src) {
-		TL_UNUSED(expander);
-		u32 src_size = src.size;
-		PlayerControlsReader const* srcp = src.get();
-		u64 *p = (u64 *)dest.ptr;
-		u64 const *s = (u64 const*)srcp;
-		u64 const *d = (u64 const*)PlayerControls::_defaults;
-		for (u32 i = 0; i < 2; ++i) {
-			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
-		}
-	}
-
 };
 
 struct PlayerControlsBuilder : ss::Ref<PlayerControlsReader> {
@@ -839,7 +675,11 @@ struct PlayerControlsBuilder : ss::Ref<PlayerControlsReader> {
 		: Ref<PlayerControlsReader>(b.alloc<PlayerControlsReader>()) {
 	}
 
-	Ref<PlayerControlsReader> done() { return std::move(*this); }
+	PlayerControlsBuilder(ss::Ref<PlayerControlsReader> b)
+		: Ref<PlayerControlsReader>(b) {
+	}
+
+	ss::Ref<PlayerControlsReader> done() { return std::move(*this); }
 
 	void up(u16 v) { this->_field<u16, 0>() = v ^ 0; }
 	void down(u16 v) { this->_field<u16, 2>() = v ^ 0; }
@@ -852,46 +692,18 @@ struct PlayerControlsBuilder : ss::Ref<PlayerControlsReader> {
 };
 
 struct alignas(8) PlayerSettingsReader : ss::Struct {
-	u8 data[16];
+	u8 data[32];
 
 };
 
 struct alignas(8) PlayerSettings : ss::Struct {
-	static u8 _defaults[16];
+	u8 data[32];
 
-	u8 data[16];
-
-	PlayerSettings() { memcpy(data, _defaults, sizeof(_defaults)); }
+	static u64 const* expand_program() { return expand_programs + 96; }
 
 	PlayerControls const& left_controls() const { return *this->_field<ss::StructOffset<PlayerControls>, 0>().get(); }
-	PlayerControls const& right_controls() const { return *this->_field<ss::StructOffset<PlayerControls>, 8>().get(); }
-
-	static usize calc_extra_size(usize cur_size, ss::Expander& expander, ss::StructOffset<PlayerSettingsReader> const& src) {
-		TL_UNUSED(expander); TL_UNUSED(src);
-		PlayerSettingsReader const* srcp = src.get();
-		cur_size = PlayerControls::calc_extra_size(16 + cur_size, expander, srcp->_field<ss::StructOffset<PlayerControlsReader> const, 0>());
-		cur_size = PlayerControls::calc_extra_size(16 + cur_size, expander, srcp->_field<ss::StructOffset<PlayerControlsReader> const, 8>());
-		return cur_size;
-	}
-
-	static void expand_raw(ss::Ref<PlayerSettings> dest, ss::Expander& expander, ss::StructOffset<PlayerSettingsReader> const& src) {
-		TL_UNUSED(expander);
-		u32 src_size = src.size;
-		PlayerSettingsReader const* srcp = src.get();
-		u64 *p = (u64 *)dest.ptr;
-		u64 const *s = (u64 const*)srcp;
-		u64 const *d = (u64 const*)PlayerSettings::_defaults;
-		for (u32 i = 0; i < 2; ++i) {
-			p[i] = d[i] ^ (i < src_size ? s[i] : 0);
-		}
-		auto left_controls_copy = expander.alloc_uninit_raw<PlayerControls>();
-		PlayerControls::expand_raw(left_controls_copy, expander, srcp->_field<ss::StructOffset<PlayerControlsReader>, 0>());
-		auto right_controls_copy = expander.alloc_uninit_raw<PlayerControls>();
-		PlayerControls::expand_raw(right_controls_copy, expander, srcp->_field<ss::StructOffset<PlayerControlsReader>, 8>());
-		dest._field_ref<ss::StructOffset<PlayerControls>, 0>().set(left_controls_copy);
-		dest._field_ref<ss::StructOffset<PlayerControls>, 8>().set(right_controls_copy);
-	}
-
+	PlayerControls const& right_controls() const { return *this->_field<ss::StructOffset<PlayerControls>, 8>().get(); }	typedef u16 weaponsVal[5];
+	weaponsVal const& weapons() const { return this->_field<weaponsVal const, 16>(); }
 };
 
 struct PlayerSettingsBuilder : ss::Ref<PlayerSettingsReader> {
@@ -899,10 +711,16 @@ struct PlayerSettingsBuilder : ss::Ref<PlayerSettingsReader> {
 		: Ref<PlayerSettingsReader>(b.alloc<PlayerSettingsReader>()) {
 	}
 
-	Ref<PlayerSettingsReader> done() { return std::move(*this); }
+	PlayerSettingsBuilder(ss::Ref<PlayerSettingsReader> b)
+		: Ref<PlayerSettingsReader>(b) {
+	}
+
+	ss::Ref<PlayerSettingsReader> done() { return std::move(*this); }
 
 	void left_controls(ss::Ref<PlayerControlsReader> v) { return this->_field_ref<ss::StructOffset<PlayerControlsReader>, 0>().set(v); }
 	void right_controls(ss::Ref<PlayerControlsReader> v) { return this->_field_ref<ss::StructOffset<PlayerControlsReader>, 8>().set(v); }
+	typedef u16 weaponsVal[5];
+	weaponsVal& weapons() { return this->_field<weaponsVal, 16>(); }
 
 };
 }

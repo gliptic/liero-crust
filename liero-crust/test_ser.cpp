@@ -1,5 +1,7 @@
 #include <tl/std.h>
 #include <liero-sim/data/base_model.hpp>
+#include <liero-sim/data/model.hpp>
+#include <tl/io/filesystem.hpp>
 
 /*
 	FieldKind (u8):
@@ -24,108 +26,6 @@
 
 	Field
 */
-
-u32 expand_exec_alloc(u32 dest, ss::Expander& expander, u64 const* program, ss::Offset const& src) {
-	//u64 *p = (u64 *)dest.ptr;
-	u8 const *s = src.ptr();
-	u32 src_size = src.size;
-
-	{
-		u64 op = *program++;
-		u32 src_word_count = op & 0xffffff;
-		//u32 dest_word_count = (op >> 24) & 0xffffff;
-
-		u64 const *flags = program;
-		u64 const *default_data = program + (src_word_count + 63) / 64;
-
-		auto destp = dest;
-
-		for (u32 i = 0; i < src_word_count; ++i) {
-			u8 expanded = (flags[i >> 6] >> (i & 63)) & 1;
-			u64 info = *default_data++;
-			if (expanded) {
-				// Expanding struct in-place
-
-				i32 rel_offs = i32(info & 0xffffffff);
-
-				switch ((info >> 32) & 0xff) {
-				case 0: { // Inline struct
-					u64 const* subprogram = program + rel_offs; // TODO: Overflow in multiply
-					if (i < src_size) {
-						auto const& offs = ((ss::Offset const *)s)[i];
-						destp = expand_exec_alloc(destp, expander, subprogram, offs);
-					} else {
-						ss::Offset dummy_offset;
-						dummy_offset.set(u32(0), 0);
-						destp = expand_exec_alloc(destp, expander, subprogram, dummy_offset);
-					}
-					break;
-				}
-
-				case 1: { // Array
-					if (i < src_size) {
-						auto const& offs = ((ss::Offset const *)s)[i];
-
-						u64 const* subprogram = program + rel_offs;
-						u64 subheader = *subprogram;
-						u32 sub_dest_word_count = (subheader >> 24) & 0xffffff;
-
-						usize array_size = sub_dest_word_count * offs.size; // TODO: Overflow check
-						auto arr = expander.alloc_uninit<u64>(array_size);
-
-						auto p = arr;
-						ss::Offset *sub_src = (ss::Offset *)offs.ptr();
-						for (u32 j = 0; j < offs.size; ++j) {
-							p = expand_exec_alloc(p, expander, subprogram, *sub_src);
-							++sub_src;
-						}
-
-						//((ss::Offset *)destp.ptr)->set(arr.ptr, offs.size);
-						//((ss::Offset *)&expander.buf[destp])->set(arr.ptr, offs.size);
-						((ss::Offset *)expander.word(destp))->set(arr - destp, offs.size);
-
-					} else {
-						// Empty array
-						//((ss::Offset *)destp.ptr)->set(u32(0), 0);
-						((ss::Offset *)expander.word(destp))->set(u32(0), 0);
-					}
-					break;
-				}
-
-				case 2: { // Plain array
-					if (i < src_size) {
-						auto const& offs = ((ss::Offset const *)s)[i];
-
-						u32 sub_dest_byte_count = info & 0xffffffff;
-
-						usize array_size_bytes = sub_dest_byte_count * offs.size; // TODO: Overflow check
-						auto arr = expander.alloc_uninit<u8>(array_size_bytes);
-
-						u8 const *sub_src = offs.ptr();
-						memcpy(&expander.buf[arr], sub_src, array_size_bytes);
-						//((ss::Offset *)destp.ptr)->set(arr.ptr, offs.size);
-						((ss::Offset *)expander.word(destp))->set(arr - destp, offs.size);
-
-					} else {
-						// Empty array
-						//((ss::Offset *)destp.ptr)->set(u32(0), 0);
-						((ss::Offset *)expander.word(destp))->set(u32(0), 0);
-					}
-					break;
-				}
-
-				}
-			} else {
-				//*destp.ptr = info ^ (i < src_size ? ((u64 const *)s)[i] : 0);
-				*expander.word(destp) = info ^ (i < src_size ? ((u64 const *)s)[i] : 0);
-				//destp = destp.add_words(1);
-				++destp;
-			}
-		}
-
-		return destp;
-	}
-}
 
 ss::BaseRef expand_exec(ss::BaseRef dest, ss::Expander& expander, u64 const* program, ss::Offset const& src) {
 	//u64 *p = (u64 *)dest.ptr;
@@ -263,6 +163,38 @@ struct LabelRef {
 	}
 };
 
+void test_ser2() {
+	auto root = tl::FsNode(tl::FsNode::from_path("TC/lierov133"_S));
+
+	auto r = (root / "tc.dat"_S);
+
+	auto src = r.try_get_source();
+	auto buf = src.read_all();
+
+	ss::Expander expander(buf);
+
+	auto tc = (liero::TcData *)expander.expand(liero::TcData::expand_program(), buf.begin());
+
+	//auto tc = (liero::TcData *)expander.word(dest);
+
+	u8 const* str = tc->weapons()[0].name().begin();
+	str = tc->sound_names()[0].get().begin();
+
+	u32 x = tc->weapons()[0].ammo();
+	printf("");
+
+
+	/*
+	auto* tc = expander.expand_root<TcData>(*(ss::StructOffset<TcDataReader> const*)buf.begin());
+
+	this->tcdata = tc;
+	this->weapon_types = tc->weapons().begin();
+	this->level_effects = tc->level_effects().begin();
+	this->nobject_types = tc->nobjects().begin();
+	this->sobject_types = tc->sobjects().begin();
+	*/
+}
+
 void test_ser() {
 	u64 info_buf[1024];
 	u64 *info_write = info_buf;
@@ -366,7 +298,11 @@ void test_ser() {
 	u32 dest_word_count = (op >> 24) & 0xffffff;
 	auto dest = expander.alloc_uninit<u64>(dest_word_count);
 
-	expand_exec_alloc(dest, expander, program, *(ss::Offset const *)vec.begin());
+	expander.expand_exec_alloc(dest, program, *(ss::Offset const *)vec.begin());
 #endif
+
+}
+
+void test_ser3() {
 
 }

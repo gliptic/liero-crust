@@ -4,7 +4,7 @@
 void test_gui() {
 	using namespace gui;
 
-	LieroGui gui;
+	//LieroGui gui;
 
 	//Context ctx;
 	//gui.run(ctx);

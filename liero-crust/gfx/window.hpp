@@ -16,7 +16,8 @@ namespace gfx {
 struct CommonWindow;
 
 enum {
-	ev_button = 0
+	ev_none = 0,
+	ev_button = 1
 };
 
 struct Event {
@@ -25,6 +26,12 @@ struct Event {
 	union gfx_event_u {
 		struct { int id; } button;
 	} d;
+
+	static Event none() {
+		Event ev;
+		ev.ev = ev_none;
+		return ev;
+	}
 };
 
 #if BONK_USE_GL2

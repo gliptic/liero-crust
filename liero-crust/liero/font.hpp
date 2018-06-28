@@ -12,6 +12,19 @@ struct Font {
 		this->chars.push_back(spriteSet.alloc(slice));
 	}
 
+	float measure_width(tl::StringSlice text, float size) const {
+		float x = 0.f;
+		for (auto c : text) {
+			if (c >= 2 && c < 250 + 2) {
+				auto const& ch = this->chars[c - 2];
+
+				x += ch.rect.width() * size;
+			}
+		}
+
+		return x;
+	}
+
 	void draw_text(gfx::GeomBuffer& buf, tl::StringSlice text, tl::VectorF2 pos, float size) {
 
 		for (auto c : text) {

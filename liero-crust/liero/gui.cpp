@@ -103,22 +103,36 @@ void Context::render2(gfx::GeomBuffer& geom) {
 	geom.clear();
 }
 
-static void render_window(Context3& context, gfx::GeomBuffer& geom, tl::VectorI2& placement, Context3::Window* window) {
+struct RenderContext {
+	RenderContext(tl::VectorI2 placement_init)
+		: placement(placement_init) {
+	}
+
+	tl::VectorI2 placement;
+};
+
+static void render_window(Context3& context, gfx::GeomBuffer& geom, RenderContext& render_context, Context3::Window* window) {
 
 	switch (window->type) {
-	case 0:
+	case Context3::Type::Button:
 	{
 		Context3::Button* button_desc = (Context3::Button *)window;
 
 		geom.color(0, 0, 0, 1);
 		geom.set_texture(0);
 		geom.quads();
-		geom.vertex(tl::VectorF2(placement.x, placement.y));
-		geom.vertex(tl::VectorF2(placement.x + button_desc->win_size.w, placement.y));
-		geom.vertex(tl::VectorF2(placement.x + button_desc->win_size.w, placement.y + button_desc->win_size.h));
-		geom.vertex(tl::VectorF2(placement.x, placement.y + button_desc->win_size.h));
 
-		geom.flush();
+		window->render_pos = tl::Rect(
+			render_context.placement.x,
+			render_context.placement.y,
+			render_context.placement.x + button_desc->win_size.w,
+			render_context.placement.y + button_desc->win_size.h);
+
+		geom.rect(
+			(float)window->render_pos.x1,
+			(float)window->render_pos.y1,
+			(float)window->render_pos.x2,
+			(float)window->render_pos.y2);
 
 		if (button_desc->attrib & WindowDesc::Focus) {
 			geom.color(1, 1, 1, 1);
@@ -126,22 +140,22 @@ static void render_window(Context3& context, gfx::GeomBuffer& geom, tl::VectorI2
 			geom.color(0.6, 0.6, 0.6, 1);
 		}
 
+		float w = context.font.measure_width(button_desc->text.slice_const(), 4.f);
+
 		context.font.draw_text(geom,
 			button_desc->text.slice_const(),
-			tl::VectorF2(placement.x + 10.f, placement.y + 5.f), 4.f);
+			tl::VectorF2(render_context.placement.x + button_desc->win_size.w * 0.5f - w * 0.5f, render_context.placement.y + 5.f), 4.f);
 
-		geom.flush();
-
-		placement.y += 3 + button_desc->win_size.h + 3;
+		render_context.placement.y += 3 + button_desc->win_size.h + 3;
 		break;
 	}
 
-	case 1:
+	case Context3::Type::Frame:
 	{
 		Context3::Frame* frame_desc = (Context3::Frame *)window;
 
 		for (auto& c : frame_desc->children()) {
-			render_window(context, geom, placement, &c);
+			render_window(context, geom, render_context, &c);
 		}
 		break;
 	}
@@ -150,13 +164,13 @@ static void render_window(Context3& context, gfx::GeomBuffer& geom, tl::VectorI2
 }
 
 void Context3::render2(gfx::GeomBuffer& geom) {
-	tl::VectorI2 placement(10, 10);
+	RenderContext render_context(tl::VectorI2(10, 10));
 
 	geom.color(0, 0, 0, 1);
 	geom.set_texture(0);
 
 	for (auto& c : this->cur_parent->children()) {
-		render_window(*this, geom, placement, &c);
+		render_window(*this, geom, render_context, &c);
 	}
 
 	geom.clear();
