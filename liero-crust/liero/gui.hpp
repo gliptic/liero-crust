@@ -450,7 +450,7 @@ struct LieroGui {
 	};
 
 	LieroGui(liero::PlayerSettingsBuilder playerSettings)
-		: mode(Main), players(playerSettings) {
+		: mode(Game), players(playerSettings) { // TEMP: mode(Main)
 		
 		for (int i = 0; i < 2; ++i) {
 			for (int w = 0; w < 5; ++w) {

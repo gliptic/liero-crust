@@ -94,6 +94,13 @@
     <ClCompile Include="gfx\GL\glew.cpp">
       <Filter>gfx\GL</Filter>
     </ClCompile>
+    <ClCompile Include="lmdb\mdb.c">
+      <Filter>lmdb</Filter>
+    </ClCompile>
+    <ClCompile Include="test_lmdb.cpp" />
+    <ClCompile Include="lmdb\midl.c">
+      <Filter>lmdb</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="gfx">
@@ -122,6 +129,9 @@
     </Filter>
     <Filter Include="sfx">
       <UniqueIdentifier>{95fccafd-d62d-44c0-9d8c-9a48ccaafb52}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="lmdb">
+      <UniqueIdentifier>{bc32c942-6af3-4d58-a4c1-597670a501b6}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -252,6 +262,12 @@
       <Filter>liero</Filter>
     </ClInclude>
     <ClInclude Include="ai2.hpp" />
+    <ClInclude Include="lmdb\lmdb.h">
+      <Filter>lmdb</Filter>
+    </ClInclude>
+    <ClInclude Include="lmdb\midl.h">
+      <Filter>lmdb</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="build.lua" />

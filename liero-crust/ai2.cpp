@@ -55,15 +55,17 @@ f64 compute_reward(State& state, u32 worm_index) {
 	
 	//return 1.0 / std::log(2.72 + tl::length(other_worm.pos.cast<f64>() - worm.pos.cast<f64>()));
 	//return tl::min((100 - other_worm.health) / 100.0, 1.0);
-	//return (0.5 + worm.health) / f64(1.0 + worm.health + other_worm.health);
-	return worm.health / 100.0;
+	return (0.5 + worm.health) / f64(1.0 + worm.health + other_worm.health);
+	//return worm.health / 100.0;
 }
 
 WormInput generate_single(Ai2& ai, State& state, Worm& worm, Worm& target) {
 
-	if (ai.rand.get_u32_fast_(3) == 0) {
+	//if (ai.rand.get_u32_fast_(3) == 0) {
+	if (false) { // TEMP
 
-		u8 act = ai.rand.get_u32_fast_(6) << 4;
+		//u8 act = ai.rand.get_u32_fast_(6) << 4;
+		u8 act = 0; // TEMP
 		u8 move = ai.rand.get_u32_fast_(4) << 2;
 		u8 aim = ai.rand.get_u32_fast_(4);
 
@@ -169,7 +171,7 @@ void Ai2::do_ai(State& state, Worm& worm, u32 worm_index, WormTransientState& tr
 				generate(*this, this->spare_state, this->spare_transient_state, worm_index, *new_child.node);
 
 				node->children.push_back(move(new_child));
-				f64 reward = compute_reward(state, worm_index);
+				f64 reward = compute_reward(this->spare_state, worm_index);
 
 				for (auto& s : selected) {
 					s->stats.add(reward, s->n);

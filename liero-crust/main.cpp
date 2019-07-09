@@ -21,10 +21,11 @@ void test_ser2();
 void test_irc();
 void test_http();
 void test_bloom();
+void test_lmdb();
 
 int main() {
 
-	//test_gfx();
+	test_gfx();
 	//test_sincos();
 	//test_gui();
 
@@ -42,7 +43,8 @@ int main() {
 	//test_http();
 
 	//test_error();
-	test_bloom();
+	//test_bloom();
+	//test_lmdb();
 
 	return 0;
 }

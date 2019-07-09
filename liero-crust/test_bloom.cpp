@@ -78,10 +78,12 @@ struct Node {
 	}
 };
 
+
+
 void test_bloom() {
-	Node* n = new Node();
-	n->insert(Node::Leaf(0, 1));
-	n->insert(Node::Leaf(0, 1));
+	//Node* n = new Node();
+	//n->insert(Node::Leaf(0, 1));
+	//n->insert(Node::Leaf(0, 1));
 	
 	
 }

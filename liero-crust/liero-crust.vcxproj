@@ -224,6 +224,8 @@
     <ClCompile Include="liero\gui.cpp" />
     <ClCompile Include="liero\viewport.cpp" />
     <ClCompile Include="liero\blit.cpp" />
+    <ClCompile Include="lmdb\mdb.c" />
+    <ClCompile Include="lmdb\midl.c" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="other_tests.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -242,6 +244,7 @@
     <ClCompile Include="test_http.cpp" />
     <ClCompile Include="test_io.cpp" />
     <ClCompile Include="test_irc.cpp" />
+    <ClCompile Include="test_lmdb.cpp" />
     <ClCompile Include="test_net.cpp" />
     <ClCompile Include="test_rand.cpp" />
     <ClCompile Include="test_ser.cpp" />
@@ -330,6 +333,8 @@
     <ClInclude Include="liero\gui.hpp" />
     <ClInclude Include="liero\viewport.hpp" />
     <ClInclude Include="liero\blit.hpp" />
+    <ClInclude Include="lmdb\lmdb.h" />
+    <ClInclude Include="lmdb\midl.h" />
     <ClInclude Include="net\channel.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="sfx\mixer.hpp" />
