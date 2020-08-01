@@ -126,8 +126,7 @@ inline void update_aiming(Worm& worm, State& state, WormTransientState& transien
 		worm.aiming_angle = Scalar(-32);
 	}
 
-	if (transient_state.movable()
-	 && (worm.ninjarope.st == Ninjarope::Hidden || !input.change_or_rope())) {
+	if (worm.ninjarope.st == Ninjarope::Hidden || !input.change_or_rope()) {
 
 		if (up && worm.aiming_angle_vel > -mod.tcdata->max_aim_vel()) {
 			worm.aiming_angle_vel -= mod.tcdata->aim_acc();

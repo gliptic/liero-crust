@@ -115,6 +115,10 @@ static tl::Image load_font_from_exe(tl::VecSlice<u8 const> src, u32 width, u32 h
 	return move(img);
 }
 
+u8 expand_col(u8 v) {
+	return (v << 2) | (v >> 4);
+}
+
 bool load_from_exe(
 	tl::ArchiveBuilder& archive,
 	ss::Builder& tcdata,
@@ -200,9 +204,9 @@ bool load_from_exe(
 		u8 const* p = window.begin() + 132774;
 
 		for (u32 i = 0; i < 256; ++i) {
-			u8 r = (*p++ & 63) << 2;
-			u8 g = (*p++ & 63) << 2;
-			u8 b = (*p++ & 63) << 2;
+			u8 r = expand_col(*p++ & 63);
+			u8 g = expand_col(*p++ & 63);
+			u8 b = expand_col(*p++ & 63);
 			pal.entries[i] = tl::Color(r, g, b, u8(i));
 		}
 	}

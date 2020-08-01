@@ -122,7 +122,7 @@ struct IrcServer {
 			iocp.send(this->sock, iocp.new_send_op(tl::Vec<u8>::concat("PONG :"_S, param[1], "\r\n"_S)));
 		} else if (cmd == "001"_S) {
 			iocp.send(this->sock, iocp.new_send_op(tl::Vec<u8>::concat(
-				"JOIN #lierosim\r\n"_S
+				"JOIN #liero\r\n"_S
 				/*, "JOIN #liero\r\n"_S*/
 			)));
 		} else if (cmd == "PRIVMSG"_S && param.size() >= 3 && !prefix.empty()) {

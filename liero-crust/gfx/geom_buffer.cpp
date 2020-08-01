@@ -58,6 +58,8 @@ void GeomBuffer::flush() {
 		glDrawArrays(GL_POINTS, 0, vertex_count);
 	} else if (this->geom_mode == gb_quad) {
 		glDrawArrays(GL_QUADS, 0, vertex_count);
+	} else if (this->geom_mode == gb_tri) {
+		glDrawArrays(GL_TRIANGLES, 0, vertex_count);
 	}
 	check_gl();
 

@@ -4,6 +4,7 @@
 #include "tl/vector.hpp"
 #include "texture.hpp"
 #include <tl/std.h>
+#include <tl/vector.hpp>
 
 namespace gfx {
 
@@ -12,7 +13,8 @@ struct GeomBuffer {
 	enum {
 		gb_none,
 		gb_point,
-		gb_quad
+		gb_quad,
+		gb_tri
 	};
 
 	static int const vertex_buffer_size = 4096;
@@ -73,6 +75,10 @@ struct GeomBuffer {
 		ensure_mode(gb_quad);
 	}
 
+	void tris() {
+		ensure_mode(gb_tri);
+	}
+
 	void color(float r, float g, float b, float a) {
 		this->col[0] = r;
 		this->col[1] = g;
@@ -83,6 +89,11 @@ struct GeomBuffer {
 	void unsafe_vertex(float x, float y) {
 		*this->cur_vert++ = x;
 		*this->cur_vert++ = y;
+	}
+
+	void unsafe_vertex(tl::VectorF2 v) {
+		*this->cur_vert++ = v.x;
+		*this->cur_vert++ = v.y;
 	}
 
 	void unsafe_texcoord(float x, float y) {
@@ -132,6 +143,42 @@ struct GeomBuffer {
 		unsafe_vertex(x2, y1);
 		unsafe_vertex(x2, y2);
 		unsafe_vertex(x1, y2);
+	}
+
+	void tri(float x1, float y1, float x2, float y2, float x3, float y3) {
+		assert(this->geom_mode == gb_tri);
+
+		check_vertices(6);
+		vertex_color(3);
+		unsafe_vertex(x1, y1);
+		unsafe_vertex(x2, y2);
+		unsafe_vertex(x3, y3);
+	}
+
+	void tri_rect(tl::VectorF2 ul, tl::VectorF2 lr) {
+		assert(this->geom_mode == gb_tri);
+
+		check_vertices(12);
+		vertex_color(6);
+		unsafe_vertex(ul);
+		unsafe_vertex(lr.x, ul.y);
+		unsafe_vertex(ul.x, lr.y);
+		unsafe_vertex(lr.x, ul.y);
+		unsafe_vertex(lr);
+		unsafe_vertex(ul.x, lr.y);
+	}
+
+	void tri_quad(tl::VectorF2 a, tl::VectorF2 b, tl::VectorF2 c, tl::VectorF2 d) {
+		assert(this->geom_mode == gb_tri);
+
+		check_vertices(12);
+		vertex_color(6);
+		unsafe_vertex(a);
+		unsafe_vertex(b);
+		unsafe_vertex(d);
+		unsafe_vertex(b);
+		unsafe_vertex(c);
+		unsafe_vertex(d);
 	}
 
 	// TODO: This shouldn't be exposed

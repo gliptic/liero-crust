@@ -22,10 +22,19 @@ void test_irc();
 void test_http();
 void test_bloom();
 void test_lmdb();
+void test_statepack();
+
+namespace test_cellphase {
+void test_cellphase();
+}
+
+namespace test_ships {
+void test_ships();
+}
 
 int main() {
 
-	test_gfx();
+	//test_gfx();
 	//test_sincos();
 	//test_gui();
 
@@ -45,6 +54,9 @@ int main() {
 	//test_error();
 	//test_bloom();
 	//test_lmdb();
+	//test_cellphase::test_cellphase();
+	//test_ships::test_ships();
+	test_statepack();
 
 	return 0;
 }

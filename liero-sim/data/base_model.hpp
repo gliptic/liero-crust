@@ -166,10 +166,10 @@ struct Offset {
 	}
 
 	void set(u8 const* p, u32 size_new) {
-		auto rel_offs = p - (u8 *)this;
-		assert(rel_offs >= 0);
+		auto rel_offs_new = p - (u8 *)this;
+		assert(rel_offs_new >= 0);
 
-		this->rel_offs = tl::narrow<u32>(rel_offs >> 3); // TODO: Check
+		this->rel_offs = tl::narrow<u32>(rel_offs_new >> 3); // TODO: Check
 		this->size = size_new;
 	}
 };

@@ -89,10 +89,49 @@ struct FixedObjectListRange {
 	T* end;
 };
 
+template<typename T>
+struct FixedObjectListOrderedRange {
+	FixedObjectListOrderedRange(T* cur, T* end)
+		: begin(cur), end_sorted(cur), cur(cur), end(end) {
+	}
+
+	T* current() const {
+		return cur;
+	}
+
+	bool has_more() const {
+		return cur != end;
+	}
+
+	void next() {
+		T m = *cur;
+		T* at = end_sorted;
+
+#if 1
+		auto insert_key = m.key;
+
+		while (at != begin && at[-1].key > insert_key) {
+			at[0] = at[-1];
+			--at;
+		}
+#endif
+
+		at[0] = m;
+		++cur;
+		++end_sorted;
+	}
+
+	T* begin;
+	T* end_sorted;
+	T* cur;
+	T* end;
+};
+
 template<typename T, int Limit, bool QueueNew = false>
 struct FixedObjectList : FixedObjectListBase<Limit, QueueNew> {
 
 	typedef FixedObjectListRange<T> Range;
+	typedef FixedObjectListOrderedRange<T> OrderedRange;
 
 	FixedObjectList() {
 		this->clear();
@@ -159,6 +198,10 @@ struct FixedObjectList : FixedObjectListBase<Limit, QueueNew> {
 	Range all() {
 		return Range(arr, arr + this->count);
 	}
+
+	OrderedRange all_ordered() {
+		return OrderedRange(arr, arr + this->count);
+	}
 	
 	void free(T* ptr) {
 		assert(ptr < &arr[0] + this->count && ptr >= &arr[0]);
@@ -168,6 +211,11 @@ struct FixedObjectList : FixedObjectListBase<Limit, QueueNew> {
 	void free(Range& r)	{
 		free(--r.cur);
 		--r.end;
+	}
+
+	void next_free(OrderedRange& r) {
+		++r.cur;
+		--this->count;
 	}
 
 	usize size() const {

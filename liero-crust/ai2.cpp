@@ -29,7 +29,7 @@ Node* select(NodeChildren& node) {
 		f64 e = std::log(f64(node.n));
 
 		f64 max = -1.0;
-		usize max_i;
+		usize max_i = 0;
 		for (usize i = 0; i < node.children.size(); ++i) {
 			auto& ch = *node.children[i].node;
 			auto b = ch.b(e);

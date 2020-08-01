@@ -21,32 +21,32 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{AA68ABEC-4FA5-4330-98BC-CFD1CD650384}</ProjectGuid>
     <RootNamespace>marfcpp</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -237,6 +237,7 @@
     <ClCompile Include="sfx\mixer.cpp" />
     <ClCompile Include="sfx\sfx_win32.cpp" />
     <ClCompile Include="test_bloom.cpp" />
+    <ClCompile Include="test_cellphase.cpp" />
     <ClCompile Include="test_comp.cpp" />
     <ClCompile Include="test_error.cpp" />
     <ClCompile Include="test_gfx.cpp" />
@@ -248,7 +249,9 @@
     <ClCompile Include="test_net.cpp" />
     <ClCompile Include="test_rand.cpp" />
     <ClCompile Include="test_ser.cpp" />
+    <ClCompile Include="test_ships.cpp" />
     <ClCompile Include="test_sincos.cpp" />
+    <ClCompile Include="test_statepack.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\liero-sim\liero-sim.vcxproj">
@@ -322,6 +325,7 @@
     <ClInclude Include="lierosim\bobject.hpp" />
     <ClInclude Include="lierosim\bonus.hpp" />
     <ClInclude Include="lierosim\cellphase.hpp" />
+    <ClInclude Include="lierosim\cellphase_sll.hpp" />
     <ClInclude Include="lierosim\level.hpp" />
     <ClInclude Include="lierosim\mod.hpp" />
     <ClInclude Include="lierosim\nobject.hpp" />
@@ -339,6 +343,13 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="sfx\mixer.hpp" />
     <ClInclude Include="sfx\sfx.hpp" />
+    <ClInclude Include="test_cellphase.hpp" />
+    <ClInclude Include="test_cellphase\phys\space.hpp" />
+    <ClInclude Include="test_cellphase\state1.hpp" />
+    <ClInclude Include="test_cellphase\state2.hpp" />
+    <ClInclude Include="test_cellphase\state_sll.hpp" />
+    <ClInclude Include="test_ships\mcts.hpp" />
+    <ClInclude Include="test_ships\test_ships.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="build.lua" />
